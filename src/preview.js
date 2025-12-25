@@ -108,20 +108,36 @@ async function bootstrap(graphJson) {
     const output = await node.runtime.execute(dataRegistry, node, context, (bindingNodeId) => results[bindingNodeId]);
     results[node.id] = output;
   }
+  
   const topoNode = graph.nodes.find((n) => n.params?.contractId === 'RoadwayTopology');
   const registryNode = graph.nodes.find((n) => n.params?.contractId === 'SensorStationRegistry');
   const readingsNode = graph.nodes.find((n) => n.params?.contractId === 'SensorReadingTimeSeries');
+  const geometryNode = graph.nodes.find((n) => n.params?.contractId === 'RoadwayGeometry');
+
   const topoRes = topoNode ? results[topoNode.id] : null;
   const registryRes = registryNode ? results[registryNode.id] : null;
   const readingsRes = readingsNode ? results[readingsNode.id] : null;
+  const geometryRes = geometryNode ? results[geometryNode.id] : null;
+
   const topo = topoRes?.resolveFacet ? topoRes.resolveFacet('graph') : topoRes;
   const registry = registryRes?.resolveFacet ? registryRes.resolveFacet('registry') : registryRes || [];
   const readingsDataset = readingsRes?.resolveFacet ? readingsRes.resolveFacet('series') : readingsRes;
+  const meshPartsMapping = geometryRes?.resolveFacet ? geometryRes.resolveFacet('meshParts') : [];
 
   const sceneContainer = document.querySelector('#scene-canvas');
+  sceneContainer.innerHTML = '';
   const sceneManager = new SceneManager(sceneContainer);
   sceneManager.addLights();
-  if (topo) sceneManager.buildRoadway(topo);
+
+  // [New Logic] Priority: Loaded Geometry > Topology Fallback
+  if (geometryRes && (geometryRes.source?.path || geometryRes.objText)) {
+    console.log('Loading roadway model. Type:', geometryRes.source.type);
+    await sceneManager.loadRoadwayModel(geometryRes.source.path, geometryRes.objText, meshPartsMapping);
+  } else if (topo) {
+    console.log('Building roadway from topology (fallback)');
+    sceneManager.buildRoadway(topo);
+  }
+
   if (registry) sceneManager.addSensors(registry);
 
   const sensorList = new SensorList(document.querySelector('#sensor-list'));
@@ -165,9 +181,10 @@ async function bootstrap(graphJson) {
       li.classList.add('active');
       toggleFunctionUI(fn.typeId);
       const inputTopo = resolveInput(fn, 'roadwayTopo') || topo;
-      const inputMesh = resolveInput(fn, 'roadwayMesh');
+      const inputMesh = resolveInput(fn, 'roadwayMesh'); 
       const inputRegistry = resolveInput(fn, 'sensorRegistry') || registry;
       const inputReadings = resolveInput(fn, 'tempReadings') || readingsDataset;
+      
       if (fn.typeId === 'SensorDetailFunction') {
         fn.runtime.attach(sceneManager, chartManager, sensorList, inputReadings, inputMesh);
         sensorList.selectFirst();

@@ -6,18 +6,29 @@ export class DataResource {
   constructor(params) {
     this.source = params.source || { type: 'file', path: '' };
     this.contractId = params.contractId;
-    this.roleMapping = params.roleMapping || params.roleMapping || {};
+    this.roleMapping = params.roleMapping || {};
     this.bindings = params.bindings || {};
     this.facets = params.facets || [];
     this.raw = null;
+    this.objText = null; // [New] Store raw model text
     this.bindingResolver = null;
   }
 
   async load(registry) {
+    // 1. Inline Data
     if (this.source.type === 'inline') {
-      this.raw = this.source.data;
+      const data = this.source.data;
+      if (typeof data === 'string' && this.contractId === 'RoadwayGeometry') {
+        // It's likely OBJ text
+        this.objText = data;
+        this.raw = this.parseObjNames(data);
+      } else {
+        this.raw = data;
+      }
       return this;
     }
+
+    // 2. Auto / Binding
     if (this.contractId === 'RoadwayGeometry' && this.source.type === 'auto') {
       const topo = this.resolveBinding('topo_ref_id');
       if (topo?.edges?.length) {
@@ -25,14 +36,45 @@ export class DataResource {
       }
       return this;
     }
+    
+    // 3. File Loading
     if (this.source.type === 'file') {
-      if (this.source.path.endsWith('.csv')) {
-        this.raw = await registry.loadCsv(this.source.path);
+      const path = this.source.path;
+      if (path.endsWith('.csv')) {
+        this.raw = await registry.loadCsv(path);
+      } else if (path.endsWith('.obj')) {
+        try {
+          const res = await fetch(path);
+          const text = await res.text();
+          this.objText = text; // [New] Save for renderer
+          this.raw = this.parseObjNames(text);
+        } catch (e) {
+          console.error('Failed to parse OBJ file:', e);
+          this.raw = [];
+        }
       } else {
-        this.raw = await registry.loadJson(this.source.path);
+        try {
+          this.raw = await registry.loadJson(path);
+        } catch (e) {
+          this.raw = [];
+        }
       }
     }
     return this;
+  }
+
+  // Helper: Extract Mesh Names for Contract/Mapping
+  parseObjNames(text) {
+    const names = new Set();
+    text.split('\n').forEach((line) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('o ') || trimmed.startsWith('g ')) {
+        const name = trimmed.substring(2).trim();
+        if (name) names.add(name);
+      }
+    });
+    if (names.size === 0) names.add('Model_Root');
+    return Array.from(names).map((name) => ({ name }));
   }
 
   getContract() {
@@ -89,7 +131,8 @@ export class DataResource {
 
   resolveRoadwayTopology() {
     const map = this.roleMapping;
-    const nodes = (this.raw.nodes || []).map((n) => {
+    const rawNodes = this.raw?.nodes || (Array.isArray(this.raw) ? this.raw : []);
+    const nodes = rawNodes.map((n) => {
       const pos =
         this.getByPath(n, map.node_pos || 'coordinate') || this.getByPath(n, 'position') || this.getByPath(n, 'coordinate');
       const coordinate = Array.isArray(pos) ? pos : pos ? [pos.x, pos.y, pos.z] : [0, 0, 0];
@@ -100,7 +143,8 @@ export class DataResource {
       };
     });
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-    const edges = (this.raw.edges || []).map((e) => ({
+    const rawEdges = this.raw?.edges || [];
+    const edges = rawEdges.map((e) => ({
       id: this.getByPath(e, map.edge_id || 'id'),
       name: e.name || this.getByPath(e, map.edge_id || 'id'),
       from:
@@ -113,7 +157,8 @@ export class DataResource {
 
   resolveSensorRegistry() {
     const map = this.roleMapping;
-    return this.raw.map((r) => ({
+    const data = Array.isArray(this.raw) ? this.raw : [];
+    return data.map((r) => ({
       sensorID: this.getByPath(r, map.sensor_id || 'sensorID'),
       x: Number(this.getByPath(r, map.x || 'x')), 
       y: Number(this.getByPath(r, map.y || 'y')),
@@ -125,7 +170,8 @@ export class DataResource {
   resolveSensorReadings(preset) {
     const registry = this.resolveBinding('sensor_id');
     const map = this.roleMapping;
-    const remapped = (this.raw || []).map((r) => ({
+    const data = Array.isArray(this.raw) ? this.raw : [];
+    const remapped = data.map((r) => ({
       sensorID: this.getByPath(r, map.sensor_id || 'sensorID'),
       time: (() => {
         const raw = this.getByPath(r, map.timestamp || 'time');
@@ -141,7 +187,7 @@ export class DataResource {
 
   resolveRoadwayGeometry() {
     const map = this.roleMapping;
-    const items = (this.raw || []).map((r) => ({
+    const items = (Array.isArray(this.raw) ? this.raw : []).map((r) => ({
       mesh_part_id: r[map.mesh_part_id || 'name'],
       topo_ref_id: r[map.topo_ref_id || 'topo'] || r[map.mesh_part_id || 'name']
     }));

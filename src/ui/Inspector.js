@@ -1,4 +1,5 @@
 import Papa from 'papaparse';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { ContractRegistry } from '../core/contracts/ContractRegistry.js';
 
 function createSection(title) {
@@ -92,23 +93,31 @@ export class Inspector {
       rerender();
     });
     sourceSection.appendChild(sourceInput);
+    
+    // Upload / Inline Handling
     const upload = document.createElement('input');
     upload.type = 'file';
+    upload.accept = '.csv,.json,.obj,.gltf'; 
     upload.addEventListener('change', async (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
       const text = await file.text();
-      let data = text;
+      let data = text; // Default: keep text
+
       if (file.name.endsWith('.csv')) {
         data = Papa.parse(text, { header: true, dynamicTyping: true }).data;
-      } else {
-        data = JSON.parse(text);
+      } else if (file.name.endsWith('.json')) {
+        try { data = JSON.parse(text); } catch(e) { console.warn(e); }
       }
+      // For .obj, we keep 'data' as the raw string! 
+      // loadPreview will handle the visualization structure.
+
       node.params.source = { type: 'inline', name: file.name, data };
-      await this.loadPreview(node, data);
+      await this.loadPreview(node);
       rerender();
     });
     sourceSection.appendChild(upload);
+
     const preview = document.createElement('div');
     preview.className = 'source-preview';
     const cached = this.previewCache.get(node.id);
@@ -226,25 +235,56 @@ export class Inspector {
     return [];
   }
 
-  async loadPreview(node, inlineData) {
-    let data = inlineData;
-    if (!data) {
-      const src = node.params.source || {};
-      if (src.type === 'inline') data = src.data;
-      else if (src.path) {
+  async loadPreview(node) {
+    let data = null;
+    const src = node.params.source || {};
+
+    // 1. Resolve Data
+    if (src.type === 'inline') {
+      data = src.data;
+    } else if (src.path) {
+      try {
         if (src.path.endsWith('.csv')) {
           const text = await fetch(src.path).then((r) => r.text());
           data = Papa.parse(text, { header: true, dynamicTyping: true }).data;
+        } else if (src.path.endsWith('.obj')) {
+          const text = await fetch(src.path).then((r) => r.text());
+          data = text; // Keep as text
         } else {
           data = await fetch(src.path).then((r) => r.json());
         }
+      } catch (e) {
+        console.warn('Preview load failed', e);
       }
     }
+
     if (!data) return;
-    const fields = this.collectFields(data);
-    const previewText = Array.isArray(data)
-      ? JSON.stringify(data.slice(0, 3), null, 2)
-      : JSON.stringify(data, null, 2).slice(0, 200) + '...';
+
+    // 2. Parse if it's OBJ text (for Preview Fields)
+    let displayData = data;
+    if (typeof data === 'string' && (src.name?.endsWith('.obj') || src.path?.endsWith('.obj'))) {
+       const loader = new OBJLoader();
+       // Parse just to get names
+       try {
+         const group = loader.parse(data);
+         const parts = [];
+         group.traverse((child) => {
+           if (child.isMesh) parts.push({ name: child.name || 'Unnamed' });
+         });
+         if (!parts.length) parts.push({ name: 'Model_Root' });
+         displayData = parts;
+       } catch (e) {
+         console.warn("OBJ Parse error in inspector", e);
+         displayData = [];
+       }
+    }
+
+    // 3. Cache Fields and Text
+    const fields = this.collectFields(displayData);
+    const previewText = Array.isArray(displayData)
+      ? JSON.stringify(displayData.slice(0, 3), null, 2)
+      : JSON.stringify(displayData, null, 2).slice(0, 200) + '...';
+    
     this.previewCache.set(node.id, { fields, previewText });
   }
 

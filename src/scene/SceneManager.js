@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 
 export class SceneManager {
   constructor(container) {
@@ -41,6 +42,65 @@ export class SceneManager {
     const dir = new THREE.DirectionalLight(0xffffff, 0.6);
     dir.position.set(20, 30, 10);
     this.scene.add(dir);
+  }
+
+  /**
+   * 加载 OBJ 模型 (支持 URL 或 纯文本)
+   * @param {string|null} url - 文件路径 (若有)
+   * @param {string|null} text - 文件内容 (若为 inline)
+   * @param {Array} mapping - 部件映射表
+   */
+  async loadRoadwayModel(url, text, mapping) {
+    const loader = new OBJLoader();
+    let object = null;
+    
+    try {
+      if (url) {
+        object = await loader.loadAsync(url);
+      } else if (text) {
+        object = loader.parse(text);
+      }
+      
+      if (!object) return;
+
+      const map = new Map();
+      if (Array.isArray(mapping)) {
+        mapping.forEach(m => {
+          if (m.mesh_part_id && m.topo_ref_id) {
+            map.set(m.mesh_part_id, m.topo_ref_id);
+          }
+        });
+      }
+
+      object.traverse((child) => {
+        if (child.isMesh) {
+          child.material = new THREE.MeshStandardMaterial({ 
+            color: '#3a4a7a',
+            side: THREE.DoubleSide
+          });
+          const topoId = map.get(child.name);
+          if (topoId) {
+            child.userData.topoID = topoId;
+            this.edgeMeshes.set(topoId, child);
+          } else {
+            this.edgeMeshes.set(child.name, child);
+          }
+        }
+      });
+
+      this.scene.add(object);
+      
+      const box = new THREE.Box3().setFromObject(object);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      this.controls.target.copy(center);
+      this.camera.position.copy(center).addScalar(maxDim * 1.5);
+      this.controls.update();
+
+    } catch (err) {
+      console.error('Failed to load roadway model:', err);
+    }
   }
 
   buildRoadway(topo) {
@@ -116,7 +176,6 @@ export class SceneManager {
   }
 
   applyEdgeValues(edgeValues) {
-    // just store for coloring
     this.edgeValues = edgeValues;
   }
 
