@@ -1,4 +1,4 @@
-export const ColorMaps = {
+const baseMaps = {
   rainbow: [
     { stop: 0, color: '#2c7bb6' },
     { stop: 0.25, color: '#00a6ca' },
@@ -20,6 +20,10 @@ export const ColorMaps = {
     { stop: 0.75, color: '#fc8961' },
     { stop: 1, color: '#f9e721' }
   ]
+};
+
+export const ColorMaps = {
+  ...baseMaps
 };
 
 export function colorLerp(c1, c2, t) {
@@ -63,4 +67,24 @@ export function generateCssGradient(map) {
   const points = ColorMaps[map] || ColorMaps.rainbow;
   const stops = points.map((p) => `${p.color} ${p.stop * 100}%`).join(',');
   return `linear-gradient(90deg, ${stops})`;
+}
+
+export function setCustomColorMap(mapName, stops) {
+  if (!Array.isArray(stops) || !stops.length) return;
+  const key = mapName || 'custom';
+  ColorMaps[key] = stops
+    .map((s, i) => ({
+      stop: typeof s.stop === 'number' ? s.stop : i / Math.max(stops.length - 1, 1),
+      color: s.color || '#ffffff'
+    }))
+    .sort((a, b) => a.stop - b.stop);
+}
+
+export function resetColorMap(mapName) {
+  if (!mapName || !baseMaps[mapName]) return;
+  ColorMaps[mapName] = baseMaps[mapName].map((p) => ({ ...p }));
+}
+
+export function getDefaultStops(mapName) {
+  return (baseMaps[mapName] || baseMaps.rainbow).map((p) => ({ ...p }));
 }

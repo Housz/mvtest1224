@@ -1,12 +1,5 @@
-import {
-  PickSensorOperator,
-  FocusCameraOperator,
-  QuerySeriesOperator,
-  SampleSnapshotOperator,
-  InterpolateOnRoadwayGraphOperator,
-  MapFieldToMeshOperator,
-  ColorEncodeMeshOperator
-} from '../operators/Operators.js';
+import { PickSensorOperator, FocusCameraOperator, QuerySeriesOperator, SampleSnapshotOperator, HeatmapColorOperator } from '../operators/Operators.js';
+import { buildHeatmapInput, diffuseNodeValues } from '../algorithms/FieldSolver.js';
 
 export const FunctionNodeDefinitions = [
   {
@@ -52,20 +45,16 @@ export const FunctionNodeDefinitions = [
     createRuntime() {
       return {
         attach(sceneManager, legend, dataset, topo, registry) {
+          if (!dataset || !topo || !registry) return;
           const operators = {
             snapshot: new SampleSnapshotOperator(dataset),
-            interpolate: new InterpolateOnRoadwayGraphOperator(topo),
-            map: new MapFieldToMeshOperator(sceneManager),
-            color: new ColorEncodeMeshOperator(sceneManager)
+            color: new HeatmapColorOperator(sceneManager)
           };
           const applySnapshot = (time) => {
             const snap = operators.snapshot.run(time, 20);
-            const obs = registry
-              .map((s) => ({ nodeId: s.roadwayID, value: snap.get(s.sensorID) }))
-              .filter((o) => o.value !== undefined && o.value !== null && !Number.isNaN(o.value));
-            const interpolated = operators.interpolate.run(obs);
-            operators.map.apply(interpolated.edgeValues);
-            operators.color.run(interpolated.edgeValues);
+            const { nodes, connections, sensors } = buildHeatmapInput(topo, registry, snap);
+            const { nodeVals } = diffuseNodeValues(nodes, connections, sensors, operators.color.min);
+            operators.color.apply(connections, nodeVals, sensors);
             legend.update(operators.color.colormap, operators.color.min, operators.color.max);
           };
           return { applySnapshot, operators };

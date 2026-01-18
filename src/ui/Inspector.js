@@ -19,7 +19,7 @@ export class Inspector {
     this.previewCache = new Map();
   }
 
-  showNode(node) {
+  async showNode(node) {
     const slot = this.container.querySelector('.node-config');
     if (!slot) return;
     slot.innerHTML = '';
@@ -28,9 +28,7 @@ export class Inspector {
       return;
     }
     if (node.kind === 'data' && !this.previewCache.has(node.id)) {
-      this.loadPreview(node).then(() => {
-        if (this.currentNode?.id === node.id) this.showNode(node);
-      });
+      await this.loadPreview(node);
     }
     this.currentNode = node;
     const title = document.createElement('h4');

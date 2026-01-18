@@ -6,6 +6,7 @@ import { GraphModel } from './core/graph/GraphModel.js';
 import { NodeEditor } from './ui/NodeEditor.js';
 import { Inspector } from './ui/Inspector.js';
 import { ContractRegistry } from './core/contracts/ContractRegistry.js';
+import { getDefaultStops } from './utils/colors.js';
 
 const app = document.querySelector('#app');
 app.innerHTML = `
@@ -41,23 +42,36 @@ const definitionRegistry = new NodeDefinitionRegistry();
 const graph = new GraphModel(definitionRegistry);
 
 function seedGraph() {
-  const topo = graph.createNode('DataNode', { x: 80, y: 80 });
-  topo.params = seedDataNode('RoadwayTopology', { path: '/data/roadwayTopo.json' });
+  // Topology
+  const topo = graph.createNode('DataNode', { x: 60, y: 60 });
+  topo.params = seedDataNode('RoadwayTopology', { path: '/data/roadway_topo.json' });
   topo.runtime.updateFacets(topo);
 
-  const registry = graph.createNode('DataNode', { x: 80, y: 260 });
-  registry.params = seedDataNode('SensorStationRegistry', { path: '/data/tempSensors.csv' });
+  // Geometry (OBJ)
+  const geometry = graph.createNode('DataNode', { x: 60, y: 220 });
+  geometry.params = seedDataNode('RoadwayGeometry', { path: '/data/roadway_model.obj' });
+  geometry.bindings = { topo_ref_id: topo.id };
+  geometry.runtime.updateFacets(geometry);
+
+  // Sensor registry (edge sensors with ratio)
+  const registry = graph.createNode('DataNode', { x: 60, y: 380 });
+  registry.params = seedDataNode('SensorStationRegistry', { path: '/data/temperature_sensors.csv' });
   registry.runtime.updateFacets(registry);
 
-  const readings = graph.createNode('DataNode', { x: 360, y: 260 });
-  readings.params = seedDataNode('SensorReadingTimeSeries', { path: '/data/tempReadings.csv' });
+  // Sensor readings
+  const readings = graph.createNode('DataNode', { x: 360, y: 380 });
+  readings.params = seedDataNode('SensorReadingTimeSeries', { path: '/data/Temperature_timeseries_20steps.csv' });
   readings.bindings = { sensor_id: registry.id };
   readings.runtime.updateFacets(readings);
 
-  const fnDetail = graph.createNode('SensorDetailFunction', { x: 620, y: 180 });
-  const fnSnapshot = graph.createNode('RoadwayTempSnapshotFunction', { x: 620, y: 340 });
+  // Functions
+  const fnDetail = graph.createNode('SensorDetailFunction', { x: 660, y: 220 });
+  const fnSnapshot = graph.createNode('RoadwayTempSnapshotFunction', { x: 660, y: 380 });
 
+  // Wiring
   graph.connect({ nodeId: topo.id, portId: 'facet-graph' }, { nodeId: fnSnapshot.id, portId: 'roadwayTopo' });
+  graph.connect({ nodeId: geometry.id, portId: 'facet-meshParts' }, { nodeId: fnSnapshot.id, portId: 'roadwayMesh' });
+  graph.connect({ nodeId: geometry.id, portId: 'facet-meshParts' }, { nodeId: fnDetail.id, portId: 'roadwayMesh' });
   graph.connect({ nodeId: registry.id, portId: 'facet-registry' }, { nodeId: fnDetail.id, portId: 'sensorRegistry' });
   graph.connect({ nodeId: registry.id, portId: 'facet-registry' }, { nodeId: fnSnapshot.id, portId: 'sensorRegistry' });
   graph.connect({ nodeId: readings.id, portId: 'facet-series' }, { nodeId: fnDetail.id, portId: 'tempReadings' });
@@ -67,10 +81,11 @@ seedGraph();
 
 const editor = new NodeEditor(document.querySelector('#editor'), graph);
 const inspector = new Inspector(document.querySelector('#inspector'));
-editor.onSelect = (node) => inspector.showNode(node, ContractRegistry);
+editor.onSelect = (node) => inspector.showNode(node);
 editor.onDelete = () => inspector.showNode(null);
 editor.render();
 window.minevisEditor = editor;
+window.minevisDefaultStops = getDefaultStops;
 
 const palette = document.querySelector('#node-library');
 const addButton = document.querySelector('#btn-add-node');

@@ -7,41 +7,54 @@ import { SceneManager } from './scene/SceneManager.js';
 import { SensorList } from './ui/SensorList.js';
 import { ChartManager } from './ui/ChartManager.js';
 import { ColorLegend } from './ui/ColorLegend.js';
+import { getDefaultStops } from './utils/colors.js';
 
 const root = document.getElementById('preview-root');
 root.innerHTML = `
-  <div class="preview-layout">
-    <aside class="business">
-      <h3>Business</h3>
-      <ul id="biz-menu"><li class="active">Environment</li></ul>
-      <h4>Functions</h4>
-      <ul id="func-menu"></ul>
-      <button id="btn-reload">Reload config</button>
-    </aside>
-    <section class="workspace">
-      <div class="workspace-header">MineVis Preview Window</div>
-      <div class="workspace-body">
-        <div id="scene-canvas"></div>
-        <div class="function-ui hidden" data-func="SensorDetailFunction">
-          <div id="chart-overlay" class="floating"></div>
-          <div id="sensor-panel" class="floating side">
-            <h4>Sensors</h4>
-            <div id="sensor-list"></div>
-            <label>Chart mode <select id="chart-mode"><option value="overlay">Overlay</option><option value="billboard">Billboard</option></select></label>
-          </div>
+  <div class="preview-root">
+    <div id="scene-canvas" class="scene-full"></div>
+
+    <div class="overlay nav-panel">
+      <div class="panel-header">
+        <div>
+          <h3>MineVis Preview</h3>
+          <div class="small">Business & Functions</div>
         </div>
-        <div class="function-ui hidden" data-func="RoadwayTempSnapshotFunction">
-          <div id="controls-overlay" class="floating controls">
-            <h4>Snapshot Controls</h4>
-            <label>Time t0 <input type="range" id="time-slider" min="0" max="100" value="0" /></label>
-            <label>Color map <select id="colormap"><option value="rainbow">Rainbow</option><option value="viridis">Viridis</option><option value="heat">Heat</option></select></label>
-            <label>Min<input id="min" type="number" value="18" step="0.5" /></label>
-            <label>Max<input id="max" type="number" value="38" step="0.5" /></label>
-            <div class="legend"><div class="bar"></div><div class="small">min <span class="min">0</span> / max <span class="max">1</span></div></div>
-          </div>
-        </div>
+        <button id="btn-reload">Reload</button>
       </div>
-    </section>
+      <div class="nav-section">
+        <div class="nav-title">Business</div>
+        <ul id="biz-menu"><li class="active">Environment</li></ul>
+      </div>
+      <div class="nav-section">
+        <div class="nav-title">Functions</div>
+        <ul id="func-menu"></ul>
+      </div>
+    </div>
+
+    <div class="function-ui hidden" data-func="SensorDetailFunction">
+      <div id="chart-overlay" class="floating chart-box"></div>
+      <div id="sensor-panel" class="floating side scrollable">
+        <h4>Sensors</h4>
+        <div id="sensor-list"></div>
+        <label>Chart mode <select id="chart-mode"><option value="overlay">Overlay</option><option value="billboard">Billboard</option></select></label>
+      </div>
+    </div>
+
+    <div class="function-ui hidden" data-func="RoadwayTempSnapshotFunction">
+      <div id="controls-overlay" class="floating controls">
+        <h4>Snapshot Controls</h4>
+        <label>Time t0 <input type="range" id="time-slider" min="0" max="100" value="0" /></label>
+        <label>Color map <select id="colormap"><option value="rainbow">Rainbow</option><option value="viridis">Viridis</option><option value="heat">Heat</option></select></label>
+        <div class="color-pickers">
+          <label>Start <input type="color" id="color-start" value="#2c7bb6" /></label>
+          <label>End <input type="color" id="color-end" value="#f9d057" /></label>
+        </div>
+        <label>Min<input id="min" type="number" value="18" step="0.5" /></label>
+        <label>Max<input id="max" type="number" value="38" step="0.5" /></label>
+        <div class="legend"><div class="bar"></div><div class="small">min <span class="min">0</span> / max <span class="max">1</span></div></div>
+      </div>
+    </div>
   </div>
 `;
 
@@ -85,6 +98,17 @@ async function bootstrap(graphJson) {
     if (!edge) return null;
     return results[edge.from.nodeId];
   };
+  const resolvePortValue = (nodeId, portId) => {
+    const edge = graph.edges.find((e) => e.to.nodeId === nodeId && e.to.portId === portId);
+    if (!edge) return null;
+    const fromNode = graph.nodes.find((n) => n.id === edge.from.nodeId);
+    const fromPort = fromNode?.ports.find((p) => p.id === edge.from.portId);
+    const source = results[edge.from.nodeId];
+    if (source?.resolveFacet && fromPort?.facetType) {
+      return source.resolveFacet(fromPort.id.replace('facet-', ''));
+    }
+    return source;
+  };
 
   const pending = graph.nodes.filter((n) => n.kind === 'data');
   let guard = 0;
@@ -102,7 +126,7 @@ async function bootstrap(graphJson) {
     node.ports
       .filter((p) => p.direction === 'in')
       .forEach((p) => {
-        const val = findSource(node.id, p.id);
+        const val = resolvePortValue(node.id, p.id);
         if (val !== undefined) context[p.id] = val;
       });
     const output = await node.runtime.execute(dataRegistry, node, context, (bindingNodeId) => results[bindingNodeId]);
@@ -113,11 +137,11 @@ async function bootstrap(graphJson) {
   const registryNode = graph.nodes.find((n) => n.params?.contractId === 'SensorStationRegistry');
   const readingsNode = graph.nodes.find((n) => n.params?.contractId === 'SensorReadingTimeSeries');
   const geometryNode = graph.nodes.find((n) => n.params?.contractId === 'RoadwayGeometry');
-
   const topoRes = topoNode ? results[topoNode.id] : null;
   const registryRes = registryNode ? results[registryNode.id] : null;
   const readingsRes = readingsNode ? results[readingsNode.id] : null;
   const geometryRes = geometryNode ? results[geometryNode.id] : null;
+  const fieldRes = null;
 
   const topo = topoRes?.resolveFacet ? topoRes.resolveFacet('graph') : topoRes;
   const registry = registryRes?.resolveFacet ? registryRes.resolveFacet('registry') : registryRes || [];
@@ -132,7 +156,7 @@ async function bootstrap(graphJson) {
   // [New Logic] Priority: Loaded Geometry > Topology Fallback
   if (geometryRes && (geometryRes.source?.path || geometryRes.objText)) {
     console.log('Loading roadway model. Type:', geometryRes.source.type);
-    await sceneManager.loadRoadwayModel(geometryRes.source.path, geometryRes.objText, meshPartsMapping);
+    await sceneManager.loadRoadwayModel(geometryRes.source.path, geometryRes.objText, meshPartsMapping, topo);
   } else if (topo) {
     console.log('Building roadway from topology (fallback)');
     sceneManager.buildRoadway(topo);
@@ -156,6 +180,7 @@ async function bootstrap(graphJson) {
   const functions = graph.nodes.filter((n) => n.kind === 'function');
   const funcMenu = document.querySelector('#func-menu');
   funcMenu.innerHTML = '';
+  let snapshotAttached = false;
   const resolveInput = (fnNode, portId) => {
     const edge = graph.edges.find((e) => e.to.nodeId === fnNode.id && e.to.portId === portId);
     if (!edge) return null;
@@ -191,14 +216,27 @@ async function bootstrap(graphJson) {
       }
       if (fn.typeId === 'RoadwayTempSnapshotFunction') {
         const snap = fn.runtime.attach(sceneManager, legend, inputReadings, inputTopo, inputRegistry, inputMesh);
+        if (!snap || !inputReadings?.readings?.length) return;
+        snapshotAttached = true;
         const times = inputReadings.readings.map((r) => r.time);
         const minTime = Math.min(...times);
         const maxTime = Math.max(...times);
         const timeSlider = document.querySelector('#time-slider');
         const colormapSel = document.querySelector('#colormap');
+        const colorStart = document.querySelector('#color-start');
+        const colorEnd = document.querySelector('#color-end');
         const minInput = document.querySelector('#min');
         const maxInput = document.querySelector('#max');
         const wiring = () => {
+          const defaults = getDefaultStops(colormapSel.value);
+          if (defaults?.length >= 2) {
+            colorStart.value = defaults[0].color;
+            colorEnd.value = defaults[defaults.length - 1].color;
+            snap.operators.color.setCustomForCurrent([
+              { stop: 0, color: colorStart.value },
+              { stop: 1, color: colorEnd.value }
+            ]);
+          }
           timeSlider.min = minTime;
           timeSlider.max = maxTime;
           timeSlider.value = minTime;
@@ -206,8 +244,26 @@ async function bootstrap(graphJson) {
           timeSlider.oninput = (e) => apply(e.target.value);
           colormapSel.onchange = (e) => {
             snap.operators.color.setMap(e.target.value);
+            const defaults = getDefaultStops(e.target.value);
+            if (defaults?.length >= 2) {
+              colorStart.value = defaults[0].color;
+              colorEnd.value = defaults[defaults.length - 1].color;
+            }
+            snap.operators.color.setCustomForCurrent([
+              { stop: 0, color: colorStart.value },
+              { stop: 1, color: colorEnd.value }
+            ]);
             apply(timeSlider.value);
           };
+          const applyCustom = () => {
+            snap.operators.color.setCustomForCurrent([
+              { stop: 0, color: colorStart.value },
+              { stop: 1, color: colorEnd.value }
+            ]);
+            apply(timeSlider.value);
+          };
+          colorStart.onchange = applyCustom;
+          colorEnd.onchange = applyCustom;
           const updateRange = () => {
             snap.operators.color.setRange(Number(minInput.value), Number(maxInput.value));
             apply(timeSlider.value);
@@ -224,6 +280,8 @@ async function bootstrap(graphJson) {
   const snapshotEntry = Array.from(funcMenu.children).find((li) => li.textContent === 'Roadway Temp Snapshot');
   const first = snapshotEntry || funcMenu.firstChild;
   if (first) first.dispatchEvent(new Event('click'));
+
+  // No function fallback; require function nodes to drive UI/field coloring
 }
 
 let bootstrapped = false;

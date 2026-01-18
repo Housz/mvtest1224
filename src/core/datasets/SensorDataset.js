@@ -34,17 +34,37 @@ export class SensorDataset {
   getSnapshot(time, toleranceMinutes = 10) {
     const toleranceMs = toleranceMinutes * 60 * 1000;
     const result = new Map();
-    for (const [sensorID, series] of this.grouped.entries()) {
-      let nearest = null;
-      let best = Infinity;
+    const sensorIds = this.registry.length ? this.registry.map((s) => s.sensorID) : Array.from(this.grouped.keys());
+
+    for (const sensorID of sensorIds) {
+      const series = this.grouped.get(sensorID) || [];
+      if (!series.length) continue;
+      let left = null;
+      let right = null;
       for (const r of series) {
-        const d = Math.abs(r.time - time);
-        if (d < best && d <= toleranceMs) {
-          best = d;
-          nearest = r;
+        if (r.time <= time) left = r;
+        if (r.time >= time) {
+          right = r;
+          break;
         }
       }
-      if (nearest) result.set(sensorID, nearest.value);
+      let value = null;
+      if (left && right) {
+        if (left.time === right.time) value = left.value;
+        else {
+          const f = (time - left.time) / (right.time - left.time || 1);
+          value = left.value + (right.value - left.value) * f;
+        }
+      } else if (left) {
+        value = left.value;
+      } else if (right) {
+        value = right.value;
+      }
+
+      const nearestTime = left && right ? time : left?.time ?? right?.time ?? Infinity;
+      if (value !== null && value !== undefined && Math.abs(nearestTime - time) <= toleranceMs) {
+        result.set(sensorID, value);
+      }
     }
     return result;
   }
