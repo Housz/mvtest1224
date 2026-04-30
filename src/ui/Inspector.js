@@ -37,6 +37,10 @@ export class Inspector {
 
     if (node.kind === 'data') {
       this.renderDataNode(slot, node);
+    } else if (node.kind === 'operator') {
+      this.renderOperatorNode(slot, node);
+    } else if (node.kind === 'module') {
+      this.renderModuleNode(slot, node);
     } else {
       slot.appendChild(document.createTextNode('No editable params.'));
     }
@@ -284,6 +288,110 @@ export class Inspector {
       : JSON.stringify(displayData, null, 2).slice(0, 200) + '...';
     
     this.previewCache.set(node.id, { fields, previewText });
+  }
+
+  renderOperatorNode(slot, node) {
+    const definition = window.minevisGraph?.definitionRegistry?.get(node.typeId);
+    const schema = definition?.paramSchema || [];
+    if (!schema.length) {
+      slot.appendChild(document.createTextNode('No editable params.'));
+      return;
+    }
+    const section = createSection('Parameters');
+    schema.forEach((field) => {
+      const row = document.createElement('label');
+      row.className = 'field-row';
+      const label = document.createElement('span');
+      label.textContent = field.label || field.key;
+      row.appendChild(label);
+      let input;
+      if (field.type === 'select') {
+        input = document.createElement('select');
+        (field.options || []).forEach((opt) => {
+          const option = document.createElement('option');
+          option.value = opt.value ?? opt;
+          option.textContent = opt.label ?? opt.value ?? opt;
+          input.appendChild(option);
+        });
+        input.value = node.params[field.key] ?? field.defaultValue ?? '';
+      } else {
+        input = document.createElement('input');
+        input.type = field.type || 'text';
+        if (field.min != null) input.min = field.min;
+        if (field.max != null) input.max = field.max;
+        if (field.step != null) input.step = field.step;
+        input.value = node.params[field.key] ?? field.defaultValue ?? '';
+      }
+      input.addEventListener('change', () => {
+        const value = field.type === 'number' ? Number(input.value) : input.value;
+        node.params[field.key] = value;
+      });
+      row.appendChild(input);
+      section.appendChild(row);
+    });
+    slot.appendChild(section);
+  }
+
+  renderModuleNode(slot, node) {
+    const rerender = () => {
+      this.showNode(node);
+      window.minevisEditor?.render();
+    };
+    const section = createSection('Module');
+    const titleRow = document.createElement('label');
+    titleRow.className = 'field-row';
+    titleRow.innerHTML = '<span>Title</span>';
+    const titleInput = document.createElement('input');
+    titleInput.value = node.params.title || node.label || '';
+    titleInput.addEventListener('input', () => {
+      node.params.title = titleInput.value;
+      node.label = titleInput.value || node.label;
+      rerender();
+    });
+    titleRow.appendChild(titleInput);
+    section.appendChild(titleRow);
+
+    const idRow = document.createElement('label');
+    idRow.className = 'field-row';
+    idRow.innerHTML = '<span>Module ID</span>';
+    const idInput = document.createElement('input');
+    idInput.value = node.params.moduleId || '';
+    idInput.addEventListener('input', () => {
+      node.params.moduleId = idInput.value;
+    });
+    idRow.appendChild(idInput);
+    section.appendChild(idRow);
+    slot.appendChild(section);
+
+    const slotSection = createSection('Function Slots');
+    const list = document.createElement('div');
+    list.className = 'facet-list';
+    node.params.slots = node.params.slots || [];
+    node.params.slots.forEach((slotDef) => {
+      const row = document.createElement('label');
+      row.className = 'field-row';
+      row.innerHTML = `<span>${slotDef.id}</span>`;
+      const input = document.createElement('input');
+      input.value = slotDef.label || '';
+      input.addEventListener('input', () => {
+        slotDef.label = input.value;
+        node.runtime.updatePorts?.(node);
+        rerender();
+      });
+      row.appendChild(input);
+      list.appendChild(row);
+    });
+    const addBtn = document.createElement('button');
+    addBtn.textContent = 'Add function slot';
+    addBtn.addEventListener('click', () => {
+      const id = `function-${node.params.slots.length + 1}`;
+      node.params.slots.push({ id, label: `Function ${node.params.slots.length + 1}` });
+      node.runtime.updatePorts?.(node);
+      rerender();
+    });
+    slotSection.appendChild(list);
+    slotSection.appendChild(addBtn);
+    slot.appendChild(slotSection);
   }
 
   collectFields(data) {

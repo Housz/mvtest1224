@@ -1,103 +1,222 @@
 import { DataRegistry } from './core/datasets/DataRegistry.js';
 import { DataNodeDefinitions } from './core/nodes/DataNodes.js';
-import { FunctionNodeDefinitions } from './core/functions/FunctionNodes.js';
+import { OperatorNodeDefinitions } from './core/operators/OperatorNodes.js';
+import { ModuleNodeDefinitions } from './core/modules/ModuleNodes.js';
 import { NodeDefinitionRegistry } from './core/graph/NodeDefinitionRegistry.js';
 import { GraphModel } from './core/graph/GraphModel.js';
 import { SceneManager } from './scene/SceneManager.js';
-import { SensorList } from './ui/SensorList.js';
-import { ChartManager } from './ui/ChartManager.js';
-import { ColorLegend } from './ui/ColorLegend.js';
-import { getDefaultStops } from './utils/colors.js';
+import { resetHeatmapColors } from './core/algorithms/FieldSolver.js';
 
 const root = document.getElementById('preview-root');
 root.innerHTML = `
   <div class="preview-root">
     <div id="scene-canvas" class="scene-full"></div>
 
-    <div class="overlay nav-panel">
+    <div class="overlay module-panel">
       <div class="panel-header">
         <div>
-          <h3>MineVis Preview</h3>
-          <div class="small">Business & Functions</div>
+          <h3>MineVis</h3>
+          <div class="small">Module Workspace</div>
         </div>
         <button id="btn-reload">Reload</button>
       </div>
-      <div class="nav-section">
-        <div class="nav-title">Business</div>
-        <ul id="biz-menu"><li class="active">Environment</li></ul>
+      <div class="panel-section">
+        <div class="panel-title">Modules</div>
+        <ul id="module-menu"></ul>
       </div>
-      <div class="nav-section">
-        <div class="nav-title">Functions</div>
-        <ul id="func-menu"></ul>
-      </div>
-    </div>
-
-    <div class="function-ui hidden" data-func="SensorDetailFunction">
-      <div id="chart-overlay" class="floating chart-box"></div>
-      <div id="sensor-panel" class="floating side scrollable">
-        <h4>Sensors</h4>
-        <div id="sensor-list"></div>
-        <label>Chart mode <select id="chart-mode"><option value="overlay">Overlay</option><option value="billboard">Billboard</option></select></label>
+      <div class="panel-section">
+        <div class="panel-title">Functions</div>
+        <ul id="function-menu"></ul>
       </div>
     </div>
 
-    <div class="function-ui hidden" data-func="RoadwayTempSnapshotFunction">
-      <div id="controls-overlay" class="floating controls">
-        <h4>Snapshot Controls</h4>
-        <label>Time t0 <input type="range" id="time-slider" min="0" max="100" value="0" /></label>
-        <label>Color map <select id="colormap"><option value="rainbow">Rainbow</option><option value="viridis">Viridis</option><option value="heat">Heat</option></select></label>
-        <div class="color-pickers">
-          <label>Start <input type="color" id="color-start" value="#2c7bb6" /></label>
-          <label>End <input type="color" id="color-end" value="#f9d057" /></label>
-        </div>
-        <label>Min<input id="min" type="number" value="18" step="0.5" /></label>
-        <label>Max<input id="max" type="number" value="38" step="0.5" /></label>
-        <div class="legend"><div class="bar"></div><div class="small">min <span class="min">0</span> / max <span class="max">1</span></div></div>
+    <div class="overlay view-panel">
+      <div class="panel-header">
+        <h4>Views</h4>
       </div>
+      <div id="view-list"></div>
+    </div>
+
+    <div class="overlay control-panel">
+      <div class="panel-header">
+        <h4 id="active-title">No active function</h4>
+      </div>
+      <div id="control-body"></div>
     </div>
   </div>
 `;
 
 const definitionRegistry = new NodeDefinitionRegistry();
-[...DataNodeDefinitions, ...FunctionNodeDefinitions].forEach((d) => definitionRegistry.register(d));
+[...DataNodeDefinitions, ...OperatorNodeDefinitions, ...ModuleNodeDefinitions].forEach((d) => definitionRegistry.register(d));
 const dataRegistry = new DataRegistry();
 
 function loadGraph(graphJson) {
   const graph = new GraphModel(definitionRegistry);
-  if (graphJson) graph.load(graphJson);
-  else {
-    const topo = graph.createNode('DataNode', { x: 80, y: 80 });
-    topo.params.contractId = 'RoadwayTopology';
-    topo.params.source.path = '/data/roadwayTopo.json';
-    topo.runtime.updateFacets(topo);
-    const registry = graph.createNode('DataNode', { x: 80, y: 240 });
-    registry.params.contractId = 'SensorStationRegistry';
-    registry.params.source.path = '/data/tempSensors.csv';
-    registry.runtime.updateFacets(registry);
-    const readings = graph.createNode('DataNode', { x: 320, y: 240 });
-    readings.params.contractId = 'SensorReadingTimeSeries';
-    readings.params.source.path = '/data/tempReadings.csv';
-    readings.bindings = { sensor_id: registry.id };
-    readings.runtime.updateFacets(readings);
-    const fnDetail = graph.createNode('SensorDetailFunction', { x: 520, y: 150 });
-    const fnSnapshot = graph.createNode('RoadwayTempSnapshotFunction', { x: 520, y: 320 });
-    graph.connect({ nodeId: topo.id, portId: 'facet-graph' }, { nodeId: fnSnapshot.id, portId: 'roadwayTopo' });
-    graph.connect({ nodeId: registry.id, portId: 'facet-registry' }, { nodeId: fnDetail.id, portId: 'sensorRegistry' });
-    graph.connect({ nodeId: registry.id, portId: 'facet-registry' }, { nodeId: fnSnapshot.id, portId: 'sensorRegistry' });
-    graph.connect({ nodeId: readings.id, portId: 'facet-series' }, { nodeId: fnDetail.id, portId: 'tempReadings' });
-    graph.connect({ nodeId: readings.id, portId: 'facet-snapshot' }, { nodeId: fnSnapshot.id, portId: 'tempReadings' });
+  if (graphJson) {
+    graph.load(graphJson);
+    return graph;
   }
+
+  const topo = graph.createNode('DataNode', { x: 60, y: 60 });
+  topo.params.contractId = 'RoadwayTopology';
+  topo.params.source.path = '/data/roadway_topo.json';
+  topo.runtime.updateFacets(topo);
+
+  const geometry = graph.createNode('DataNode', { x: 60, y: 220 });
+  geometry.params.contractId = 'RoadwayGeometry';
+  geometry.params.source.path = '/data/roadway_model.obj';
+  geometry.bindings = { topo_ref_id: topo.id };
+  geometry.runtime.updateFacets(geometry);
+
+  const registry = graph.createNode('DataNode', { x: 60, y: 380 });
+  registry.params.contractId = 'SensorStationRegistry';
+  registry.params.source.path = '/data/temperature_sensors.csv';
+  registry.runtime.updateFacets(registry);
+
+  const readings = graph.createNode('DataNode', { x: 360, y: 380 });
+  readings.params.contractId = 'SensorReadingTimeSeries';
+  readings.params.source.path = '/data/Temperature_timeseries_20steps.csv';
+  readings.bindings = { sensor_id: registry.id };
+  readings.runtime.updateFacets(readings);
+
+  const opDetail = graph.createNode('SensorDetailOperator', { x: 660, y: 220 });
+  const opSnapshot = graph.createNode('RoadwaySnapshotOperator', { x: 660, y: 380 });
+  const moduleNode = graph.createNode('ModuleNode', { x: 980, y: 300 });
+
+  graph.connect({ nodeId: topo.id, portId: 'facet-graph' }, { nodeId: opSnapshot.id, portId: 'roadwayTopo' });
+  graph.connect({ nodeId: geometry.id, portId: 'facet-meshParts' }, { nodeId: opSnapshot.id, portId: 'roadwayMesh' });
+  graph.connect({ nodeId: registry.id, portId: 'facet-registry' }, { nodeId: opDetail.id, portId: 'sensorRegistry' });
+  graph.connect({ nodeId: registry.id, portId: 'facet-registry' }, { nodeId: opSnapshot.id, portId: 'sensorRegistry' });
+  graph.connect({ nodeId: readings.id, portId: 'facet-series' }, { nodeId: opDetail.id, portId: 'tempReadings' });
+  graph.connect({ nodeId: readings.id, portId: 'facet-snapshot' }, { nodeId: opSnapshot.id, portId: 'tempReadings' });
+
+  const modulePorts = moduleNode.ports.map((p) => p.id);
+  graph.connect({ nodeId: opDetail.id, portId: 'operator' }, { nodeId: moduleNode.id, portId: modulePorts[0] });
+  graph.connect({ nodeId: opSnapshot.id, portId: 'operator' }, { nodeId: moduleNode.id, portId: modulePorts[1] });
+
   return graph;
 }
 
-async function bootstrap(graphJson) {
-  const graph = loadGraph(graphJson);
-  const results = {};
-  const findSource = (nodeId, portId) => {
-    const edge = graph.edges.find((e) => e.to.nodeId === nodeId && e.to.portId === portId);
-    if (!edge) return null;
-    return results[edge.from.nodeId];
+function createContextStore(initial) {
+  const listeners = new Set();
+  const store = {
+    state: { ...(initial || {}) },
+    set(patch) {
+      store.state = { ...store.state, ...patch };
+      listeners.forEach((fn) => fn(store.state));
+    },
+    subscribe(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    }
   };
+  return store;
+}
+
+class ViewRegistry {
+  constructor(container, sceneManager) {
+    this.container = container;
+    this.sceneManager = sceneManager;
+    this.views = new Map();
+  }
+
+  register(view) {
+    const entry = {
+      id: view.id,
+      label: view.label || view.id,
+      ownerId: view.ownerId,
+      type: view.type || 'view',
+      visible: view.visible !== false,
+      pinned: false,
+      slot: 'Main',
+      show: view.show || (() => {}),
+      hide: view.hide || (() => {})
+    };
+    this.views.set(entry.id, entry);
+    if (entry.visible) entry.show();
+    this.render();
+    return entry;
+  }
+
+  unregister(viewId) {
+    const view = this.views.get(viewId);
+    if (!view) return;
+    if (view.visible) view.hide();
+    this.views.delete(viewId);
+    this.render();
+  }
+
+  hasPinnedByOwner(ownerId) {
+    for (const view of this.views.values()) {
+      if (view.ownerId === ownerId && view.pinned) return true;
+    }
+    return false;
+  }
+
+  resetScene() {
+    resetHeatmapColors(this.sceneManager.scene);
+  }
+
+  render() {
+    if (!this.container) return;
+    this.container.innerHTML = '';
+    if (!this.views.size) {
+      const empty = document.createElement('div');
+      empty.className = 'small';
+      empty.textContent = 'No view contributions yet.';
+      this.container.appendChild(empty);
+      return;
+    }
+    for (const view of this.views.values()) {
+      const row = document.createElement('div');
+      row.className = `view-row ${view.visible ? 'active' : ''} ${view.pinned ? 'pinned' : ''}`;
+
+      const visLabel = document.createElement('label');
+      visLabel.className = 'view-toggle';
+      const vis = document.createElement('input');
+      vis.type = 'checkbox';
+      vis.checked = view.visible;
+      vis.onchange = () => {
+        view.visible = vis.checked;
+        if (view.visible) view.show();
+        else view.hide();
+        this.render();
+      };
+      const name = document.createElement('span');
+      name.textContent = view.label;
+      visLabel.appendChild(vis);
+      visLabel.appendChild(name);
+
+      const pin = document.createElement('button');
+      pin.className = 'pin-btn';
+      pin.textContent = view.pinned ? 'Pinned' : 'Pin';
+      pin.onclick = () => {
+        view.pinned = !view.pinned;
+        this.render();
+      };
+
+      const slot = document.createElement('select');
+      ['Main', 'Left', 'Right'].forEach((opt) => {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.textContent = opt;
+        slot.appendChild(option);
+      });
+      slot.value = view.slot || 'Main';
+      slot.onchange = (e) => {
+        view.slot = e.target.value;
+      };
+
+      row.appendChild(visLabel);
+      row.appendChild(pin);
+      row.appendChild(slot);
+      this.container.appendChild(row);
+    }
+  }
+}
+
+async function executeDataNodes(graph) {
+  const results = {};
   const resolvePortValue = (nodeId, portId) => {
     const edge = graph.edges.find((e) => e.to.nodeId === nodeId && e.to.portId === portId);
     if (!edge) return null;
@@ -132,20 +251,171 @@ async function bootstrap(graphJson) {
     const output = await node.runtime.execute(dataRegistry, node, context, (bindingNodeId) => results[bindingNodeId]);
     results[node.id] = output;
   }
-  
-  const topoNode = graph.nodes.find((n) => n.params?.contractId === 'RoadwayTopology');
-  const registryNode = graph.nodes.find((n) => n.params?.contractId === 'SensorStationRegistry');
-  const readingsNode = graph.nodes.find((n) => n.params?.contractId === 'SensorReadingTimeSeries');
-  const geometryNode = graph.nodes.find((n) => n.params?.contractId === 'RoadwayGeometry');
-  const topoRes = topoNode ? results[topoNode.id] : null;
-  const registryRes = registryNode ? results[registryNode.id] : null;
-  const readingsRes = readingsNode ? results[readingsNode.id] : null;
-  const geometryRes = geometryNode ? results[geometryNode.id] : null;
-  const fieldRes = null;
+  return results;
+}
 
+function buildOperatorInstances(graph, dataResults) {
+  const operators = new Map();
+  const resolve = (nodeId, portId) => {
+    const edge = graph.edges.find((e) => e.to.nodeId === nodeId && e.to.portId === portId);
+    if (!edge) return null;
+    const fromNode = graph.nodes.find((n) => n.id === edge.from.nodeId);
+    const fromPort = fromNode?.ports.find((p) => p.id === edge.from.portId);
+    const source = dataResults[edge.from.nodeId];
+    if (source?.resolveFacet && fromPort?.facetType) {
+      return source.resolveFacet(fromPort.id.replace('facet-', ''));
+    }
+    return source;
+  };
+  graph.nodes
+    .filter((n) => n.kind === 'operator')
+    .forEach((node) => {
+      const inputs = {};
+      node.ports
+        .filter((p) => p.direction === 'in')
+        .forEach((p) => {
+          inputs[p.id] = resolve(node.id, p.id);
+        });
+      const instance = node.runtime.createOperator(node, inputs);
+      if (instance) {
+        operators.set(node.id, instance);
+      }
+    });
+  return { operators };
+}
+
+function createModuleRuntime(node, graph, operators, sceneManager) {
+  const context = createContextStore({ time: null, selection: null });
+  const legend = { update: () => {}, instance: null };
+  const viewRegistry = new ViewRegistry(document.getElementById('view-list'), sceneManager);
+  const functions = node.ports.map((port) => {
+    const edge = graph.edges.find((e) => e.to.nodeId === node.id && e.to.portId === port.id);
+    const opNodeId = edge?.from.nodeId;
+    return {
+      id: `${node.id}:${port.id}`,
+      label: port.name,
+      operatorId: opNodeId,
+      operator: opNodeId ? operators.get(opNodeId) : null
+    };
+  });
+
+  const sessions = new Map();
+  let activeFunctionId = null;
+  let controlCleanup = null;
+
+  const enableFunction = (fnId) => {
+    const fn = functions.find((f) => f.id === fnId);
+    if (!fn || !fn.operator || sessions.has(fnId)) return;
+    const session = fn.operator.attach({
+      sceneManager,
+      context,
+      viewRegistry,
+      legend
+    });
+    sessions.set(fnId, session || { views: [], cleanup: () => {} });
+  };
+
+  const disableFunction = (fnId) => {
+    const fn = functions.find((f) => f.id === fnId);
+    if (!fn || !fn.operator) return;
+    if (viewRegistry.hasPinnedByOwner(fn.operator.id)) return;
+    const session = sessions.get(fnId);
+    if (!session) return;
+    session.cleanup?.();
+    sessions.delete(fnId);
+  };
+
+  const setActiveFunction = (fnId) => {
+    if (activeFunctionId === fnId) return;
+    if (controlCleanup) {
+      controlCleanup();
+      controlCleanup = null;
+    }
+    activeFunctionId = fnId;
+    const fn = functions.find((f) => f.id === fnId);
+    const title = document.getElementById('active-title');
+    if (!fn || !fn.operator) {
+      if (title) title.textContent = 'No active function';
+      document.getElementById('control-body').innerHTML = '';
+      return;
+    }
+    enableFunction(fnId);
+    if (title) title.textContent = fn.label || 'Active function';
+    const controlBody = document.getElementById('control-body');
+    controlCleanup = fn.operator.renderControls?.(controlBody, {
+      sceneManager,
+      context,
+      viewRegistry,
+      legend
+    });
+  };
+
+  const renderFunctionMenu = () => {
+    const menu = document.getElementById('function-menu');
+    menu.innerHTML = '';
+    functions.forEach((fn) => {
+      const li = document.createElement('li');
+      li.className = `function-item ${fn.id === activeFunctionId ? 'active' : ''}`;
+      const toggle = document.createElement('input');
+      toggle.type = 'checkbox';
+      toggle.checked = sessions.has(fn.id);
+      toggle.disabled = !fn.operator;
+      toggle.onchange = () => {
+        if (toggle.checked) {
+          enableFunction(fn.id);
+        } else {
+          disableFunction(fn.id);
+          if (fn.id === activeFunctionId) setActiveFunction(null);
+        }
+        renderFunctionMenu();
+      };
+      const label = document.createElement('span');
+      label.textContent = fn.label;
+      label.onclick = () => {
+        if (!fn.operator) return;
+        enableFunction(fn.id);
+        setActiveFunction(fn.id);
+        renderFunctionMenu();
+      };
+      li.appendChild(toggle);
+      li.appendChild(label);
+      menu.appendChild(li);
+    });
+  };
+
+  return {
+    id: node.params.moduleId || node.id,
+    label: node.params.title || node.label,
+    functions,
+    renderFunctionMenu,
+    renderViews: () => viewRegistry.render(),
+    setActiveFunction,
+    enableFunction,
+    disableFunction,
+    deactivate: () => {
+      functions.forEach((fn) => disableFunction(fn.id));
+      if (controlCleanup) {
+        controlCleanup();
+        controlCleanup = null;
+      }
+      activeFunctionId = null;
+      const title = document.getElementById('active-title');
+      if (title) title.textContent = 'No active function';
+      document.getElementById('control-body').innerHTML = '';
+      viewRegistry.render();
+    }
+  };
+}
+
+async function bootstrap(graphJson) {
+  const graph = loadGraph(graphJson);
+  const dataResults = await executeDataNodes(graph);
+
+  const topoNode = graph.nodes.find((n) => n.params?.contractId === 'RoadwayTopology');
+  const geometryNode = graph.nodes.find((n) => n.params?.contractId === 'RoadwayGeometry');
+  const topoRes = topoNode ? dataResults[topoNode.id] : null;
+  const geometryRes = geometryNode ? dataResults[geometryNode.id] : null;
   const topo = topoRes?.resolveFacet ? topoRes.resolveFacet('graph') : topoRes;
-  const registry = registryRes?.resolveFacet ? registryRes.resolveFacet('registry') : registryRes || [];
-  const readingsDataset = readingsRes?.resolveFacet ? readingsRes.resolveFacet('series') : readingsRes;
   const meshPartsMapping = geometryRes?.resolveFacet ? geometryRes.resolveFacet('meshParts') : [];
 
   const sceneContainer = document.querySelector('#scene-canvas');
@@ -153,135 +423,43 @@ async function bootstrap(graphJson) {
   const sceneManager = new SceneManager(sceneContainer);
   sceneManager.addLights();
 
-  // [New Logic] Priority: Loaded Geometry > Topology Fallback
   if (geometryRes && (geometryRes.source?.path || geometryRes.objText)) {
-    console.log('Loading roadway model. Type:', geometryRes.source.type);
     await sceneManager.loadRoadwayModel(geometryRes.source.path, geometryRes.objText, meshPartsMapping, topo);
   } else if (topo) {
-    console.log('Building roadway from topology (fallback)');
     sceneManager.buildRoadway(topo);
   }
 
-  if (registry) sceneManager.addSensors(registry);
+  const { operators } = buildOperatorInstances(graph, dataResults);
+  const moduleNodes = graph.nodes.filter((n) => n.kind === 'module');
+  const modules = moduleNodes.map((node) => createModuleRuntime(node, graph, operators, sceneManager));
 
-  const sensorList = new SensorList(document.querySelector('#sensor-list'));
-  sensorList.setSensors(registry);
-  const chartManager = new ChartManager(document.querySelector('#chart-overlay'), sceneManager);
-  chartManager.setVisible(false);
-  const legend = new ColorLegend(document.querySelector('.legend'));
-  const functionUIs = Array.from(document.querySelectorAll('.function-ui'));
-  const toggleFunctionUI = (typeId) => {
-    functionUIs.forEach((ui) => {
-      ui.classList.toggle('hidden', ui.dataset.func !== typeId);
-    });
-    chartManager.setVisible(typeId === 'SensorDetailFunction');
-  };
-
-  const functions = graph.nodes.filter((n) => n.kind === 'function');
-  const funcMenu = document.querySelector('#func-menu');
-  funcMenu.innerHTML = '';
-  let snapshotAttached = false;
-  const resolveInput = (fnNode, portId) => {
-    const edge = graph.edges.find((e) => e.to.nodeId === fnNode.id && e.to.portId === portId);
-    if (!edge) return null;
-    const fromNode = graph.nodes.find((n) => n.id === edge.from.nodeId);
-    const fromPort = fromNode?.ports.find((p) => p.id === edge.from.portId);
-    const source = results[edge.from.nodeId];
-    if (source?.resolveFacet && fromPort?.facetType) {
-      return source.resolveFacet(fromPort.id.replace('facet-', ''));
-    }
-    return source;
-  };
-
-  const isSatisfied = (fnNode) =>
-    fnNode.ports
-      .filter((p) => p.direction === 'in')
-      .every((p) => graph.edges.some((e) => e.to.nodeId === fnNode.id && e.to.portId === p.id));
-
-  for (const fn of functions.filter(isSatisfied)) {
+  const moduleMenu = document.getElementById('module-menu');
+  moduleMenu.innerHTML = '';
+  let activeModule = null;
+  modules.forEach((mod) => {
     const li = document.createElement('li');
-    li.textContent = fn.label;
-    li.addEventListener('click', () => {
-      funcMenu.querySelectorAll('li').forEach((x) => x.classList.remove('active'));
+    li.textContent = mod.label;
+    li.onclick = () => {
+      moduleMenu.querySelectorAll('li').forEach((x) => x.classList.remove('active'));
       li.classList.add('active');
-      toggleFunctionUI(fn.typeId);
-      const inputTopo = resolveInput(fn, 'roadwayTopo') || topo;
-      const inputMesh = resolveInput(fn, 'roadwayMesh'); 
-      const inputRegistry = resolveInput(fn, 'sensorRegistry') || registry;
-      const inputReadings = resolveInput(fn, 'tempReadings') || readingsDataset;
-      
-      if (fn.typeId === 'SensorDetailFunction') {
-        fn.runtime.attach(sceneManager, chartManager, sensorList, inputReadings, inputMesh);
-        sensorList.selectFirst();
+      if (activeModule && activeModule !== mod) activeModule.deactivate();
+      activeModule = mod;
+      mod.renderFunctionMenu();
+      mod.renderViews();
+      const firstAvailable = mod.functions.find((fn) => fn.operator);
+      if (firstAvailable) {
+        mod.setActiveFunction(firstAvailable.id);
+        mod.renderFunctionMenu();
       }
-      if (fn.typeId === 'RoadwayTempSnapshotFunction') {
-        const snap = fn.runtime.attach(sceneManager, legend, inputReadings, inputTopo, inputRegistry, inputMesh);
-        if (!snap || !inputReadings?.readings?.length) return;
-        snapshotAttached = true;
-        const times = inputReadings.readings.map((r) => r.time);
-        const minTime = Math.min(...times);
-        const maxTime = Math.max(...times);
-        const timeSlider = document.querySelector('#time-slider');
-        const colormapSel = document.querySelector('#colormap');
-        const colorStart = document.querySelector('#color-start');
-        const colorEnd = document.querySelector('#color-end');
-        const minInput = document.querySelector('#min');
-        const maxInput = document.querySelector('#max');
-        const wiring = () => {
-          const defaults = getDefaultStops(colormapSel.value);
-          if (defaults?.length >= 2) {
-            colorStart.value = defaults[0].color;
-            colorEnd.value = defaults[defaults.length - 1].color;
-            snap.operators.color.setCustomForCurrent([
-              { stop: 0, color: colorStart.value },
-              { stop: 1, color: colorEnd.value }
-            ]);
-          }
-          timeSlider.min = minTime;
-          timeSlider.max = maxTime;
-          timeSlider.value = minTime;
-          const apply = (v) => snap.applySnapshot(Number(v));
-          timeSlider.oninput = (e) => apply(e.target.value);
-          colormapSel.onchange = (e) => {
-            snap.operators.color.setMap(e.target.value);
-            const defaults = getDefaultStops(e.target.value);
-            if (defaults?.length >= 2) {
-              colorStart.value = defaults[0].color;
-              colorEnd.value = defaults[defaults.length - 1].color;
-            }
-            snap.operators.color.setCustomForCurrent([
-              { stop: 0, color: colorStart.value },
-              { stop: 1, color: colorEnd.value }
-            ]);
-            apply(timeSlider.value);
-          };
-          const applyCustom = () => {
-            snap.operators.color.setCustomForCurrent([
-              { stop: 0, color: colorStart.value },
-              { stop: 1, color: colorEnd.value }
-            ]);
-            apply(timeSlider.value);
-          };
-          colorStart.onchange = applyCustom;
-          colorEnd.onchange = applyCustom;
-          const updateRange = () => {
-            snap.operators.color.setRange(Number(minInput.value), Number(maxInput.value));
-            apply(timeSlider.value);
-          };
-          minInput.onchange = updateRange;
-          maxInput.onchange = updateRange;
-          apply(minTime);
-        };
-        wiring();
-      }
-    });
-    funcMenu.appendChild(li);
-  }
-  const snapshotEntry = Array.from(funcMenu.children).find((li) => li.textContent === 'Roadway Temp Snapshot');
-  const first = snapshotEntry || funcMenu.firstChild;
-  if (first) first.dispatchEvent(new Event('click'));
+    };
+    moduleMenu.appendChild(li);
+  });
 
-  // No function fallback; require function nodes to drive UI/field coloring
+  if (modules.length) {
+    moduleMenu.firstChild?.dispatchEvent(new Event('click'));
+  } else {
+    document.getElementById('function-menu').innerHTML = '<li class="small">No module configured.</li>';
+  }
 }
 
 let bootstrapped = false;

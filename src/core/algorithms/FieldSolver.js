@@ -92,7 +92,7 @@ function computeTotalLength(conn) {
   return conn._totalLen;
 }
 
-export function diffuseNodeValues(nodes, connections, sensors, defaultMin = 0, iterations = 5) {
+export function diffuseNodeValues(nodes, connections, sensors, defaultMin = 0, iterations = 10) {
   const nodeVals = new Map(nodes.map((n) => [n.id, null]));
   const nodeConnMap = buildAdjacency(connections);
 
@@ -184,6 +184,22 @@ function makeColorFn(mapName, min, max) {
     const t = (v - min) / (max - min || 1);
     return sampleColor(mapName, t);
   };
+}
+
+export function resetHeatmapColors(rootGroup, fallback = '#3a4a7a') {
+  if (!rootGroup) return;
+  const fallbackColor = new THREE.Color(fallback);
+  rootGroup.traverse((mesh) => {
+    if (!mesh.isMesh || !mesh.userData?.heatmap) return;
+    ensureVertexColors(mesh, mesh.material?.color?.getStyle() || fallbackColor.getStyle());
+    const colors = mesh.geometry.attributes.color;
+    if (!colors) return;
+    const base = mesh.material?.color ? mesh.material.color : fallbackColor;
+    for (let i = 0; i < colors.count; i++) {
+      colors.setXYZ(i, base.r, base.g, base.b);
+    }
+    colors.needsUpdate = true;
+  });
 }
 
 export function applyHeatmapColoring(rootGroup, connections, nodeValues, sensors, options) {

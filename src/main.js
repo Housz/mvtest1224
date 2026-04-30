@@ -1,6 +1,7 @@
 import { DataRegistry } from './core/datasets/DataRegistry.js';
 import { DataNodeDefinitions, seedDataNode } from './core/nodes/DataNodes.js';
-import { FunctionNodeDefinitions } from './core/functions/FunctionNodes.js';
+import { OperatorNodeDefinitions } from './core/operators/OperatorNodes.js';
+import { ModuleNodeDefinitions } from './core/modules/ModuleNodes.js';
 import { NodeDefinitionRegistry } from './core/graph/NodeDefinitionRegistry.js';
 import { GraphModel } from './core/graph/GraphModel.js';
 import { NodeEditor } from './ui/NodeEditor.js';
@@ -14,7 +15,7 @@ app.innerHTML = `
     <header>
       <div>
         <h2>MineVis Editor</h2>
-        <p class="small">Configure data contracts and function wiring, then open preview.</p>
+        <p class="small">Configure data contracts, operators, and modules, then open preview.</p>
       </div>
       <div class="actions">
         <div class="palette">
@@ -38,7 +39,7 @@ app.innerHTML = `
 `;
 
 const definitionRegistry = new NodeDefinitionRegistry();
-[...DataNodeDefinitions, ...FunctionNodeDefinitions].forEach((d) => definitionRegistry.register(d));
+[...DataNodeDefinitions, ...OperatorNodeDefinitions, ...ModuleNodeDefinitions].forEach((d) => definitionRegistry.register(d));
 const graph = new GraphModel(definitionRegistry);
 
 function seedGraph() {
@@ -64,18 +65,24 @@ function seedGraph() {
   readings.bindings = { sensor_id: registry.id };
   readings.runtime.updateFacets(readings);
 
-  // Functions
-  const fnDetail = graph.createNode('SensorDetailFunction', { x: 660, y: 220 });
-  const fnSnapshot = graph.createNode('RoadwayTempSnapshotFunction', { x: 660, y: 380 });
+  // Operators
+  const opDetail = graph.createNode('SensorDetailOperator', { x: 660, y: 220 });
+  const opSnapshot = graph.createNode('RoadwaySnapshotOperator', { x: 660, y: 380 });
+
+  // Module
+  const moduleNode = graph.createNode('ModuleNode', { x: 980, y: 300 });
 
   // Wiring
-  graph.connect({ nodeId: topo.id, portId: 'facet-graph' }, { nodeId: fnSnapshot.id, portId: 'roadwayTopo' });
-  graph.connect({ nodeId: geometry.id, portId: 'facet-meshParts' }, { nodeId: fnSnapshot.id, portId: 'roadwayMesh' });
-  graph.connect({ nodeId: geometry.id, portId: 'facet-meshParts' }, { nodeId: fnDetail.id, portId: 'roadwayMesh' });
-  graph.connect({ nodeId: registry.id, portId: 'facet-registry' }, { nodeId: fnDetail.id, portId: 'sensorRegistry' });
-  graph.connect({ nodeId: registry.id, portId: 'facet-registry' }, { nodeId: fnSnapshot.id, portId: 'sensorRegistry' });
-  graph.connect({ nodeId: readings.id, portId: 'facet-series' }, { nodeId: fnDetail.id, portId: 'tempReadings' });
-  graph.connect({ nodeId: readings.id, portId: 'facet-snapshot' }, { nodeId: fnSnapshot.id, portId: 'tempReadings' });
+  graph.connect({ nodeId: topo.id, portId: 'facet-graph' }, { nodeId: opSnapshot.id, portId: 'roadwayTopo' });
+  graph.connect({ nodeId: geometry.id, portId: 'facet-meshParts' }, { nodeId: opSnapshot.id, portId: 'roadwayMesh' });
+  graph.connect({ nodeId: registry.id, portId: 'facet-registry' }, { nodeId: opDetail.id, portId: 'sensorRegistry' });
+  graph.connect({ nodeId: registry.id, portId: 'facet-registry' }, { nodeId: opSnapshot.id, portId: 'sensorRegistry' });
+  graph.connect({ nodeId: readings.id, portId: 'facet-series' }, { nodeId: opDetail.id, portId: 'tempReadings' });
+  graph.connect({ nodeId: readings.id, portId: 'facet-snapshot' }, { nodeId: opSnapshot.id, portId: 'tempReadings' });
+
+  const modulePorts = moduleNode.ports.map((p) => p.id);
+  graph.connect({ nodeId: opDetail.id, portId: 'operator' }, { nodeId: moduleNode.id, portId: modulePorts[0] });
+  graph.connect({ nodeId: opSnapshot.id, portId: 'operator' }, { nodeId: moduleNode.id, portId: modulePorts[1] });
 }
 seedGraph();
 
@@ -91,7 +98,8 @@ const palette = document.querySelector('#node-library');
 const addButton = document.querySelector('#btn-add-node');
 const grouped = {
   data: definitionRegistry.list().filter((d) => d.kind === 'data'),
-  function: definitionRegistry.list().filter((d) => d.kind === 'function')
+  operator: definitionRegistry.list().filter((d) => d.kind === 'operator'),
+  module: definitionRegistry.list().filter((d) => d.kind === 'module')
 };
 palette.innerHTML = '';
 for (const key of Object.keys(grouped)) {

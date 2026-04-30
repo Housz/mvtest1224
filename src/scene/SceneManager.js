@@ -89,11 +89,16 @@ export class SceneManager {
         child.material.needsUpdate = true;
 
         const name = child.name || '';
-        let topoId = map.get(name);
+        let topoId = map.get(name) || name;
         let edge = topoId ? topo?.edges?.find((e) => e.id === topoId) : null;
         let nodeHeat = null;
 
-        if (!topoId && topo) {
+        if (!edge && topo) {
+          edge = topo.edges?.find((e) => e.id === name);
+          topoId = edge?.id || topoId;
+        }
+
+        if (!edge && topo) {
           const edgeMatch = name.match(/edge[_-]?(\d+)/i);
           if (edgeMatch) {
             const idx = Number(edgeMatch[1]);
@@ -103,10 +108,25 @@ export class SceneManager {
         }
 
         if (!edge && topo) {
+          const nodeByName = topo.nodes?.find((n) => n.id === topoId || n.id === name);
+          if (nodeByName) {
+            nodeHeat = {
+              type: 'Node',
+              data: {
+                id: nodeByName.id,
+                x: Array.isArray(nodeByName.coordinate) ? nodeByName.coordinate[0] : nodeByName.coordinate?.x,
+                y: Array.isArray(nodeByName.coordinate) ? nodeByName.coordinate[1] : nodeByName.coordinate?.y,
+                z: Array.isArray(nodeByName.coordinate) ? nodeByName.coordinate[2] : nodeByName.coordinate?.z
+              }
+            };
+          }
+        }
+
+        if (!edge && topo) {
           const nodeMatch = name.match(/node[_-]?(.+)/i);
           if (nodeMatch) {
             const key = nodeMatch[1];
-            const nodeById = topo.nodes?.find((n) => n.id === key);
+            const nodeById = topo.nodes?.find((n) => n.id === key || n.id === `Node_${key}`);
             const nodeByIdx = topo.nodes?.[Number(key)];
             const node = nodeById || nodeByIdx;
             if (node) {
@@ -125,15 +145,25 @@ export class SceneManager {
 
         if (edge) {
           const nodeMap = topo?.nodeMap || new Map(topo?.nodes?.map((n) => [n.id, n]));
+          const pathVerts =
+            Array.isArray(edge.path) && edge.path.length
+              ? edge.path.map((p) => ({
+                  x: p.x ?? p[0] ?? 0,
+                  y: p.y ?? p[1] ?? 0,
+                  z: p.z ?? p[2] ?? 0
+                }))
+              : [];
           const start = nodeMap.get(edge.from)?.coordinate;
           const end = nodeMap.get(edge.to)?.coordinate;
           const verts =
-            start && end
-              ? [
-                  { x: start[0], y: start[1], z: start[2] },
-                  { x: end[0], y: end[1], z: end[2] }
-                ]
-              : this.guessAxisFromGeometry(child);
+            pathVerts.length >= 2
+              ? pathVerts
+              : start && end
+                ? [
+                    { x: start[0], y: start[1], z: start[2] },
+                    { x: end[0], y: end[1], z: end[2] }
+                  ]
+                : this.guessAxisFromGeometry(child);
           child.userData.heatmap = {
             type: 'Connection',
             data: {
@@ -233,6 +263,7 @@ export class SceneManager {
   addSensors(registry) {
     const mat = new THREE.MeshStandardMaterial({ color: '#ff9f43', emissive: '#ff9f43' });
     for (const sensor of registry) {
+      if (this.sensors.has(sensor.sensorID)) continue;
       const geo = new THREE.SphereGeometry(0.35, 16, 16);
       const mesh = new THREE.Mesh(geo, mat.clone());
       mesh.position.set(sensor.x, sensor.y, sensor.z);
@@ -251,6 +282,19 @@ export class SceneManager {
     if (this.selected) this.selected.material.emissive.set('#000000');
     this.selected = obj;
     obj.material.emissive.set('#ffffff');
+  }
+
+  clearSensorHighlight() {
+    if (this.selected) {
+      this.selected.material.emissive.set('#000000');
+      this.selected = null;
+    }
+  }
+
+  setSensorsVisible(flag) {
+    for (const mesh of this.sensors.values()) {
+      mesh.visible = flag;
+    }
   }
 
   focusOn(obj) {
