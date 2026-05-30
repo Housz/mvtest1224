@@ -1,0 +1,2 @@
+structure_id,structure_name,structure_type,mesh_part_id,strike,dip,throw,width,risk_level,confidence
+F1,F1,fault,F1,45,65,2,6,structural_zone,1

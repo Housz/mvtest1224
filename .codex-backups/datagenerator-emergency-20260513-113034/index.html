@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>矿山数字孪生 (数据平台完整版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* 新增：模态框样式 */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(2px); }
+        .modal-content { background-color: #252526; margin: 15% auto; padding: 20px; border: 1px solid #444; width: 320px; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        .modal h3 { margin-top: 0; color: #fff; font-size: 16px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #ccc; font-size: 12px; }
+        .form-group input { width: 100%; box-sizing: border-box; background: #3c3c3c; border: 1px solid #555; color: #fff; padding: 6px; border-radius: 2px; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .modal-footer button { width: auto; padding: 6px 15px; margin: 0; }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="main-container">
+        <div id="sidebar">
+            
+            <div class="panel">
+                <div class="panel-header">1. 基础环境</div>
+                <div style="display: flex; gap:5px; margin-bottom:5px;">
+                    <input type="file" id="file-loader-net" accept=".net, .txt, .json" title="1. Load topology">
+                    <input type="file" id="file-loader-obj" accept=".obj" title="2. 加载 .obj">
+                </div>
+                <div style="font-size: 11px; margin-bottom: 5px;">
+                    <label><input type="radio" name="encoding" value="gbk" checked> GBK</label>
+                    <label><input type="radio" name="encoding" value="utf-8"> UTF-8</label>
+                </div>
+                <div style="display: flex; gap:5px;">
+                    <button id="btn-export-graph-json" style="flex:1;">导图结构</button>
+                    <button id="btn-export-obj" style="flex:1;">导重名模</button>
+                </div>
+            </div>
+
+            <div class="panel mode-selector-panel">
+                <div class="panel-header">2. 数据生成模式</div>
+                <select id="generation-mode-select" class="mode-select">
+                    <option value="environmental-sensors">环境传感器数据</option>
+                    <option value="ventilation">通风数据</option>
+                </select>
+                <div id="mode-help" class="mode-help">在巷道 edge 上标注传感器位置，并生成 Temperature / CO / Humidity / CH4 等时序读数。</div>
+            </div>
+
+            <div id="environmental-panel" class="panel mode-panel" data-mode-panel="environmental-sensors">
+                <div class="panel-header">2. 数据层管理</div>
+                
+                <div style="margin-bottom: 8px;">
+                    <label style="font-size: 12px; color: #ccc;">当前模式:</label>
+                    <select id="data-type-select" style="width: 100%; background: #333; color: #fff; border: 1px solid #555; padding: 4px; margin-top: 4px;">
+                        <option value="Temperature">🌡️ 温度 (°C)</option>
+                        <option value="Humidity">💧 湿度 (%)</option>
+                        <option value="CH4">🔥 瓦斯 (%)</option>
+                        <option value="CO">☠️ 一氧化碳 (ppm)</option>
+                        <option value="WindSpeed">🌬️ 风速 (m/s) [矢量]</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                    <button id="btn-gen-random" class="primary" style="flex:1;">🎲 随机生成</button>
+                    <button id="btn-clear-data" class="danger" style="flex:0.4;">清空</button>
+                </div>
+                
+                <div style="display: flex; gap: 5px; margin-bottom: 5px;">
+                    <button id="btn-import-json" style="flex:1;" onclick="document.getElementById('file-loader-json').click()">📥 导入</button>
+                    <input type="file" id="file-loader-json" accept=".json" style="display: none;">
+                    <button id="btn-export-current" class="success" style="flex:1;">📤 导出 JSON</button>
+                </div>
+                
+                <div style="display: flex; gap: 5px;">
+                    <button id="btn-export-csv" class="success" style="flex:1;">📊 导出位置表 (CSV)</button>
+                    <button id="btn-open-timeseries-modal" class="success" style="flex:1; background:#8e44ad; border-color:#8e44ad;">📈 导出时序表 (CSV)</button>
+                </div>
+            </div>
+
+            <div id="ventilation-panel" class="panel ventilation-panel mode-panel" data-mode-panel="ventilation" hidden>
+                <div class="panel-header">Ventilation Network</div>
+                <div class="vent-row"><label>Strategy</label><select id="vent-strategy"><option value="edge-based">Edge based</option><option value="chain-collapsing">Chain collapsing</option></select></div>
+                <div class="vent-actions">
+                    <button id="btn-vent-build" class="primary">Build branches</button>
+                    <button id="btn-vent-import-network">Import network</button>
+                    <input type="file" id="file-loader-vent-network" accept=".json" style="display:none;">
+                    <button id="btn-vent-export-network" class="success">Export network</button>
+                </div>
+                <div class="vent-section-title">Selected branch</div>
+                <div class="vent-row"><label>Type</label><select id="vent-branch-type"></select></div>
+                <div class="vent-row"><label>Direction</label><select id="vent-direction"><option value="auto">auto inferred</option><option value="from_to">manual from_to</option><option value="to_from">manual to_from</option></select></div>
+                <div class="vent-grid"><label>Area<input id="vent-area" type="number" step="0.1" value="12"></label><label>R<input id="vent-resistance" type="number" step="0.001" value="0.013"></label><label>Design Q<input id="vent-design-q" type="number" step="0.1" value="18"></label></div>
+                <div class="vent-actions"><button id="btn-vent-apply-branch">Apply branch</button><button id="btn-vent-merge">Merge connected</button><button id="btn-vent-split">Split branch</button></div>
+                <div class="vent-section-title">Facility</div>
+                <div class="vent-actions"><select id="vent-facility-type"></select><button id="btn-vent-add-facility">Add at center</button><button id="btn-vent-delete-facility" class="danger">Delete selected</button></div>
+                <div class="vent-section-title">Airflow state</div>
+                <div class="vent-row"><label>Scenario</label><select id="vent-scenario"></select></div>
+                <div class="vent-row"><label>Variable</label><select id="vent-variable"></select></div>
+                <div class="vent-grid"><label>Steps<input id="vent-steps" type="number" value="60"></label><label>Event start<input id="vent-event-start" type="number" value="20"></label><label>Event end<input id="vent-event-end" type="number" value="40"></label><label>Intensity<input id="vent-intensity" type="number" min="0" max="1.5" step="0.1" value="0.8"></label></div>
+                <div class="vent-row"><label>Time</label><input id="vent-time" type="range" min="0" max="59" value="0"></div>
+                <div class="vent-actions"><button id="btn-vent-generate-state" class="primary">Generate state</button><button id="btn-vent-export-state" class="success">Export airflow</button></div>
+                <canvas id="vent-trend-canvas" class="vent-trend" width="280" height="140"></canvas>
+            </div>
+
+            <div id="environmental-render-panel" class="panel mode-panel" data-mode-panel="environmental-sensors">
+                <div class="panel-header">3. Render Controls</div>
+                <div id="coord-controls" style="margin-bottom: 8px;">
+                    <label>Offset:</label> <input type="checkbox" id="use-offset" checked>
+                    <button id="btn-update-coords">应用坐标变换</button>
+                    <input type="hidden" id="offset-x"><input type="hidden" id="offset-y"><input type="hidden" id="offset-z">
+                    <input type="hidden" id="invert-y" value="true">
+                </div>
+                
+                <div id="heatmap-controls">
+                    <div class="control-group"><label>Min</label><input type="number" id="hm-min" value="0"></div>
+                    <div class="control-group"><label>Max</label><input type="number" id="hm-max" value="10"></div>
+                    <div class="heatmap-gradient"></div>
+                    <button id="btn-render-heatmap" class="primary" style="grid-column: span 2;">👁️ 渲染三维可视化</button>
+                    <button id="btn-clear-heatmap" style="grid-column: span 2;">↺ 恢复白模</button>
+                </div>
+            </div>
+
+            <div id="properties-panel" class="panel">
+                <div class="panel-header">4. 属性编辑</div>
+                <div id="properties-content" style="color: #aaa;">(右键添加点位 / 左键选择)</div>
+                
+                <div id="sensor-editor" class="prop-edit-row" style="display:none;">
+                    <span id="lbl-val-unit" style="font-size:11px;">值:</span>
+                    <input type="number" id="input-sensor-val" placeholder="0" style="width:40px;">
+                    <button id="btn-set-val" class="primary" style="width: auto; padding:2px 5px;">Set</button>
+                    <button id="btn-toggle-dir" style="display:none; width:auto; padding:2px 5px; margin-left:2px;" title="切换方向">⇄</button>
+                    <button id="btn-del-sensor" class="danger" style="margin-left:auto; padding:2px 5px;">Del</button>
+                </div>
+
+                <div id="vent-controls" class="boundary-controls" style="display:none;">
+                    <div class="vent-section-title">Boundary condition</div>
+                    <label class="boundary-field">Label<input id="boundary-label" type="text" placeholder="Main Intake"></label>
+                    <div class="vent-grid">
+                        <label>Pressure Pa<input id="boundary-pressure" type="number" value="600"></label>
+                        <label>Capacity m3/s<input id="boundary-capacity" type="number" value="35"></label>
+                    </div>
+                    <div class="vent-actions">
+                        <button id="btn-set-inlet" class="primary" style="background:#007acc;">Set intake</button>
+                        <button id="btn-set-outlet" class="danger" style="background:#da3633;">Set return</button>
+                    </div>
+                    <button id="btn-clear-boundary">Clear boundary</button>
+                </div>
+            </div>
+
+            <div class="panel" style="max-height: 120px; overflow-y: auto;">
+                <div class="panel-header">图层</div>
+                <div id="layer-panel" style="font-size: 11px;"></div>
+                <button id="reset-view-btn" style="margin-top:5px;">重置 2D 视图</button>
+            </div>
+        </div>
+
+        <div id="viewport-container">
+            <div id="viewport-2d">
+                <div class="overlay-label">2D 编辑器</div>
+                <canvas id="cad-canvas"></canvas>
+                <div id="status-bar">就绪</div>
+            </div>
+            <div id="viewport-3d">
+                <div class="overlay-label">3D 预览</div>
+                <div class="overlay-tools">
+                    <button id="btn-axes">Axis</button>
+                    <button id="btn-net-lines">Path</button>
+                    <button id="btn-wireframe">Wire</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="timeseries-modal" class="modal">
+        <div class="modal-content">
+            <h3>生成时序数据</h3>
+            <div class="form-group">
+                <label>开始时间 (ISO格式):</label>
+                <input type="text" id="ts-start-time" value="2023-01-01T08:00:00">
+            </div>
+            <div class="form-group">
+                <label>时间间隔 (分钟):</label>
+                <input type="number" id="ts-interval" value="5">
+            </div>
+            <div class="form-group">
+                <label>数据批数 (Count):</label>
+                <input type="number" id="ts-count" value="100">
+            </div>
+            <div class="modal-footer">
+                <button id="btn-cancel-ts">取消</button>
+                <button id="btn-confirm-ts" class="primary">生成并导出</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

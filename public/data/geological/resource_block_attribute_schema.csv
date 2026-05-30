@@ -1,0 +1,5 @@
+attribute_name,unit,value_type,min,max,nodata,description
+lithology_id,,uint8,2,6,,Lithology ID
+density_(g/cm3),g/cm3,float32,-0.22514577209949493,2.941232681274414,,Density (g/cm3)
+au_grade_(g/t),g/t,float32,0.00000671775478622294,13.85742473602295,,Au Grade (g/t)
+rmr_(engineering),Engineering,uint8,20,89,,RMR (Engineering)

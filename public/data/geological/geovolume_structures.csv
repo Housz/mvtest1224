@@ -1,0 +1,2 @@
+structure_id,structure_name,structure_type,mesh_part_id,strike,dip,throw,width,risk_level,water_conductivity,confidence
+FAULT_Main_Fault,Main_Fault,fault,Main_Fault,,,,,structural_zone,,1

@@ -1,0 +1,76 @@
+relation_id,relation_type,source_type,source_id,target_type,target_id,description
+R_1_ROOF,roof_of,surface,SURF_0_roof,body,GB_0,Roof surface defines layered body top boundary.
+R_1_FLOOR,floor_of,surface,SURF_0_floor,body,GB_0,Floor surface defines layered body bottom boundary.
+R_2_ROOF,roof_of,surface,SURF_1_roof,body,GB_1,Roof surface defines layered body top boundary.
+R_2_FLOOR,floor_of,surface,SURF_1_floor,body,GB_1,Floor surface defines layered body bottom boundary.
+R_3_ROOF,roof_of,surface,SURF_2_roof,body,GB_2,Roof surface defines layered body top boundary.
+R_3_FLOOR,floor_of,surface,SURF_2_floor,body,GB_2,Floor surface defines layered body bottom boundary.
+R_4_ROOF,roof_of,surface,SURF_3_roof,body,GB_3,Roof surface defines layered body top boundary.
+R_4_FLOOR,floor_of,surface,SURF_3_floor,body,GB_3,Floor surface defines layered body bottom boundary.
+R_5_ROOF,roof_of,surface,SURF_4_roof,body,GB_4,Roof surface defines layered body top boundary.
+R_5_FLOOR,floor_of,surface,SURF_4_floor,body,GB_4,Floor surface defines layered body bottom boundary.
+R_6_ROOF,roof_of,surface,SURF_5_roof,body,GB_5,Roof surface defines layered body top boundary.
+R_6_FLOOR,floor_of,surface,SURF_5_floor,body,GB_5,Floor surface defines layered body bottom boundary.
+R_7_ROOF,roof_of,surface,SURF_6_roof,body,GB_6,Roof surface defines layered body top boundary.
+R_7_FLOOR,floor_of,surface,SURF_6_floor,body,GB_6,Floor surface defines layered body bottom boundary.
+R_8_ROOF,roof_of,surface,SURF_7_roof,body,GB_7,Roof surface defines layered body top boundary.
+R_8_FLOOR,floor_of,surface,SURF_7_floor,body,GB_7,Floor surface defines layered body bottom boundary.
+R_9_ROOF,roof_of,surface,SURF_8_roof,body,GB_8,Roof surface defines layered body top boundary.
+R_9_FLOOR,floor_of,surface,SURF_8_floor,body,GB_8,Floor surface defines layered body bottom boundary.
+R_10_ROOF,roof_of,surface,SURF_9_roof,body,GB_9,Roof surface defines layered body top boundary.
+R_10_FLOOR,floor_of,surface,SURF_9_floor,body,GB_9,Floor surface defines layered body bottom boundary.
+R_11_ROOF,roof_of,surface,SURF_10_roof,body,GB_10,Roof surface defines layered body top boundary.
+R_11_FLOOR,floor_of,surface,SURF_10_floor,body,GB_10,Floor surface defines layered body bottom boundary.
+R_12_ROOF,roof_of,surface,SURF_11_roof,body,GB_11,Roof surface defines layered body top boundary.
+R_12_FLOOR,floor_of,surface,SURF_11_floor,body,GB_11,Floor surface defines layered body bottom boundary.
+R_13_ROOF,roof_of,surface,SURF_12_roof,body,GB_12,Roof surface defines layered body top boundary.
+R_13_FLOOR,floor_of,surface,SURF_12_floor,body,GB_12,Floor surface defines layered body bottom boundary.
+R_14_ROOF,roof_of,surface,SURF_13_roof,body,GB_13,Roof surface defines layered body top boundary.
+R_14_FLOOR,floor_of,surface,SURF_13_floor,body,GB_13,Floor surface defines layered body bottom boundary.
+R_15_ROOF,roof_of,surface,SURF_14_roof,body,GB_14,Roof surface defines layered body top boundary.
+R_15_FLOOR,floor_of,surface,SURF_14_floor,body,GB_14,Floor surface defines layered body bottom boundary.
+R_16_ROOF,roof_of,surface,SURF_15_roof,body,GB_15,Roof surface defines layered body top boundary.
+R_16_FLOOR,floor_of,surface,SURF_15_floor,body,GB_15,Floor surface defines layered body bottom boundary.
+R_17_ROOF,roof_of,surface,SURF_16_roof,body,GB_16,Roof surface defines layered body top boundary.
+R_17_FLOOR,floor_of,surface,SURF_16_floor,body,GB_16,Floor surface defines layered body bottom boundary.
+R_18_ROOF,roof_of,surface,SURF_17_roof,body,GB_17,Roof surface defines layered body top boundary.
+R_18_FLOOR,floor_of,surface,SURF_17_floor,body,GB_17,Floor surface defines layered body bottom boundary.
+R_19_ROOF,roof_of,surface,SURF_18_roof,body,GB_18,Roof surface defines layered body top boundary.
+R_19_FLOOR,floor_of,surface,SURF_18_floor,body,GB_18,Floor surface defines layered body bottom boundary.
+R_20_ROOF,roof_of,surface,SURF_19_roof,body,GB_19,Roof surface defines layered body top boundary.
+R_20_FLOOR,floor_of,surface,SURF_19_floor,body,GB_19,Floor surface defines layered body bottom boundary.
+R_21_ROOF,roof_of,surface,SURF_20_roof,body,GB_20,Roof surface defines layered body top boundary.
+R_21_FLOOR,floor_of,surface,SURF_20_floor,body,GB_20,Floor surface defines layered body bottom boundary.
+R_22_ROOF,roof_of,surface,SURF_21_roof,body,GB_21,Roof surface defines layered body top boundary.
+R_22_FLOOR,floor_of,surface,SURF_21_floor,body,GB_21,Floor surface defines layered body bottom boundary.
+R_23_ROOF,roof_of,surface,SURF_22_roof,body,GB_22,Roof surface defines layered body top boundary.
+R_23_FLOOR,floor_of,surface,SURF_22_floor,body,GB_22,Floor surface defines layered body bottom boundary.
+R_24_ROOF,roof_of,surface,SURF_23_roof,body,GB_23,Roof surface defines layered body top boundary.
+R_24_FLOOR,floor_of,surface,SURF_23_floor,body,GB_23,Floor surface defines layered body bottom boundary.
+R_25_ROOF,roof_of,surface,SURF_24_roof,body,GB_24,Roof surface defines layered body top boundary.
+R_25_FLOOR,floor_of,surface,SURF_24_floor,body,GB_24,Floor surface defines layered body bottom boundary.
+R_GB_0_F1_CUT,cut_by,body,GB_0,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_1_F1_CUT,cut_by,body,GB_1,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_2_F1_CUT,cut_by,body,GB_2,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_3_F1_CUT,cut_by,body,GB_3,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_4_F1_CUT,cut_by,body,GB_4,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_5_F1_CUT,cut_by,body,GB_5,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_6_F1_CUT,cut_by,body,GB_6,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_7_F1_CUT,cut_by,body,GB_7,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_8_F1_CUT,cut_by,body,GB_8,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_9_F1_CUT,cut_by,body,GB_9,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_10_F1_CUT,cut_by,body,GB_10,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_11_F1_CUT,cut_by,body,GB_11,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_12_F1_CUT,cut_by,body,GB_12,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_13_F1_CUT,cut_by,body,GB_13,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_14_F1_CUT,cut_by,body,GB_14,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_15_F1_CUT,cut_by,body,GB_15,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_16_F1_CUT,cut_by,body,GB_16,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_17_F1_CUT,cut_by,body,GB_17,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_18_F1_CUT,cut_by,body,GB_18,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_19_F1_CUT,cut_by,body,GB_19,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_20_F1_CUT,cut_by,body,GB_20,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_21_F1_CUT,cut_by,body,GB_21,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_22_F1_CUT,cut_by,body,GB_22,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_23_F1_CUT,cut_by,body,GB_23,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.
+R_GB_24_F1_CUT,cut_by,body,GB_24,structure,F1,Fault cuts and displaces this geological body. Surface ids remain stable after cutting.

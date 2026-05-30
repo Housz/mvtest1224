@@ -1,0 +1,5 @@
+body_id,body_name,body_type,lithology,ore_type,color,confidence
+GB_Sandstone_2,Sandstone_2,stratigraphic_domain,Sandstone_2,,#ffbe00,1
+GB_Siltstone,Siltstone,stratigraphic_domain,Siltstone,,#443988,1
+GB_Shale,Shale,stratigraphic_domain,Shale,,#728f02,1
+GB_Sandstone_1,Sandstone_1,stratigraphic_domain,Sandstone_1,,#9f0052,1

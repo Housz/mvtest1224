@@ -1,0 +1,585 @@
+{
+  "datasetType": "People",
+  "version": "1.0",
+  "metadata": {
+    "createdBy": "MineVis DataGenerator",
+    "createdAt": "2026-05-15T07:25:03.321Z",
+    "validation": {
+      "valid": true,
+      "errors": [],
+      "warnings": []
+    }
+  },
+  "people": [
+    {
+      "personId": "P_001",
+      "label": "Worker 001",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 371.4198158182525,
+        "y": -162.03717967863957,
+        "z": -56.2652815947896
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_73",
+        "nodeId": null,
+        "ratio": 0.15676
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_002",
+      "label": "Worker 002",
+      "personType": "worker",
+      "team": "Team B",
+      "status": "normal",
+      "position": {
+        "x": 305.1687372682416,
+        "y": -150.69565886444587,
+        "z": -56.2652815947896
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_73",
+        "nodeId": null,
+        "ratio": 0.99695
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_003",
+      "label": "Worker 003",
+      "personType": "worker",
+      "team": "Team C",
+      "status": "normal",
+      "position": {
+        "x": 421.2596475059166,
+        "y": -327.463723467909,
+        "z": -121.908110122044
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_42",
+        "nodeId": null,
+        "ratio": 0.41629
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_004",
+      "label": "Worker 004",
+      "personType": "worker",
+      "team": "Team D",
+      "status": "normal",
+      "position": {
+        "x": 510.01068675666625,
+        "y": -73.69507382332964,
+        "z": -9.37754693246493
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_20",
+        "nodeId": null,
+        "ratio": 0.50869
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_005",
+      "label": "Worker 005",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 263.01844545507214,
+        "y": -158.40906553457611,
+        "z": -62.511450287046685
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_63",
+        "nodeId": null,
+        "ratio": 0.66608
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_006",
+      "label": "Worker 006",
+      "personType": "worker",
+      "team": "Team B",
+      "status": "normal",
+      "position": {
+        "x": 485.3029215997949,
+        "y": -69.46535199944518,
+        "z": -9.37754693246493
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_18",
+        "nodeId": null,
+        "ratio": 0.3067
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_007",
+      "label": "Worker 007",
+      "personType": "worker",
+      "team": "Team C",
+      "status": "normal",
+      "position": {
+        "x": 467.997507492129,
+        "y": -66.50283850387754,
+        "z": -9.37754693246493
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_16",
+        "nodeId": null,
+        "ratio": 0.75535
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_008",
+      "label": "Worker 008",
+      "personType": "worker",
+      "team": "Team D",
+      "status": "normal",
+      "position": {
+        "x": 576.3742017288637,
+        "y": -331.60428605146154,
+        "z": -112.530563189579
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_39",
+        "nodeId": null,
+        "ratio": 0.95217
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_009",
+      "label": "Worker 009",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 267.5767013468485,
+        "y": -131.78218064986055,
+        "z": -51.044589617965066
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_25",
+        "nodeId": null,
+        "ratio": 0.88866
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_010",
+      "label": "Worker 010",
+      "personType": "worker",
+      "team": "Team B",
+      "status": "normal",
+      "position": {
+        "x": 435.4218553999472,
+        "y": -419.5421309818216,
+        "z": -176.87621194662606
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_61",
+        "nodeId": null,
+        "ratio": 0.09906
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_011",
+      "label": "Worker 011",
+      "personType": "worker",
+      "team": "Team C",
+      "status": "normal",
+      "position": {
+        "x": 637.9847124485688,
+        "y": -220.10465543610874,
+        "z": -61.46762225587004
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_80",
+        "nodeId": null,
+        "ratio": 0.55477
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_012",
+      "label": "Worker 012",
+      "personType": "worker",
+      "team": "Team D",
+      "status": "normal",
+      "position": {
+        "x": 559.3261424332985,
+        "y": -205.47058911734928,
+        "z": -60.9787323256066
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_78",
+        "nodeId": null,
+        "ratio": 0.50263
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_013",
+      "label": "Worker 013",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 424.4246124226939,
+        "y": -452.2475743633717,
+        "z": -178.795844784369
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_56",
+        "nodeId": null,
+        "ratio": 0.65046
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_014",
+      "label": "Worker 014",
+      "personType": "worker",
+      "team": "Team B",
+      "status": "normal",
+      "position": {
+        "x": 676.6822158697701,
+        "y": -231.1122175990525,
+        "z": -63.30139252369092
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_64",
+        "nodeId": null,
+        "ratio": 0.75031
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_015",
+      "label": "Worker 015",
+      "personType": "worker",
+      "team": "Team C",
+      "status": "normal",
+      "position": {
+        "x": 390.2992352115564,
+        "y": -53.201672823506186,
+        "z": -9.37754693246493
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_15",
+        "nodeId": null,
+        "ratio": 0.59178
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_016",
+      "label": "Worker 016",
+      "personType": "worker",
+      "team": "Team D",
+      "status": "normal",
+      "position": {
+        "x": 471.4894215053822,
+        "y": -339.90462679791796,
+        "z": -121.908110122044
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_49",
+        "nodeId": null,
+        "ratio": 0.68442
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_017",
+      "label": "Worker 017",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 641.4465736845763,
+        "y": -96.19558068224194,
+        "z": -9.37754693246493
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_21",
+        "nodeId": null,
+        "ratio": 0.68409
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_018",
+      "label": "Worker 018",
+      "personType": "worker",
+      "team": "Team B",
+      "status": "normal",
+      "position": {
+        "x": 545.6337240704777,
+        "y": -214.2743500107714,
+        "z": -65.6428285272545
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_71",
+        "nodeId": null,
+        "ratio": 0.80628
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_019",
+      "label": "Worker 019",
+      "personType": "worker",
+      "team": "Team C",
+      "status": "normal",
+      "position": {
+        "x": 465.22077173485144,
+        "y": -66.02748916503003,
+        "z": -9.37754693246493
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_16",
+        "nodeId": null,
+        "ratio": 0.28583
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_020",
+      "label": "Worker 020",
+      "personType": "worker",
+      "team": "Team D",
+      "status": "normal",
+      "position": {
+        "x": 467.4754634031036,
+        "y": -178.48094407082337,
+        "z": -56.2652815947896
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_27",
+        "nodeId": null,
+        "ratio": 0.24561
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_021",
+      "label": "Worker 021",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 321.987979630472,
+        "y": -288.055913769566,
+        "z": -112.530563189579
+      },
+      "roadwayAnchor": {
+        "type": "node",
+        "edgeId": null,
+        "nodeId": "Node_26",
+        "ratio": null
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_022",
+      "label": "Worker 022",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 293.9463317055032,
+        "y": -305.6689594780009,
+        "z": -121.908110122044
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_40",
+        "nodeId": null,
+        "ratio": 0.19165
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_023",
+      "label": "Worker 023",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 613.958676215245,
+        "y": -360.45186634519,
+        "z": -121.908110122044
+      },
+      "roadwayAnchor": {
+        "type": "node",
+        "edgeId": null,
+        "nodeId": "Node_40",
+        "ratio": null
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_024",
+      "label": "Worker 024",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 406.28577737495164,
+        "y": -190.4193777982143,
+        "z": -65.6428285272545
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_67",
+        "nodeId": null,
+        "ratio": 0.57074
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_025",
+      "label": "Worker 025",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 283.8065067784115,
+        "y": -147.0386590534148,
+        "z": -56.2652815947896
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_66",
+        "nodeId": null,
+        "ratio": 0.46428
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_026",
+      "label": "Worker 026",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 657.7136426527138,
+        "y": -211.047814178229,
+        "z": -56.2652815947896
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_70",
+        "nodeId": null,
+        "ratio": 0.55205
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_027",
+      "label": "Worker 027",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 611.4323965012544,
+        "y": -225.53842343044568,
+        "z": -65.6428285272545
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_76",
+        "nodeId": null,
+        "ratio": 0.68432
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_028",
+      "label": "Worker 028",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 510.6668514110751,
+        "y": -320.35584606248614,
+        "z": -112.530563189579
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_38",
+        "nodeId": null,
+        "ratio": 0.6428
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_029",
+      "label": "Worker 029",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 393.1781893229272,
+        "y": -300.2429643454191,
+        "z": -112.530563189579
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_36",
+        "nodeId": null,
+        "ratio": 0.40282
+      },
+      "timestamp": 0
+    },
+    {
+      "personId": "P_030",
+      "label": "Worker 030",
+      "personType": "worker",
+      "team": "Team A",
+      "status": "normal",
+      "position": {
+        "x": 326.9749204715806,
+        "y": -311.3231229294101,
+        "z": -121.908110122044
+      },
+      "roadwayAnchor": {
+        "type": "edge",
+        "edgeId": "Edge_40",
+        "nodeId": null,
+        "ratio": 0.61052
+      },
+      "timestamp": 0
+    }
+  ]
+}

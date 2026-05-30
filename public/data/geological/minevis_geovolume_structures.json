@@ -1,0 +1,88 @@
+{
+  "datasetType": "GeologicalStructure",
+  "semanticClass": "GeologicalStructure",
+  "version": "1.0",
+  "metadata": {
+    "createdBy": "MineVis DataGenerator GeoVolume",
+    "sourceTool": "GeoVolume/viewer_multi_attri_with_fault.html",
+    "exportKind": "geological-structure",
+    "generatedAt": "2026-05-27T15:39:00.022Z",
+    "bounds": {
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        2000,
+        2000,
+        750
+      ]
+    },
+    "grid": {
+      "width": 50,
+      "height": 50,
+      "depth": 50,
+      "totalVoxels": 125000
+    },
+    "binaryFile": "attributes.bin",
+    "attributes": [
+      {
+        "name": "Lithology ID",
+        "key": "lithology_id",
+        "dtype": "uint8",
+        "offset": 0,
+        "length": 125000,
+        "min": 2,
+        "max": 6,
+        "is_discrete": true
+      },
+      {
+        "name": "Density (g/cm3)",
+        "key": "density_(g/cm3)",
+        "dtype": "float32",
+        "offset": 125000,
+        "length": 125000,
+        "min": -0.22514577209949493,
+        "max": 2.941232681274414,
+        "is_discrete": false
+      },
+      {
+        "name": "Au Grade (g/t)",
+        "key": "au_grade_(g/t)",
+        "dtype": "float32",
+        "offset": 625000,
+        "length": 125000,
+        "min": 0.00000671775478622294,
+        "max": 13.85742473602295,
+        "is_discrete": false
+      },
+      {
+        "name": "RMR (Engineering)",
+        "key": "rmr_(engineering)",
+        "dtype": "uint8",
+        "offset": 1125000,
+        "length": 125000,
+        "min": 20,
+        "max": 89,
+        "is_discrete": false
+      }
+    ]
+  },
+  "structures": [
+    {
+      "structureId": "FAULT_Main_Fault",
+      "structureName": "Main_Fault",
+      "structureType": "fault",
+      "confidence": 1,
+      "riskLevel": "structural_zone",
+      "geometry": {
+        "form": "STL",
+        "path": "surfaces/Surface_Main_Fault.stl",
+        "color": "#ff3322",
+        "opacity": 0.45
+      }
+    }
+  ],
+  "relations": []
+}

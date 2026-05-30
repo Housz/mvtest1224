@@ -1,0 +1,75 @@
+{
+  "nx": 50,
+  "ny": 50,
+  "nz": 50,
+  "origin": [
+    0,
+    0,
+    0
+  ],
+  "cellSize": [
+    40,
+    40,
+    15
+  ],
+  "bounds": {
+    "min": [
+      0,
+      0,
+      0
+    ],
+    "max": [
+      2000,
+      2000,
+      750
+    ]
+  },
+  "coordinateSystem": "local",
+  "binaryFile": "resource_block_attributes.bin",
+  "attributes": [
+    {
+      "attributeName": "lithology_id",
+      "key": "lithology_id",
+      "label": "Lithology ID",
+      "dtype": "uint8",
+      "offset": 0,
+      "length": 125000,
+      "min": 2,
+      "max": 6,
+      "nodata": null
+    },
+    {
+      "attributeName": "density_(g/cm3)",
+      "key": "density_(g/cm3)",
+      "label": "Density (g/cm3)",
+      "dtype": "float32",
+      "offset": 125000,
+      "length": 125000,
+      "min": -0.22514577209949493,
+      "max": 2.941232681274414,
+      "nodata": null
+    },
+    {
+      "attributeName": "au_grade_(g/t)",
+      "key": "au_grade_(g/t)",
+      "label": "Au Grade (g/t)",
+      "dtype": "float32",
+      "offset": 625000,
+      "length": 125000,
+      "min": 0.00000671775478622294,
+      "max": 13.85742473602295,
+      "nodata": null
+    },
+    {
+      "attributeName": "rmr_(engineering)",
+      "key": "rmr_(engineering)",
+      "label": "RMR (Engineering)",
+      "dtype": "uint8",
+      "offset": 1125000,
+      "length": 125000,
+      "min": 20,
+      "max": 89,
+      "nodata": null
+    }
+  ]
+}

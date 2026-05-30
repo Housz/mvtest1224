@@ -1,0 +1,3115 @@
+{
+  "datasetType": "VentilationNetwork",
+  "version": "1.0",
+  "metadata": {
+    "createdBy": "MineVis Ventilation Data Generator",
+    "createdAt": "2026-05-11T08:29:25.782Z",
+    "generationStrategy": "chain-collapsing"
+  },
+  "nodes": [
+    {
+      "id": "VN_001",
+      "type": "junction",
+      "roadwayNodeId": "Node_2",
+      "position": {
+        "x": 483.13613944614406,
+        "y": -57.887673177412,
+        "z": -4.68877346623247
+      },
+      "pressurePotential": 56.781
+    },
+    {
+      "id": "VN_002",
+      "type": "junction",
+      "roadwayNodeId": "Node_3",
+      "position": {
+        "x": 481.272278892289,
+        "y": -68.775346354824,
+        "z": -9.37754693246493
+      },
+      "pressurePotential": 46.952
+    },
+    {
+      "id": "VN_003",
+      "type": "junction",
+      "roadwayNodeId": "Node_5",
+      "position": {
+        "x": 463.53037383074,
+        "y": -65.738109981576,
+        "z": -9.37754693246493
+      },
+      "pressurePotential": 88.269
+    },
+    {
+      "id": "VN_004",
+      "type": "junction",
+      "roadwayNodeId": "Node_8",
+      "position": {
+        "x": 518.727411800003,
+        "y": -75.18728980945801,
+        "z": -9.37754693246493
+      },
+      "pressurePotential": 57.499
+    },
+    {
+      "id": "VN_005",
+      "type": "junction",
+      "roadwayNodeId": "Node_11",
+      "position": {
+        "x": 265.501394892077,
+        "y": -143.905007315077,
+        "z": -56.2652815947896
+      },
+      "pressurePotential": 248.612
+    },
+    {
+      "id": "VN_006",
+      "type": "junction",
+      "roadwayNodeId": "Node_12",
+      "position": {
+        "x": 679.479179661555,
+        "y": -214.77385602419702,
+        "z": -56.2652815947896
+      },
+      "pressurePotential": 253.003
+    },
+    {
+      "id": "VN_007",
+      "type": "junction",
+      "roadwayNodeId": "Node_13",
+      "position": {
+        "x": 500.985506738454,
+        "y": -72.15005343621101,
+        "z": -9.37754693246493
+      },
+      "pressurePotential": 42.108
+    },
+    {
+      "id": "VN_008",
+      "type": "junction",
+      "roadwayNodeId": "Node_14",
+      "position": {
+        "x": 462.633673353733,
+        "y": -177.652078128944,
+        "z": -56.2652815947896
+      },
+      "pressurePotential": 208.607
+    },
+    {
+      "id": "VN_009",
+      "type": "junction",
+      "roadwayNodeId": "Node_15",
+      "position": {
+        "x": 482.346901199899,
+        "y": -181.02678521033,
+        "z": -56.2652815947896
+      },
+      "pressurePotential": 211.363
+    },
+    {
+      "id": "VN_010",
+      "type": "junction",
+      "roadwayNodeId": "Node_16",
+      "position": {
+        "x": 478.619180092187,
+        "y": -202.802131565154,
+        "z": -65.6428285272545
+      },
+      "pressurePotential": 236.752
+    },
+    {
+      "id": "VN_011",
+      "type": "junction",
+      "roadwayNodeId": "Node_18",
+      "position": {
+        "x": 441.164047184473,
+        "y": -196.390188110519,
+        "z": -65.6428285272545
+      },
+      "pressurePotential": 229.834
+    },
+    {
+      "id": "VN_012",
+      "type": "junction",
+      "roadwayNodeId": "Node_21",
+      "position": {
+        "x": 496.361085153736,
+        "y": -205.839367938402,
+        "z": -65.6428285272545
+      },
+      "pressurePotential": 240.527
+    },
+    {
+      "id": "VN_013",
+      "type": "junction",
+      "roadwayNodeId": "Node_22",
+      "position": {
+        "x": 449.586649476744,
+        "y": -253.86579037082703,
+        "z": -89.0866958584168
+      },
+      "pressurePotential": 302.484
+    },
+    {
+      "id": "VN_014",
+      "type": "junction",
+      "roadwayNodeId": "Node_23",
+      "position": {
+        "x": 469.29987732291,
+        "y": -257.240497452214,
+        "z": -89.0866958584168
+      },
+      "pressurePotential": 307.275
+    },
+    {
+      "id": "VN_015",
+      "type": "junction",
+      "roadwayNodeId": "Node_24",
+      "position": {
+        "x": 440.267346707466,
+        "y": -308.304156257886,
+        "z": -112.530563189579
+      },
+      "pressurePotential": 369.33
+    },
+    {
+      "id": "VN_016",
+      "type": "junction",
+      "roadwayNodeId": "Node_25",
+      "position": {
+        "x": 459.980574553632,
+        "y": -311.678863339273,
+        "z": -112.530563189579
+      },
+      "pressurePotential": 377.798
+    },
+    {
+      "id": "VN_017",
+      "type": "junction",
+      "roadwayNodeId": "Node_26",
+      "position": {
+        "x": 321.987979630472,
+        "y": -288.055913769566,
+        "z": -112.530563189579
+      },
+      "pressurePotential": 347.63
+    },
+    {
+      "id": "VN_018",
+      "type": "junction",
+      "roadwayNodeId": "Node_27",
+      "position": {
+        "x": 361.414435322804,
+        "y": -294.80532793234,
+        "z": -112.530563189579
+      },
+      "pressurePotential": 352.642
+    },
+    {
+      "id": "VN_019",
+      "type": "junction",
+      "roadwayNodeId": "Node_28",
+      "position": {
+        "x": 538.833485938294,
+        "y": -325.17769166482,
+        "z": -112.530563189579
+      },
+      "pressurePotential": 361.874
+    },
+    {
+      "id": "VN_020",
+      "type": "junction",
+      "roadwayNodeId": "Node_29",
+      "position": {
+        "x": 578.259941630625,
+        "y": -331.927105827593,
+        "z": -112.530563189579
+      },
+      "pressurePotential": 355.709
+    },
+    {
+      "id": "VN_021",
+      "type": "junction",
+      "roadwayNodeId": "Node_30",
+      "position": {
+        "x": 438.40348615361,
+        "y": -319.191829435298,
+        "z": -117.219336655812
+      },
+      "pressurePotential": 366.656
+    },
+    {
+      "id": "VN_022",
+      "type": "junction",
+      "roadwayNodeId": "Node_31",
+      "position": {
+        "x": 456.25285344592,
+        "y": -333.454209694097,
+        "z": -121.908110122044
+      },
+      "pressurePotential": 403.187
+    },
+    {
+      "id": "VN_023",
+      "type": "junction",
+      "roadwayNodeId": "Node_33",
+      "position": {
+        "x": 418.797720538206,
+        "y": -327.042266239462,
+        "z": -121.908110122044
+      },
+      "pressurePotential": 358.082
+    },
+    {
+      "id": "VN_024",
+      "type": "junction",
+      "roadwayNodeId": "Node_36",
+      "position": {
+        "x": 473.99475850747,
+        "y": -336.491446067345,
+        "z": -121.908110122044
+      },
+      "pressurePotential": 397.028
+    },
+    {
+      "id": "VN_025",
+      "type": "junction",
+      "roadwayNodeId": "Node_37",
+      "position": {
+        "x": 278.83380283043,
+        "y": -303.081845961617,
+        "z": -121.908110122044
+      },
+      "pressurePotential": 340.444
+    },
+    {
+      "id": "VN_026",
+      "type": "junction",
+      "roadwayNodeId": "Node_38",
+      "position": {
+        "x": 357.686714215093,
+        "y": -316.580674287164,
+        "z": -121.908110122044
+      },
+      "pressurePotential": 349.62
+    },
+    {
+      "id": "VN_027",
+      "type": "junction",
+      "roadwayNodeId": "Node_39",
+      "position": {
+        "x": 535.105764830583,
+        "y": -346.953038019643,
+        "z": -121.908110122044
+      },
+      "pressurePotential": 378.884
+    },
+    {
+      "id": "VN_028",
+      "type": "junction",
+      "roadwayNodeId": "Node_40",
+      "position": {
+        "x": 613.958676215245,
+        "y": -360.45186634519,
+        "z": -121.908110122044
+      },
+      "pressurePotential": 362.822
+    },
+    {
+      "id": "VN_029",
+      "type": "junction",
+      "roadwayNodeId": "Node_41",
+      "position": {
+        "x": 441.341969015076,
+        "y": -420.555595113393,
+        "z": -159.418297851904
+      },
+      "pressurePotential": 529.564
+    },
+    {
+      "id": "VN_030",
+      "type": "junction",
+      "roadwayNodeId": "Node_44",
+      "position": {
+        "x": 460.76981279987695,
+        "y": -188.539751306356,
+        "z": -60.9540550610221
+      },
+      "pressurePotential": 219.059
+    },
+    {
+      "id": "VN_031",
+      "type": "return",
+      "roadwayNodeId": "Node_45",
+      "position": {
+        "x": 500.00601245129894,
+        "y": -38.362131543512405,
+        "z": -9.37754693246493
+      },
+      "pressurePotential": 0
+    },
+    {
+      "id": "VN_032",
+      "type": "junction",
+      "roadwayNodeId": "Node_46",
+      "position": {
+        "x": 498.142151897444,
+        "y": -49.249804720924004,
+        "z": -9.37754693246493
+      },
+      "pressurePotential": 11.685
+    },
+    {
+      "id": "VN_033",
+      "type": "junction",
+      "roadwayNodeId": "Node_47",
+      "position": {
+        "x": 494.414430789732,
+        "y": -71.025151075748,
+        "z": -9.37754693246493
+      },
+      "pressurePotential": 35.055
+    },
+    {
+      "id": "VN_034",
+      "type": "junction",
+      "roadwayNodeId": "Node_48",
+      "position": {
+        "x": 438.820541564018,
+        "y": -395.774819337532,
+        "z": -178.795844784369
+      },
+      "pressurePotential": 531.639
+    },
+    {
+      "id": "VN_035",
+      "type": "junction",
+      "roadwayNodeId": "Node_49",
+      "position": {
+        "x": 434.770893066354,
+        "y": -419.430692752931,
+        "z": -178.795844784369
+      },
+      "pressurePotential": 551.242
+    },
+    {
+      "id": "VN_036",
+      "type": "junction",
+      "roadwayNodeId": "Node_50",
+      "position": {
+        "x": 431.043171958643,
+        "y": -441.206039107754,
+        "z": -178.795844784369
+      },
+      "pressurePotential": 574.612
+    },
+    {
+      "id": "VN_037",
+      "type": "junction",
+      "roadwayNodeId": "Node_51",
+      "position": {
+        "x": 429.018347709811,
+        "y": -453.033975815454,
+        "z": -178.795844784369
+      },
+      "pressurePotential": 587.306
+    },
+    {
+      "id": "VN_038",
+      "type": "intake",
+      "roadwayNodeId": "Node_52",
+      "position": {
+        "x": 426.993523460979,
+        "y": -464.861912523153,
+        "z": -178.795844784369
+      },
+      "pressurePotential": 600
+    },
+    {
+      "id": "VN_039",
+      "type": "junction",
+      "roadwayNodeId": "Node_56",
+      "position": {
+        "x": 383.780761969071,
+        "y": -164.153249803397,
+        "z": -56.2652815947896
+      },
+      "pressurePotential": 230.733
+    },
+    {
+      "id": "VN_040",
+      "type": "junction",
+      "roadwayNodeId": "Node_57",
+      "position": {
+        "x": 304.927850584408,
+        "y": -150.65442147785,
+        "z": -56.2652815947896
+      },
+      "pressurePotential": 244.233
+    },
+    {
+      "id": "VN_041",
+      "type": "junction",
+      "roadwayNodeId": "Node_58",
+      "position": {
+        "x": 380.053040861359,
+        "y": -185.928596158221,
+        "z": -65.6428285272545
+      },
+      "pressurePotential": 237.877
+    },
+    {
+      "id": "VN_042",
+      "type": "junction",
+      "roadwayNodeId": "Node_59",
+      "position": {
+        "x": 301.200129476697,
+        "y": -172.429767832674,
+        "z": -65.6428285272545
+      },
+      "pressurePotential": 249.542
+    },
+    {
+      "id": "VN_043",
+      "type": "junction",
+      "roadwayNodeId": "Node_60",
+      "position": {
+        "x": 561.199812584561,
+        "y": -194.525613535877,
+        "z": -56.2652815947896
+      },
+      "pressurePotential": 235.907
+    },
+    {
+      "id": "VN_044",
+      "type": "junction",
+      "roadwayNodeId": "Node_61",
+      "position": {
+        "x": 640.052723969223,
+        "y": -208.024441861424,
+        "z": -56.2652815947896
+      },
+      "pressurePotential": 248.853
+    },
+    {
+      "id": "VN_045",
+      "type": "junction",
+      "roadwayNodeId": "Node_62",
+      "position": {
+        "x": 557.47209147685,
+        "y": -216.300959890701,
+        "z": -65.6428285272545
+      },
+      "pressurePotential": 251.648
+    },
+    {
+      "id": "VN_046",
+      "type": "junction",
+      "roadwayNodeId": "Node_63",
+      "position": {
+        "x": 636.325002861512,
+        "y": -229.799788216247,
+        "z": -65.6428285272545
+      },
+      "pressurePotential": 261.493
+    }
+  ],
+  "branches": [
+    {
+      "id": "VB_001",
+      "from": "VN_001",
+      "to": "VN_032",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_0",
+        "Edge_54"
+      ],
+      "nominalDirection": "from_to",
+      "length": 28.301,
+      "area": 11.5,
+      "resistance": 0.018,
+      "designAirQuantity": 16.675,
+      "path": [
+        {
+          "x": 483.13613944614406,
+          "y": -57.887673177412,
+          "z": -4.68877346623247
+        },
+        {
+          "x": 485,
+          "y": -47,
+          "z": 0
+        },
+        {
+          "x": 498.142151897444,
+          "y": -49.249804720924004,
+          "z": -9.37754693246493
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.075,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_002",
+      "from": "VN_001",
+      "to": "VN_002",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_1"
+      ],
+      "nominalDirection": "from_to",
+      "length": 12,
+      "area": 13,
+      "resistance": 0.009,
+      "designAirQuantity": 22.1,
+      "path": [
+        {
+          "x": 483.13613944614406,
+          "y": -57.887673177412,
+          "z": -4.68877346623247
+        },
+        {
+          "x": 481.272278892289,
+          "y": -68.775346354824,
+          "z": -9.37754693246493
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.016,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_003",
+      "from": "VN_001",
+      "to": "VN_003",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_17",
+        "Edge_16"
+      ],
+      "nominalDirection": "to_from",
+      "length": 22.971,
+      "area": 14.5,
+      "resistance": 0.018,
+      "designAirQuantity": 17.4,
+      "path": [
+        {
+          "x": 483.13613944614406,
+          "y": -57.887673177412,
+          "z": -4.68877346623247
+        },
+        {
+          "x": 469.444342184589,
+          "y": -66.750522105992,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 463.53037383074,
+          "y": -65.738109981576,
+          "z": -9.37754693246493
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.052,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_004",
+      "from": "VN_002",
+      "to": "VN_008",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_2"
+      ],
+      "nominalDirection": "to_from",
+      "length": 120,
+      "area": 10,
+      "resistance": 0.012,
+      "designAirQuantity": 14.5,
+      "path": [
+        {
+          "x": 481.272278892289,
+          "y": -68.775346354824,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 462.633673353733,
+          "y": -177.652078128944,
+          "z": -56.2652815947896
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.269,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_005",
+      "from": "VN_002",
+      "to": "VN_033",
+      "branchType": "working_face",
+      "roadwayEdgeIds": [
+        "Edge_18"
+      ],
+      "nominalDirection": "from_to",
+      "length": 13.333,
+      "area": 11.5,
+      "resistance": 0.009,
+      "designAirQuantity": 19.55,
+      "path": [
+        {
+          "x": 481.272278892289,
+          "y": -68.775346354824,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 494.414430789732,
+          "y": -71.025151075748,
+          "z": -9.37754693246493
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.02,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_006",
+      "from": "VN_003",
+      "to": "VN_005",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_15",
+        "Edge_25"
+      ],
+      "nominalDirection": "to_from",
+      "length": 302,
+      "area": 13,
+      "resistance": 0.02814,
+      "designAirQuantity": 15.6,
+      "path": [
+        {
+          "x": 463.53037383074,
+          "y": -65.738109981576,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 284.140000430633,
+          "y": -35.028275540957395,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 265.501394892077,
+          "y": -143.905007315077,
+          "z": -56.2652815947896
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.267,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_007",
+      "from": "VN_003",
+      "to": "VN_004",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_22",
+        "Edge_23",
+        "Edge_24"
+      ],
+      "nominalDirection": "from_to",
+      "length": 70.833,
+      "area": 14.5,
+      "resistance": 0.027,
+      "designAirQuantity": 21.025,
+      "path": [
+        {
+          "x": 463.53037383074,
+          "y": -65.738109981576,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 467.419517935758,
+          "y": -78.57845881369099,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 510.78861919732196,
+          "y": -86.00281439274201,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 518.727411800003,
+          "y": -75.18728980945801,
+          "z": -9.37754693246493
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.051,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_008",
+      "from": "VN_004",
+      "to": "VN_007",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_20"
+      ],
+      "nominalDirection": "from_to",
+      "length": 18,
+      "area": 10,
+      "resistance": 0.009,
+      "designAirQuantity": 17,
+      "path": [
+        {
+          "x": 518.727411800003,
+          "y": -75.18728980945801,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 500.985506738454,
+          "y": -72.15005343621101,
+          "z": -9.37754693246493
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.026,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_009",
+      "from": "VN_004",
+      "to": "VN_006",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_21",
+        "Edge_26"
+      ],
+      "nominalDirection": "to_from",
+      "length": 302,
+      "area": 11.5,
+      "resistance": 0.02814,
+      "designAirQuantity": 13.8,
+      "path": [
+        {
+          "x": 518.727411800003,
+          "y": -75.18728980945801,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 698.11778520011,
+          "y": -105.89712425007701,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 679.479179661555,
+          "y": -214.77385602419702,
+          "z": -56.2652815947896
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.326,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_010",
+      "from": "VN_005",
+      "to": "VN_042",
+      "branchType": "working_face",
+      "roadwayEdgeIds": [
+        "Edge_63",
+        "Edge_68"
+      ],
+      "nominalDirection": "to_from",
+      "length": 64,
+      "area": 13,
+      "resistance": 0.018,
+      "designAirQuantity": 18.85,
+      "path": [
+        {
+          "x": 265.501394892077,
+          "y": -143.905007315077,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 261.773673784366,
+          "y": -165.680353669901,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 301.200129476697,
+          "y": -172.429767832674,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.002,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_011",
+      "from": "VN_005",
+      "to": "VN_040",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_66"
+      ],
+      "nominalDirection": "from_to",
+      "length": 40,
+      "area": 14.5,
+      "resistance": 0.00933,
+      "designAirQuantity": 24.65,
+      "path": [
+        {
+          "x": 265.501394892077,
+          "y": -143.905007315077,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 304.927850584408,
+          "y": -150.65442147785,
+          "z": -56.2652815947896
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.007,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_012",
+      "from": "VN_006",
+      "to": "VN_046",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_64",
+        "Edge_72"
+      ],
+      "nominalDirection": "to_from",
+      "length": 64,
+      "area": 10,
+      "resistance": 0.018,
+      "designAirQuantity": 12,
+      "path": [
+        {
+          "x": 679.479179661555,
+          "y": -214.77385602419702,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 675.751458553843,
+          "y": -236.54920237902098,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 636.325002861512,
+          "y": -229.799788216247,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.014,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_013",
+      "from": "VN_006",
+      "to": "VN_044",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_70"
+      ],
+      "nominalDirection": "from_to",
+      "length": 40,
+      "area": 11.5,
+      "resistance": 0.00933,
+      "designAirQuantity": 16.675,
+      "path": [
+        {
+          "x": 679.479179661555,
+          "y": -214.77385602419702,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 640.052723969223,
+          "y": -208.024441861424,
+          "z": -56.2652815947896
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.007,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_014",
+      "from": "VN_007",
+      "to": "VN_009",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_8"
+      ],
+      "nominalDirection": "to_from",
+      "length": 120,
+      "area": 13,
+      "resistance": 0.012,
+      "designAirQuantity": 22.1,
+      "path": [
+        {
+          "x": 500.985506738454,
+          "y": -72.15005343621101,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 482.346901199899,
+          "y": -181.02678521033,
+          "z": -56.2652815947896
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.282,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_015",
+      "from": "VN_007",
+      "to": "VN_033",
+      "branchType": "working_face",
+      "roadwayEdgeIds": [
+        "Edge_19"
+      ],
+      "nominalDirection": "from_to",
+      "length": 6.667,
+      "area": 14.5,
+      "resistance": 0.009,
+      "designAirQuantity": 17.4,
+      "path": [
+        {
+          "x": 500.985506738454,
+          "y": -72.15005343621101,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 494.414430789732,
+          "y": -71.025151075748,
+          "z": -9.37754693246493
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.012,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_016",
+      "from": "VN_008",
+      "to": "VN_030",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_3"
+      ],
+      "nominalDirection": "to_from",
+      "length": 12,
+      "area": 10,
+      "resistance": 0.009,
+      "designAirQuantity": 14.5,
+      "path": [
+        {
+          "x": 462.633673353733,
+          "y": -177.652078128944,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 460.76981279987695,
+          "y": -188.539751306356,
+          "z": -60.9540550610221
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.017,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_017",
+      "from": "VN_008",
+      "to": "VN_009",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_27"
+      ],
+      "nominalDirection": "to_from",
+      "length": 20,
+      "area": 11.5,
+      "resistance": 0.009,
+      "designAirQuantity": 19.55,
+      "path": [
+        {
+          "x": 462.633673353733,
+          "y": -177.652078128944,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 482.346901199899,
+          "y": -181.02678521033,
+          "z": -56.2652815947896
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.005,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_018",
+      "from": "VN_008",
+      "to": "VN_039",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_65"
+      ],
+      "nominalDirection": "to_from",
+      "length": 80,
+      "area": 13,
+      "resistance": 0.01067,
+      "designAirQuantity": 15.6,
+      "path": [
+        {
+          "x": 462.633673353733,
+          "y": -177.652078128944,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 383.780761969071,
+          "y": -164.153249803397,
+          "z": -56.2652815947896
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.037,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_019",
+      "from": "VN_009",
+      "to": "VN_010",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_9"
+      ],
+      "nominalDirection": "to_from",
+      "length": 24,
+      "area": 14.5,
+      "resistance": 0.009,
+      "designAirQuantity": 21.025,
+      "path": [
+        {
+          "x": 482.346901199899,
+          "y": -181.02678521033,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 478.619180092187,
+          "y": -202.802131565154,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.042,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_020",
+      "from": "VN_009",
+      "to": "VN_043",
+      "branchType": "working_face",
+      "roadwayEdgeIds": [
+        "Edge_69"
+      ],
+      "nominalDirection": "to_from",
+      "length": 80,
+      "area": 10,
+      "resistance": 0.01067,
+      "designAirQuantity": 17,
+      "path": [
+        {
+          "x": 482.346901199899,
+          "y": -181.02678521033,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 561.199812584561,
+          "y": -194.525613535877,
+          "z": -56.2652815947896
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.041,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_021",
+      "from": "VN_010",
+      "to": "VN_014",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_10"
+      ],
+      "nominalDirection": "to_from",
+      "length": 60,
+      "area": 11.5,
+      "resistance": 0.01,
+      "designAirQuantity": 13.8,
+      "path": [
+        {
+          "x": 478.619180092187,
+          "y": -202.802131565154,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 469.29987732291,
+          "y": -257.240497452214,
+          "z": -89.0866958584168
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.118,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_022",
+      "from": "VN_010",
+      "to": "VN_012",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_33"
+      ],
+      "nominalDirection": "to_from",
+      "length": 18,
+      "area": 13,
+      "resistance": 0.009,
+      "designAirQuantity": 18.85,
+      "path": [
+        {
+          "x": 478.619180092187,
+          "y": -202.802131565154,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 496.361085153736,
+          "y": -205.839367938402,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.006,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_023",
+      "from": "VN_011",
+      "to": "VN_030",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_29",
+        "Edge_28"
+      ],
+      "nominalDirection": "from_to",
+      "length": 22.971,
+      "area": 14.5,
+      "resistance": 0.018,
+      "designAirQuantity": 24.65,
+      "path": [
+        {
+          "x": 441.164047184473,
+          "y": -196.390188110519,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 447.078015538322,
+          "y": -197.402600234935,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 460.76981279987695,
+          "y": -188.539751306356,
+          "z": -60.9540550610221
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.018,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_024",
+      "from": "VN_011",
+      "to": "VN_012",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_30",
+        "Edge_31",
+        "Edge_32"
+      ],
+      "nominalDirection": "to_from",
+      "length": 70.833,
+      "area": 10,
+      "resistance": 0.027,
+      "designAirQuantity": 12,
+      "path": [
+        {
+          "x": 441.164047184473,
+          "y": -196.390188110519,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 445.05319128949,
+          "y": -209.230536942635,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 488.42229255105497,
+          "y": -216.65489252168499,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 496.361085153736,
+          "y": -205.839367938402,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.018,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_025",
+      "from": "VN_011",
+      "to": "VN_041",
+      "branchType": "working_face",
+      "roadwayEdgeIds": [
+        "Edge_67"
+      ],
+      "nominalDirection": "to_from",
+      "length": 62,
+      "area": 11.5,
+      "resistance": 0.01007,
+      "designAirQuantity": 16.675,
+      "path": [
+        {
+          "x": 441.164047184473,
+          "y": -196.390188110519,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 380.053040861359,
+          "y": -185.928596158221,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.013,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_026",
+      "from": "VN_012",
+      "to": "VN_045",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_71"
+      ],
+      "nominalDirection": "to_from",
+      "length": 62,
+      "area": 13,
+      "resistance": 0.01007,
+      "designAirQuantity": 22.1,
+      "path": [
+        {
+          "x": 496.361085153736,
+          "y": -205.839367938402,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 557.47209147685,
+          "y": -216.300959890701,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.019,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_027",
+      "from": "VN_013",
+      "to": "VN_030",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_4"
+      ],
+      "nominalDirection": "from_to",
+      "length": 72,
+      "area": 14.5,
+      "resistance": 0.0104,
+      "designAirQuantity": 17.4,
+      "path": [
+        {
+          "x": 449.586649476744,
+          "y": -253.86579037082703,
+          "z": -89.0866958584168
+        },
+        {
+          "x": 460.76981279987695,
+          "y": -188.539751306356,
+          "z": -60.9540550610221
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.139,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_028",
+      "from": "VN_013",
+      "to": "VN_015",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_5"
+      ],
+      "nominalDirection": "to_from",
+      "length": 60,
+      "area": 10,
+      "resistance": 0.01,
+      "designAirQuantity": 14.5,
+      "path": [
+        {
+          "x": 449.586649476744,
+          "y": -253.86579037082703,
+          "z": -89.0866958584168
+        },
+        {
+          "x": 440.267346707466,
+          "y": -308.304156257886,
+          "z": -112.530563189579
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.111,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_029",
+      "from": "VN_013",
+      "to": "VN_014",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_34"
+      ],
+      "nominalDirection": "to_from",
+      "length": 20,
+      "area": 11.5,
+      "resistance": 0.009,
+      "designAirQuantity": 19.55,
+      "path": [
+        {
+          "x": 449.586649476744,
+          "y": -253.86579037082703,
+          "z": -89.0866958584168
+        },
+        {
+          "x": 469.29987732291,
+          "y": -257.240497452214,
+          "z": -89.0866958584168
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.008,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_030",
+      "from": "VN_014",
+      "to": "VN_016",
+      "branchType": "working_face",
+      "roadwayEdgeIds": [
+        "Edge_11"
+      ],
+      "nominalDirection": "to_from",
+      "length": 60,
+      "area": 13,
+      "resistance": 0.01,
+      "designAirQuantity": 15.6,
+      "path": [
+        {
+          "x": 469.29987732291,
+          "y": -257.240497452214,
+          "z": -89.0866958584168
+        },
+        {
+          "x": 459.980574553632,
+          "y": -311.678863339273,
+          "z": -112.530563189579
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.118,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_031",
+      "from": "VN_015",
+      "to": "VN_021",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_6"
+      ],
+      "nominalDirection": "from_to",
+      "length": 12,
+      "area": 14.5,
+      "resistance": 0.009,
+      "designAirQuantity": 21.025,
+      "path": [
+        {
+          "x": 440.267346707466,
+          "y": -308.304156257886,
+          "z": -112.530563189579
+        },
+        {
+          "x": 438.40348615361,
+          "y": -319.191829435298,
+          "z": -117.219336655812
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.004,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_032",
+      "from": "VN_015",
+      "to": "VN_018",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_36"
+      ],
+      "nominalDirection": "from_to",
+      "length": 80,
+      "area": 10,
+      "resistance": 0.01067,
+      "designAirQuantity": 17,
+      "path": [
+        {
+          "x": 440.267346707466,
+          "y": -308.304156257886,
+          "z": -112.530563189579
+        },
+        {
+          "x": 361.414435322804,
+          "y": -294.80532793234,
+          "z": -112.530563189579
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.028,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_033",
+      "from": "VN_015",
+      "to": "VN_016",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_37"
+      ],
+      "nominalDirection": "to_from",
+      "length": 20,
+      "area": 11.5,
+      "resistance": 0.009,
+      "designAirQuantity": 13.8,
+      "path": [
+        {
+          "x": 440.267346707466,
+          "y": -308.304156257886,
+          "z": -112.530563189579
+        },
+        {
+          "x": 459.980574553632,
+          "y": -311.678863339273,
+          "z": -112.530563189579
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.014,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_034",
+      "from": "VN_016",
+      "to": "VN_022",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_12"
+      ],
+      "nominalDirection": "to_from",
+      "length": 24,
+      "area": 13,
+      "resistance": 0.009,
+      "designAirQuantity": 18.85,
+      "path": [
+        {
+          "x": 459.980574553632,
+          "y": -311.678863339273,
+          "z": -112.530563189579
+        },
+        {
+          "x": 456.25285344592,
+          "y": -333.454209694097,
+          "z": -121.908110122044
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.042,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_035",
+      "from": "VN_016",
+      "to": "VN_019",
+      "branchType": "working_face",
+      "roadwayEdgeIds": [
+        "Edge_38"
+      ],
+      "nominalDirection": "from_to",
+      "length": 80,
+      "area": 14.5,
+      "resistance": 0.01067,
+      "designAirQuantity": 24.65,
+      "path": [
+        {
+          "x": 459.980574553632,
+          "y": -311.678863339273,
+          "z": -112.530563189579
+        },
+        {
+          "x": 538.833485938294,
+          "y": -325.17769166482,
+          "z": -112.530563189579
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.027,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_036",
+      "from": "VN_017",
+      "to": "VN_018",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_35"
+      ],
+      "nominalDirection": "to_from",
+      "length": 40,
+      "area": 10,
+      "resistance": 0.00933,
+      "designAirQuantity": 12,
+      "path": [
+        {
+          "x": 321.987979630472,
+          "y": -288.055913769566,
+          "z": -112.530563189579
+        },
+        {
+          "x": 361.414435322804,
+          "y": -294.80532793234,
+          "z": -112.530563189579
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.008,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_037",
+      "from": "VN_018",
+      "to": "VN_026",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_50"
+      ],
+      "nominalDirection": "from_to",
+      "length": 24,
+      "area": 11.5,
+      "resistance": 0.009,
+      "designAirQuantity": 16.675,
+      "path": [
+        {
+          "x": 361.414435322804,
+          "y": -294.80532793234,
+          "z": -112.530563189579
+        },
+        {
+          "x": 357.686714215093,
+          "y": -316.580674287164,
+          "z": -121.908110122044
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.005,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_038",
+      "from": "VN_019",
+      "to": "VN_020",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_39"
+      ],
+      "nominalDirection": "from_to",
+      "length": 40,
+      "area": 13,
+      "resistance": 0.00933,
+      "designAirQuantity": 22.1,
+      "path": [
+        {
+          "x": 538.833485938294,
+          "y": -325.17769166482,
+          "z": -112.530563189579
+        },
+        {
+          "x": 578.259941630625,
+          "y": -331.927105827593,
+          "z": -112.530563189579
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.01,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_039",
+      "from": "VN_019",
+      "to": "VN_027",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_51"
+      ],
+      "nominalDirection": "to_from",
+      "length": 24,
+      "area": 14.5,
+      "resistance": 0.009,
+      "designAirQuantity": 17.4,
+      "path": [
+        {
+          "x": 538.833485938294,
+          "y": -325.17769166482,
+          "z": -112.530563189579
+        },
+        {
+          "x": 535.105764830583,
+          "y": -346.953038019643,
+          "z": -121.908110122044
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.028,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_040",
+      "from": "VN_021",
+      "to": "VN_037",
+      "branchType": "working_face",
+      "roadwayEdgeIds": [
+        "Edge_7",
+        "Edge_55",
+        "Edge_56"
+      ],
+      "nominalDirection": "to_from",
+      "length": 160.548,
+      "area": 10,
+      "resistance": 0.0348,
+      "designAirQuantity": 14.5,
+      "path": [
+        {
+          "x": 438.40348615361,
+          "y": -319.191829435298,
+          "z": -117.219336655812
+        },
+        {
+          "x": 421.62874116891,
+          "y": -417.180888032006,
+          "z": -159.418297851904
+        },
+        {
+          "x": 415.876195812367,
+          "y": -450.784171094529,
+          "z": -178.795844784369
+        },
+        {
+          "x": 429.018347709811,
+          "y": -453.033975815454,
+          "z": -178.795844784369
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.368,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_041",
+      "from": "VN_021",
+      "to": "VN_023",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_43",
+        "Edge_42"
+      ],
+      "nominalDirection": "from_to",
+      "length": 22.971,
+      "area": 11.5,
+      "resistance": 0.018,
+      "designAirQuantity": 19.55,
+      "path": [
+        {
+          "x": 438.40348615361,
+          "y": -319.191829435298,
+          "z": -117.219336655812
+        },
+        {
+          "x": 424.711688892056,
+          "y": -328.054678363878,
+          "z": -121.908110122044
+        },
+        {
+          "x": 418.797720538206,
+          "y": -327.042266239462,
+          "z": -121.908110122044
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.014,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_042",
+      "from": "VN_022",
+      "to": "VN_029",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_13"
+      ],
+      "nominalDirection": "to_from",
+      "length": 96,
+      "area": 13,
+      "resistance": 0.0112,
+      "designAirQuantity": 15.6,
+      "path": [
+        {
+          "x": 456.25285344592,
+          "y": -333.454209694097,
+          "z": -121.908110122044
+        },
+        {
+          "x": 441.341969015076,
+          "y": -420.555595113393,
+          "z": -159.418297851904
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.211,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_043",
+      "from": "VN_022",
+      "to": "VN_024",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_44"
+      ],
+      "nominalDirection": "from_to",
+      "length": 18,
+      "area": 14.5,
+      "resistance": 0.009,
+      "designAirQuantity": 21.025,
+      "path": [
+        {
+          "x": 456.25285344592,
+          "y": -333.454209694097,
+          "z": -121.908110122044
+        },
+        {
+          "x": 473.99475850747,
+          "y": -336.491446067345,
+          "z": -121.908110122044
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.01,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_044",
+      "from": "VN_023",
+      "to": "VN_026",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_41"
+      ],
+      "nominalDirection": "from_to",
+      "length": 62,
+      "area": 10,
+      "resistance": 0.01007,
+      "designAirQuantity": 17,
+      "path": [
+        {
+          "x": 418.797720538206,
+          "y": -327.042266239462,
+          "z": -121.908110122044
+        },
+        {
+          "x": 357.686714215093,
+          "y": -316.580674287164,
+          "z": -121.908110122044
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.014,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_045",
+      "from": "VN_023",
+      "to": "VN_024",
+      "branchType": "working_face",
+      "roadwayEdgeIds": [
+        "Edge_47",
+        "Edge_48",
+        "Edge_49"
+      ],
+      "nominalDirection": "to_from",
+      "length": 70.833,
+      "area": 11.5,
+      "resistance": 0.027,
+      "designAirQuantity": 13.8,
+      "path": [
+        {
+          "x": 418.797720538206,
+          "y": -327.042266239462,
+          "z": -121.908110122044
+        },
+        {
+          "x": 422.686864643224,
+          "y": -339.882615071577,
+          "z": -121.908110122044
+        },
+        {
+          "x": 466.05596590478797,
+          "y": -347.306970650628,
+          "z": -121.908110122044
+        },
+        {
+          "x": 473.99475850747,
+          "y": -336.491446067345,
+          "z": -121.908110122044
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.065,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_046",
+      "from": "VN_024",
+      "to": "VN_027",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_45"
+      ],
+      "nominalDirection": "from_to",
+      "length": 62,
+      "area": 13,
+      "resistance": 0.01007,
+      "designAirQuantity": 18.85,
+      "path": [
+        {
+          "x": 473.99475850747,
+          "y": -336.491446067345,
+          "z": -121.908110122044
+        },
+        {
+          "x": 535.105764830583,
+          "y": -346.953038019643,
+          "z": -121.908110122044
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.03,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_047",
+      "from": "VN_025",
+      "to": "VN_026",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_40"
+      ],
+      "nominalDirection": "to_from",
+      "length": 80,
+      "area": 14.5,
+      "resistance": 0.01067,
+      "designAirQuantity": 24.65,
+      "path": [
+        {
+          "x": 278.83380283043,
+          "y": -303.081845961617,
+          "z": -121.908110122044
+        },
+        {
+          "x": 357.686714215093,
+          "y": -316.580674287164,
+          "z": -121.908110122044
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.015,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_048",
+      "from": "VN_027",
+      "to": "VN_028",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_46"
+      ],
+      "nominalDirection": "from_to",
+      "length": 80,
+      "area": 10,
+      "resistance": 0.01067,
+      "designAirQuantity": 12,
+      "path": [
+        {
+          "x": 535.105764830583,
+          "y": -346.953038019643,
+          "z": -121.908110122044
+        },
+        {
+          "x": 613.958676215245,
+          "y": -360.45186634519,
+          "z": -121.908110122044
+        }
+      ],
+      "inferredDirection": "from_to",
+      "directionConfidence": 0.027,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_049",
+      "from": "VN_029",
+      "to": "VN_036",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_14",
+        "Edge_62"
+      ],
+      "nominalDirection": "to_from",
+      "length": 36.019,
+      "area": 11.5,
+      "resistance": 0.018,
+      "designAirQuantity": 16.675,
+      "path": [
+        {
+          "x": 441.341969015076,
+          "y": -420.555595113393,
+          "z": -159.418297851904
+        },
+        {
+          "x": 437.614247907365,
+          "y": -442.330941468217,
+          "z": -168.795844784369
+        },
+        {
+          "x": 431.043171958643,
+          "y": -441.206039107754,
+          "z": -178.795844784369
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.075,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_050",
+      "from": "VN_029",
+      "to": "VN_035",
+      "branchType": "working_face",
+      "roadwayEdgeIds": [
+        "Edge_61"
+      ],
+      "nominalDirection": "to_from",
+      "length": 20.492,
+      "area": 13,
+      "resistance": 0.009,
+      "designAirQuantity": 22.1,
+      "path": [
+        {
+          "x": 441.341969015076,
+          "y": -420.555595113393,
+          "z": -159.418297851904
+        },
+        {
+          "x": 434.770893066354,
+          "y": -419.430692752931,
+          "z": -178.795844784369
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.036,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_051",
+      "from": "VN_031",
+      "to": "VN_032",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_52"
+      ],
+      "nominalDirection": "to_from",
+      "length": 11.046,
+      "area": 14.5,
+      "resistance": 0.009,
+      "designAirQuantity": 17.4,
+      "path": [
+        {
+          "x": 500.00601245129894,
+          "y": -38.362131543512405,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 498.142151897444,
+          "y": -49.249804720924004,
+          "z": -9.37754693246493
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.019,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_052",
+      "from": "VN_032",
+      "to": "VN_033",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_53"
+      ],
+      "nominalDirection": "to_from",
+      "length": 22.092,
+      "area": 10,
+      "resistance": 0.009,
+      "designAirQuantity": 14.5,
+      "path": [
+        {
+          "x": 498.142151897444,
+          "y": -49.249804720924004,
+          "z": -9.37754693246493
+        },
+        {
+          "x": 494.414430789732,
+          "y": -71.025151075748,
+          "z": -9.37754693246493
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.039,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_053",
+      "from": "VN_034",
+      "to": "VN_035",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_60"
+      ],
+      "nominalDirection": "to_from",
+      "length": 24,
+      "area": 11.5,
+      "resistance": 0.009,
+      "designAirQuantity": 19.55,
+      "path": [
+        {
+          "x": 438.820541564018,
+          "y": -395.774819337532,
+          "z": -178.795844784369
+        },
+        {
+          "x": 434.770893066354,
+          "y": -419.430692752931,
+          "z": -178.795844784369
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.033,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_054",
+      "from": "VN_035",
+      "to": "VN_036",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_59"
+      ],
+      "nominalDirection": "to_from",
+      "length": 22.092,
+      "area": 13,
+      "resistance": 0.009,
+      "designAirQuantity": 15.6,
+      "path": [
+        {
+          "x": 434.770893066354,
+          "y": -419.430692752931,
+          "z": -178.795844784369
+        },
+        {
+          "x": 431.043171958643,
+          "y": -441.206039107754,
+          "z": -178.795844784369
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.039,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_055",
+      "from": "VN_036",
+      "to": "VN_037",
+      "branchType": "working_face",
+      "roadwayEdgeIds": [
+        "Edge_58"
+      ],
+      "nominalDirection": "to_from",
+      "length": 12,
+      "area": 14.5,
+      "resistance": 0.009,
+      "designAirQuantity": 21.025,
+      "path": [
+        {
+          "x": 431.043171958643,
+          "y": -441.206039107754,
+          "z": -178.795844784369
+        },
+        {
+          "x": 429.018347709811,
+          "y": -453.033975815454,
+          "z": -178.795844784369
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.021,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_056",
+      "from": "VN_037",
+      "to": "VN_038",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_57"
+      ],
+      "nominalDirection": "to_from",
+      "length": 12,
+      "area": 10,
+      "resistance": 0.009,
+      "designAirQuantity": 17,
+      "path": [
+        {
+          "x": 429.018347709811,
+          "y": -453.033975815454,
+          "z": -178.795844784369
+        },
+        {
+          "x": 426.993523460979,
+          "y": -464.861912523153,
+          "z": -178.795844784369
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.021,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_057",
+      "from": "VN_039",
+      "to": "VN_040",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_73"
+      ],
+      "nominalDirection": "to_from",
+      "length": 80,
+      "area": 11.5,
+      "resistance": 0.01067,
+      "designAirQuantity": 13.8,
+      "path": [
+        {
+          "x": 383.780761969071,
+          "y": -164.153249803397,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 304.927850584408,
+          "y": -150.65442147785,
+          "z": -56.2652815947896
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.022,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_058",
+      "from": "VN_039",
+      "to": "VN_041",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_77"
+      ],
+      "nominalDirection": "to_from",
+      "length": 24,
+      "area": 13,
+      "resistance": 0.009,
+      "designAirQuantity": 18.85,
+      "path": [
+        {
+          "x": 383.780761969071,
+          "y": -164.153249803397,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 380.053040861359,
+          "y": -185.928596158221,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.012,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_059",
+      "from": "VN_040",
+      "to": "VN_042",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_79"
+      ],
+      "nominalDirection": "to_from",
+      "length": 24,
+      "area": 14.5,
+      "resistance": 0.009,
+      "designAirQuantity": 24.65,
+      "path": [
+        {
+          "x": 304.927850584408,
+          "y": -150.65442147785,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 301.200129476697,
+          "y": -172.429767832674,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.009,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_060",
+      "from": "VN_041",
+      "to": "VN_042",
+      "branchType": "working_face",
+      "roadwayEdgeIds": [
+        "Edge_74"
+      ],
+      "nominalDirection": "to_from",
+      "length": 80,
+      "area": 10,
+      "resistance": 0.01067,
+      "designAirQuantity": 12,
+      "path": [
+        {
+          "x": 380.053040861359,
+          "y": -185.928596158221,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 301.200129476697,
+          "y": -172.429767832674,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.019,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_061",
+      "from": "VN_043",
+      "to": "VN_044",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_75"
+      ],
+      "nominalDirection": "to_from",
+      "length": 80,
+      "area": 11.5,
+      "resistance": 0.01067,
+      "designAirQuantity": 16.675,
+      "path": [
+        {
+          "x": 561.199812584561,
+          "y": -194.525613535877,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 640.052723969223,
+          "y": -208.024441861424,
+          "z": -56.2652815947896
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.022,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_062",
+      "from": "VN_043",
+      "to": "VN_045",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_78"
+      ],
+      "nominalDirection": "to_from",
+      "length": 24,
+      "area": 13,
+      "resistance": 0.009,
+      "designAirQuantity": 22.1,
+      "path": [
+        {
+          "x": 561.199812584561,
+          "y": -194.525613535877,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 557.47209147685,
+          "y": -216.300959890701,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.026,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_063",
+      "from": "VN_044",
+      "to": "VN_046",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_80"
+      ],
+      "nominalDirection": "to_from",
+      "length": 24,
+      "area": 14.5,
+      "resistance": 0.009,
+      "designAirQuantity": 17.4,
+      "path": [
+        {
+          "x": 640.052723969223,
+          "y": -208.024441861424,
+          "z": -56.2652815947896
+        },
+        {
+          "x": 636.325002861512,
+          "y": -229.799788216247,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.021,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    },
+    {
+      "id": "VB_064",
+      "from": "VN_045",
+      "to": "VN_046",
+      "branchType": "main_intake",
+      "roadwayEdgeIds": [
+        "Edge_76"
+      ],
+      "nominalDirection": "to_from",
+      "length": 80,
+      "area": 10,
+      "resistance": 0.01067,
+      "designAirQuantity": 14.5,
+      "path": [
+        {
+          "x": 557.47209147685,
+          "y": -216.300959890701,
+          "z": -65.6428285272545
+        },
+        {
+          "x": 636.325002861512,
+          "y": -229.799788216247,
+          "z": -65.6428285272545
+        }
+      ],
+      "inferredDirection": "to_from",
+      "directionConfidence": 0.016,
+      "directionSource": "inferred",
+      "manualDirectionConflict": false
+    }
+  ],
+  "facilities": [
+    {
+      "id": "FAN_001",
+      "type": "fan",
+      "branchId": "VB_053",
+      "ratio": 0.5,
+      "status": "running",
+      "parameters": {
+        "pressureBoost": 600,
+        "efficiency": 0.85
+      }
+    },
+    {
+      "id": "DOOR_007",
+      "type": "door",
+      "branchId": "VB_064",
+      "ratio": 0.5,
+      "status": "running",
+      "parameters": {
+        "opening": 1
+      }
+    },
+    {
+      "id": "FAN_002",
+      "type": "fan",
+      "branchId": "VB_037",
+      "ratio": 0.5,
+      "status": "running",
+      "parameters": {
+        "pressureBoost": 600,
+        "efficiency": 0.85
+      }
+    },
+    {
+      "id": "FAN_003",
+      "type": "fan",
+      "branchId": "VB_042",
+      "ratio": 0.5,
+      "status": "running",
+      "parameters": {
+        "pressureBoost": 600,
+        "efficiency": 0.85
+      }
+    },
+    {
+      "id": "FAN_004",
+      "type": "fan",
+      "branchId": "VB_039",
+      "ratio": 0.5,
+      "status": "running",
+      "parameters": {
+        "pressureBoost": 600,
+        "efficiency": 0.85
+      }
+    },
+    {
+      "id": "FAN_005",
+      "type": "fan",
+      "branchId": "VB_046",
+      "ratio": 0.5,
+      "status": "running",
+      "parameters": {
+        "pressureBoost": 600,
+        "efficiency": 0.85
+      }
+    },
+    {
+      "id": "REGULATOR_001",
+      "type": "regulator",
+      "branchId": "VB_032",
+      "ratio": 0.5,
+      "status": "running",
+      "parameters": {
+        "opening": 0.65
+      }
+    },
+    {
+      "id": "REGULATOR_002",
+      "type": "regulator",
+      "branchId": "VB_049",
+      "ratio": 0.5,
+      "status": "running",
+      "parameters": {
+        "opening": 0.65
+      }
+    }
+  ],
+  "boundaryConditions": {
+    "intakes": [
+      {
+        "nodeId": "VN_038",
+        "roadwayNodeId": "Node_52",
+        "label": "Main Intake",
+        "pressurePa": 600,
+        "capacityM3s": 35
+      }
+    ],
+    "returns": [
+      {
+        "nodeId": "VN_031",
+        "roadwayNodeId": "Node_45",
+        "label": "Main Return",
+        "pressurePa": 0,
+        "capacityM3s": 35
+      }
+    ]
+  },
+  "relations": [
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_001",
+      "roadwayEdgeIds": [
+        "Edge_0",
+        "Edge_54"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_002",
+      "roadwayEdgeIds": [
+        "Edge_1"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_003",
+      "roadwayEdgeIds": [
+        "Edge_17",
+        "Edge_16"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_004",
+      "roadwayEdgeIds": [
+        "Edge_2"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_005",
+      "roadwayEdgeIds": [
+        "Edge_18"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_006",
+      "roadwayEdgeIds": [
+        "Edge_15",
+        "Edge_25"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_007",
+      "roadwayEdgeIds": [
+        "Edge_22",
+        "Edge_23",
+        "Edge_24"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_008",
+      "roadwayEdgeIds": [
+        "Edge_20"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_009",
+      "roadwayEdgeIds": [
+        "Edge_21",
+        "Edge_26"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_010",
+      "roadwayEdgeIds": [
+        "Edge_63",
+        "Edge_68"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_011",
+      "roadwayEdgeIds": [
+        "Edge_66"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_012",
+      "roadwayEdgeIds": [
+        "Edge_64",
+        "Edge_72"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_013",
+      "roadwayEdgeIds": [
+        "Edge_70"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_014",
+      "roadwayEdgeIds": [
+        "Edge_8"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_015",
+      "roadwayEdgeIds": [
+        "Edge_19"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_016",
+      "roadwayEdgeIds": [
+        "Edge_3"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_017",
+      "roadwayEdgeIds": [
+        "Edge_27"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_018",
+      "roadwayEdgeIds": [
+        "Edge_65"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_019",
+      "roadwayEdgeIds": [
+        "Edge_9"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_020",
+      "roadwayEdgeIds": [
+        "Edge_69"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_021",
+      "roadwayEdgeIds": [
+        "Edge_10"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_022",
+      "roadwayEdgeIds": [
+        "Edge_33"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_023",
+      "roadwayEdgeIds": [
+        "Edge_29",
+        "Edge_28"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_024",
+      "roadwayEdgeIds": [
+        "Edge_30",
+        "Edge_31",
+        "Edge_32"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_025",
+      "roadwayEdgeIds": [
+        "Edge_67"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_026",
+      "roadwayEdgeIds": [
+        "Edge_71"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_027",
+      "roadwayEdgeIds": [
+        "Edge_4"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_028",
+      "roadwayEdgeIds": [
+        "Edge_5"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_029",
+      "roadwayEdgeIds": [
+        "Edge_34"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_030",
+      "roadwayEdgeIds": [
+        "Edge_11"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_031",
+      "roadwayEdgeIds": [
+        "Edge_6"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_032",
+      "roadwayEdgeIds": [
+        "Edge_36"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_033",
+      "roadwayEdgeIds": [
+        "Edge_37"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_034",
+      "roadwayEdgeIds": [
+        "Edge_12"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_035",
+      "roadwayEdgeIds": [
+        "Edge_38"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_036",
+      "roadwayEdgeIds": [
+        "Edge_35"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_037",
+      "roadwayEdgeIds": [
+        "Edge_50"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_038",
+      "roadwayEdgeIds": [
+        "Edge_39"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_039",
+      "roadwayEdgeIds": [
+        "Edge_51"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_040",
+      "roadwayEdgeIds": [
+        "Edge_7",
+        "Edge_55",
+        "Edge_56"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_041",
+      "roadwayEdgeIds": [
+        "Edge_43",
+        "Edge_42"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_042",
+      "roadwayEdgeIds": [
+        "Edge_13"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_043",
+      "roadwayEdgeIds": [
+        "Edge_44"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_044",
+      "roadwayEdgeIds": [
+        "Edge_41"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_045",
+      "roadwayEdgeIds": [
+        "Edge_47",
+        "Edge_48",
+        "Edge_49"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_046",
+      "roadwayEdgeIds": [
+        "Edge_45"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_047",
+      "roadwayEdgeIds": [
+        "Edge_40"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_048",
+      "roadwayEdgeIds": [
+        "Edge_46"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_049",
+      "roadwayEdgeIds": [
+        "Edge_14",
+        "Edge_62"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_050",
+      "roadwayEdgeIds": [
+        "Edge_61"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_051",
+      "roadwayEdgeIds": [
+        "Edge_52"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_052",
+      "roadwayEdgeIds": [
+        "Edge_53"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_053",
+      "roadwayEdgeIds": [
+        "Edge_60"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_054",
+      "roadwayEdgeIds": [
+        "Edge_59"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_055",
+      "roadwayEdgeIds": [
+        "Edge_58"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_056",
+      "roadwayEdgeIds": [
+        "Edge_57"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_057",
+      "roadwayEdgeIds": [
+        "Edge_73"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_058",
+      "roadwayEdgeIds": [
+        "Edge_77"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_059",
+      "roadwayEdgeIds": [
+        "Edge_79"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_060",
+      "roadwayEdgeIds": [
+        "Edge_74"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_061",
+      "roadwayEdgeIds": [
+        "Edge_75"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_062",
+      "roadwayEdgeIds": [
+        "Edge_78"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_063",
+      "roadwayEdgeIds": [
+        "Edge_80"
+      ]
+    },
+    {
+      "type": "branchOnRoadway",
+      "branchId": "VB_064",
+      "roadwayEdgeIds": [
+        "Edge_76"
+      ]
+    }
+  ]
+}

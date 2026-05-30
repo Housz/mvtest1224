@@ -1,0 +1,5 @@
+time,roadway_edge_id,roadway_node_id,hazard_type,hazard_value,severity,passability,arrival_time,scenario_id,source_id
+0,Edge_1,,water,0,none,passable,0,manual_mock,Edge_1
+1,Edge_1,,water,0.45,medium,risky,0,manual_mock,Edge_1
+2,Edge_1,,water,0.9,high,blocked,0,manual_mock,Edge_1
+2,Edge_2,,water,0.35,medium,risky,1,manual_mock,Edge_1

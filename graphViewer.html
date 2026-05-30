@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>矿山通风系统专业解算平台</title>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    
+    <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: "Microsoft YaHei", sans-serif; user-select: none; }
+        
+        /* 布局 */
+        #container { display: flex; height: 100vh; width: 100vw; }
+        .panel { flex: 1; position: relative; border-right: 1px solid #444; overflow: hidden; }
+        #view-2d { background: #f0f2f5; border-right: 2px solid #ccc; flex: 0.8; }
+        #view-3d { background: #1a1a1a; flex: 1.2; }
+        #view-net { background: #fff; border-left: 2px solid #ccc; flex: 1; }
+
+        .panel-header {
+            position: absolute; top: 0; left: 0; right: 0; 
+            background: rgba(255,255,255,0.9); padding: 8px 12px; 
+            font-size: 13px; font-weight: bold; color: #333; z-index: 10; 
+            border-bottom: 1px solid #ddd; display: flex; justify-content: space-between;
+        }
+
+        /* 控制栏 */
+        #controls {
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            background: #fff; padding: 6px 12px; border-radius: 6px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 2000;
+            display: flex; gap: 12px; align-items: center; font-size: 12px;
+        }
+        button { cursor: pointer; padding: 5px 12px; border: 1px solid #ccc; background: #fff; border-radius: 4px; transition: 0.2s; }
+        button:hover { background: #e6f7ff; border-color: #1890ff; color: #1890ff; }
+        .btn-primary { background: #1890ff; color: white; border-color: #1890ff; }
+        .btn-primary:hover { background: #40a9ff; color: white; }
+
+        /* 右键菜单 */
+        #context-menu {
+            position: absolute; display: none; background: white; 
+            border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+            z-index: 3000; padding: 4px 0; border-radius: 4px; min-width: 140px;
+        }
+        .menu-item { padding: 8px 16px; cursor: pointer; font-size: 13px; color: #333; }
+        .menu-item:hover { background-color: #f5f5f5; color: #1890ff; }
+
+        /* SVG 样式 */
+        .mine-node { fill: #666; cursor: pointer; }
+        .mine-node:hover { fill: #333; }
+        .mine-edge { stroke: #999; stroke-width: 1.5; fill: none; cursor: pointer; vector-effect: non-scaling-stroke; }
+        .mine-edge:hover { stroke: #333; stroke-width: 3; }
+
+        /* 状态样式 */
+        .status-inlet { fill: #52c41a !important; stroke: #237804; stroke-width: 2px; }
+        .status-outlet { fill: #f5222d !important; stroke: #a8071a; stroke-width: 2px; }
+        
+        .hl-node { fill: #faad14 !important; r: 6px !important; }
+        .hl-edge { stroke: #faad14 !important; stroke-width: 4px !important; }
+    </style>
+</head>
+<body>
+
+    <div id="controls">
+        <span><b>矿山通风系统</b></span>
+        <div style="width: 1px; height: 16px; background: #ddd;"></div>
+        <input type="file" id="file-json" accept=".json" style="width: 70px;" title="上传JSON">
+        <input type="file" id="file-obj" accept=".obj" style="width: 70px;" title="上传OBJ">
+        <div style="width: 1px; height: 16px; background: #ddd;"></div>
+        <button onclick="app.toggle3D('obj')">模型开关</button>
+        <button onclick="app.toggle3D('lines')">线框开关</button>
+        <div style="width: 1px; height: 16px; background: #ddd;"></div>
+        <button class="btn-primary" onclick="app.reLayout()">重算通风网络布局</button>
+        <button id="btn-merge-paths" onclick="app.togglePathMerge()">合并线性Path</button>
+    </div>
+
+    <div id="context-menu">
+        <div class="menu-item" onclick="app.setNodeStatus('inlet')">🚩 设为：进风口 (Inlet)</div>
+        <div class="menu-item" onclick="app.setNodeStatus('outlet')">🛑 设为：出风口 (Outlet)</div>
+        <div class="menu-item" onclick="app.setNodeStatus('normal')">⚪ 设为：普通节点</div>
+    </div>
+
+    <div id="container">
+        <div id="view-2d" class="panel">
+            <div class="panel-header">平面图 (交互: 右键设置进出风口)</div>
+            <div id="svg-container" style="width:100%; height:100%;"></div>
+        </div>
+        
+        <div id="view-3d" class="panel">
+            <div class="panel-header">三维透视图</div>
+        </div>
+
+        <div id="view-net" class="panel">
+            <div class="panel-header">通风网络拓扑图 (Canonical Diagram)</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+
+        // === 应用核心状态 ===
+        const state = {
+            data: { nodes: [], edges: [] },
+            nodeProps: {}, // 存储 { id: { type: 'inlet'|'outlet' } }
+            mergeLinearPaths: false,
+            selection: null,
+            loadedMeshes: {},
+            svgElements: {}
+        };
+
+        // === Cytoscape 实例 ===
+        let cy; 
+
+        // === 应用逻辑暴露给全局 ===
+        window.app = {
+            setNodeStatus: (type) => {
+                if(ctxMenu.targetId) {
+                    if(!state.nodeProps[ctxMenu.targetId]) state.nodeProps[ctxMenu.targetId] = {};
+                    state.nodeProps[ctxMenu.targetId].type = type;
+                    render2D(); // 更新2D颜色
+                    renderNetwork(); // 更新网络图
+                    ctxMenu.hide();
+                }
+            },
+            reLayout: () => renderNetwork(),
+            togglePathMerge: () => {
+                state.mergeLinearPaths = !state.mergeLinearPaths;
+                const btn = document.getElementById('btn-merge-paths');
+                btn.textContent = state.mergeLinearPaths ? '恢复原始Path' : '合并线性Path';
+                btn.classList.toggle('btn-primary', state.mergeLinearPaths);
+                renderNetwork();
+            },
+            toggle3D: (type) => {
+                if(type === 'obj') threeObj.objGroup.visible = !threeObj.objGroup.visible;
+                if(type === 'lines') threeObj.linesGroup.visible = !threeObj.linesGroup.visible;
+            }
+        };
+
+        // === 1. 自定义通风网络布局算法 ===
+        function runVentilationLayout(cyInstance) {
+            const nodes = cyInstance.nodes();
+            const edges = cyInstance.edges();
+            if (!nodes.length) return;
+
+            const nodeList = nodes.toArray();
+            const nodeIds = nodeList.map(n => n.id());
+            const nodeById = new Map(nodeList.map(n => [n.id(), n]));
+            const baseOrder = new Map(nodeIds.map((id, i) => [id, i]));
+            const adjacency = new Map(nodeIds.map(id => [id, new Set()]));
+            const edgeList = [];
+
+            edges.forEach(edge => {
+                const source = edge.source().id();
+                const target = edge.target().id();
+                if (!nodeById.has(source) || !nodeById.has(target)) return;
+                edgeList.push({ id: edge.id(), source, target });
+                adjacency.get(source).add(target);
+                adjacency.get(target).add(source);
+            });
+
+            let inletNodes = nodes.filter(n => n.hasClass('inlet')).toArray();
+            let outletNodes = nodes.filter(n => n.hasClass('outlet')).toArray();
+            if (!inletNodes.length) inletNodes = [nodeList[0]];
+
+            const bfs = (starts) => {
+                const dist = new Map(nodeIds.map(id => [id, Infinity]));
+                const queue = [];
+                starts.forEach(id => {
+                    if (!nodeById.has(id) || dist.get(id) === 0) return;
+                    dist.set(id, 0);
+                    queue.push(id);
+                });
+
+                for (let head = 0; head < queue.length; head++) {
+                    const id = queue[head];
+                    const nextDepth = dist.get(id) + 1;
+                    adjacency.get(id).forEach(next => {
+                        if (dist.get(next) <= nextDepth) return;
+                        dist.set(next, nextDepth);
+                        queue.push(next);
+                    });
+                }
+                return dist;
+            };
+
+            const inletIds = new Set(inletNodes.map(n => n.id()));
+            let outletIds = new Set(outletNodes.map(n => n.id()));
+            const distFromInlet = bfs([...inletIds]);
+
+            if (!outletNodes.length && nodeList.length > 1) {
+                let fallback = null;
+                let bestDist = -Infinity;
+                nodeList.forEach(node => {
+                    const id = node.id();
+                    if (inletIds.has(id)) return;
+                    const d = distFromInlet.get(id);
+                    const score = Number.isFinite(d) ? d : -1;
+                    const fallbackOrder = fallback ? baseOrder.get(fallback.id()) : -Infinity;
+                    if (score > bestDist || (score === bestDist && baseOrder.get(id) > fallbackOrder)) {
+                        fallback = node;
+                        bestDist = score;
+                    }
+                });
+                if (fallback) outletNodes = [fallback];
+                outletIds = new Set(outletNodes.map(n => n.id()));
+            }
+
+            const distToOutlet = bfs([...outletIds]);
+            const maxFiniteDistance = (distMap) => {
+                let max = 1;
+                distMap.forEach(value => {
+                    if (Number.isFinite(value)) max = Math.max(max, value);
+                });
+                return max;
+            };
+            const maxInletDistance = maxFiniteDistance(distFromInlet);
+            const maxOutletDistance = maxFiniteDistance(distToOutlet);
+            const clamp01 = (value) => Math.max(0, Math.min(1, value));
+            const potentialOf = new Map();
+
+            nodeIds.forEach(id => {
+                const fromInlet = distFromInlet.get(id);
+                const toOutlet = distToOutlet.get(id);
+                let potential = 0.5;
+
+                if (inletIds.has(id)) potential = 0;
+                else if (outletIds.has(id)) potential = 1;
+                else if (Number.isFinite(fromInlet) && Number.isFinite(toOutlet) && fromInlet + toOutlet > 0) {
+                    potential = fromInlet / (fromInlet + toOutlet);
+                } else if (Number.isFinite(fromInlet)) {
+                    potential = 0.08 + 0.84 * (fromInlet / maxInletDistance);
+                } else if (Number.isFinite(toOutlet)) {
+                    potential = 0.92 - 0.84 * (toOutlet / maxOutletDistance);
+                }
+
+                potentialOf.set(id, clamp01(potential));
+            });
+
+            const finiteOr = (value, fallback) => Number.isFinite(value) ? value : fallback;
+            const compareFlow = (a, b) => {
+                const potentialDiff = potentialOf.get(a) - potentialOf.get(b);
+                if (Math.abs(potentialDiff) > 1e-9) return potentialDiff;
+
+                const inletDiff = finiteOr(distFromInlet.get(a), Number.MAX_SAFE_INTEGER) -
+                    finiteOr(distFromInlet.get(b), Number.MAX_SAFE_INTEGER);
+                if (inletDiff !== 0) return inletDiff;
+
+                const outletDiff = finiteOr(distToOutlet.get(b), -1) -
+                    finiteOr(distToOutlet.get(a), -1);
+                if (outletDiff !== 0) return outletDiff;
+
+                return baseOrder.get(a) - baseOrder.get(b);
+            };
+
+            const flowEdges = edgeList.map(edge => (
+                compareFlow(edge.source, edge.target) <= 0
+                    ? { from: edge.source, to: edge.target }
+                    : { from: edge.target, to: edge.source }
+            )).sort((a, b) => compareFlow(a.from, b.from) || compareFlow(a.to, b.to));
+
+            let layerOf = new Map(nodeIds.map(id => [id, inletIds.has(id) ? 0 : Math.max(0, Math.round(potentialOf.get(id) * 2))]));
+            flowEdges.forEach(edge => {
+                const nextLayer = layerOf.get(edge.from) + 1;
+                if (nextLayer > layerOf.get(edge.to)) layerOf.set(edge.to, nextLayer);
+            });
+
+            if (outletIds.size) {
+                const sinkLayer = Math.max(1, ...layerOf.values());
+                outletIds.forEach(id => layerOf.set(id, sinkLayer));
+            }
+
+            const usedLayers = [...new Set(layerOf.values())].sort((a, b) => a - b);
+            const compactLayerOf = new Map(usedLayers.map((layer, i) => [layer, i]));
+            nodeIds.forEach(id => layerOf.set(id, compactLayerOf.get(layerOf.get(id))));
+
+            const maxLayer = Math.max(...layerOf.values());
+            const layers = Array.from({ length: maxLayer + 1 }, () => []);
+            nodeIds.forEach(id => layers[layerOf.get(id)].push(id));
+
+            // Sugiyama 降交叉的关键：跨多层的长边必须插入 dummy 点参与层间排序。
+            const augmentedLayers = layers.map(layer => [...layer]);
+            const itemLayer = new Map();
+            const itemInfo = new Map();
+            const augmentedEdges = [];
+            layers.forEach((layer, layerIndex) => {
+                layer.forEach(id => {
+                    itemLayer.set(id, layerIndex);
+                    itemInfo.set(id, { real: true, nodeId: id });
+                });
+            });
+
+            flowEdges.forEach((edge, edgeIndex) => {
+                let from = edge.from;
+                let fromLayer = layerOf.get(edge.from);
+                const toLayer = layerOf.get(edge.to);
+                if (fromLayer >= toLayer) return;
+
+                for (let layer = fromLayer + 1; layer <= toLayer; layer++) {
+                    const to = layer === toLayer ? edge.to : `__dummy_${edgeIndex}_${layer}`;
+                    if (layer < toLayer) {
+                        augmentedLayers[layer].push(to);
+                        itemLayer.set(to, layer);
+                        itemInfo.set(to, { real: false, edgeIndex });
+                    }
+                    augmentedEdges.push({ source: from, target: to });
+                    from = to;
+                    fromLayer = layer;
+                }
+            });
+
+            const augmentedNeighbors = new Map();
+            augmentedLayers.forEach(layer => {
+                layer.forEach(id => augmentedNeighbors.set(id, { left: [], right: [] }));
+            });
+            augmentedEdges.forEach(edge => {
+                augmentedNeighbors.get(edge.source)?.right.push(edge.target);
+                augmentedNeighbors.get(edge.target)?.left.push(edge.source);
+            });
+
+            let augmentedOrderIndex = new Map();
+            const refreshAugmentedOrder = () => {
+                augmentedOrderIndex = new Map();
+                augmentedLayers.forEach((layer, layerIndex) => {
+                    layer.forEach((id, i) => augmentedOrderIndex.set(id, { layer: layerIndex, index: i }));
+                });
+            };
+            const normalizedAugmentedOrder = (id) => {
+                const info = augmentedOrderIndex.get(id);
+                if (!info) return 0.5;
+                const count = augmentedLayers[info.layer].length;
+                return count <= 1 ? 0.5 : info.index / (count - 1);
+            };
+            const augmentedBarycenter = (id, side) => {
+                const neighbors = augmentedNeighbors.get(id)?.[side] ?? [];
+                if (!neighbors.length) return null;
+                return neighbors.reduce((sum, next) => sum + normalizedAugmentedOrder(next), 0) / neighbors.length;
+            };
+            const augmentedTieBreak = (id) => {
+                const info = itemInfo.get(id);
+                return info?.real ? baseOrder.get(info.nodeId) : nodeIds.length + (info?.edgeIndex ?? 0);
+            };
+            const sortAugmentedLayer = (layerIndex, side) => {
+                const layer = augmentedLayers[layerIndex];
+                if (layer.length < 2) return;
+
+                const previous = new Map(layer.map((id, i) => [id, i]));
+                layer.sort((a, b) => {
+                    const denom = Math.max(1, layer.length - 1);
+                    const aValue = augmentedBarycenter(a, side) ?? (previous.get(a) / denom);
+                    const bValue = augmentedBarycenter(b, side) ?? (previous.get(b) / denom);
+                    if (Math.abs(aValue - bValue) > 1e-6) return aValue - bValue;
+                    return previous.get(a) - previous.get(b) || augmentedTieBreak(a) - augmentedTieBreak(b);
+                });
+            };
+            const countAdjacentCrossings = (leftLayerIndex) => {
+                const rightLayerIndex = leftLayerIndex + 1;
+                if (rightLayerIndex > maxLayer) return 0;
+
+                const leftOrder = new Map(augmentedLayers[leftLayerIndex].map((id, i) => [id, i]));
+                const rightOrder = new Map(augmentedLayers[rightLayerIndex].map((id, i) => [id, i]));
+                const pairs = augmentedEdges
+                    .filter(edge => itemLayer.get(edge.source) === leftLayerIndex && itemLayer.get(edge.target) === rightLayerIndex)
+                    .map(edge => [leftOrder.get(edge.source), rightOrder.get(edge.target)]);
+                let crossings = 0;
+
+                for (let i = 0; i < pairs.length; i++) {
+                    for (let j = i + 1; j < pairs.length; j++) {
+                        if ((pairs[i][0] - pairs[j][0]) * (pairs[i][1] - pairs[j][1]) < 0) crossings++;
+                    }
+                }
+                return crossings;
+            };
+            const countIncidentCrossings = (layerIndex) => {
+                return (layerIndex > 0 ? countAdjacentCrossings(layerIndex - 1) : 0) +
+                    (layerIndex < maxLayer ? countAdjacentCrossings(layerIndex) : 0);
+            };
+
+            refreshAugmentedOrder();
+            for (let pass = 0; pass < 34; pass++) {
+                for (let layer = 1; layer <= maxLayer; layer++) {
+                    sortAugmentedLayer(layer, 'left');
+                    refreshAugmentedOrder();
+                }
+                for (let layer = maxLayer - 1; layer >= 0; layer--) {
+                    sortAugmentedLayer(layer, 'right');
+                    refreshAugmentedOrder();
+                }
+            }
+
+            for (let pass = 0; pass < 8; pass++) {
+                let changed = false;
+                for (let layer = 0; layer <= maxLayer; layer++) {
+                    const ids = augmentedLayers[layer];
+                    if (ids.length < 2) continue;
+
+                    for (let i = 0; i < ids.length - 1; i++) {
+                        const before = countIncidentCrossings(layer);
+                        [ids[i], ids[i + 1]] = [ids[i + 1], ids[i]];
+                        const after = countIncidentCrossings(layer);
+
+                        if (after < before) changed = true;
+                        else [ids[i], ids[i + 1]] = [ids[i + 1], ids[i]];
+                    }
+                }
+                if (!changed) break;
+            }
+
+            layers.forEach((layer, layerIndex) => {
+                layer.length = 0;
+                augmentedLayers[layerIndex].forEach(id => {
+                    const info = itemInfo.get(id);
+                    if (info?.real) layer.push(info.nodeId);
+                });
+            });
+
+            const neighborBySide = new Map(nodeIds.map(id => [id, { left: [], right: [], all: [] }]));
+            edgeList.forEach(edge => {
+                const a = layerOf.get(edge.source);
+                const b = layerOf.get(edge.target);
+                if (a < b) {
+                    neighborBySide.get(edge.source).right.push(edge.target);
+                    neighborBySide.get(edge.target).left.push(edge.source);
+                } else if (a > b) {
+                    neighborBySide.get(edge.source).left.push(edge.target);
+                    neighborBySide.get(edge.target).right.push(edge.source);
+                }
+                neighborBySide.get(edge.source).all.push(edge.target);
+                neighborBySide.get(edge.target).all.push(edge.source);
+            });
+
+            const flowKey = (source, target) => `${source}\u001f${target}`;
+            const directedFlowEdges = flowEdges
+                .map((edge, index) => ({ ...edge, index, key: flowKey(edge.from, edge.to) }))
+                .filter(edge => layerOf.get(edge.from) < layerOf.get(edge.to));
+            const outgoingFlow = new Map(nodeIds.map(id => [id, []]));
+            const incomingFlow = new Map(nodeIds.map(id => [id, []]));
+            directedFlowEdges.forEach(edge => {
+                outgoingFlow.get(edge.from).push(edge);
+                incomingFlow.get(edge.to).push(edge);
+            });
+            const nodeByDescendingLayer = [...nodeIds].sort((a, b) =>
+                layerOf.get(b) - layerOf.get(a) || baseOrder.get(a) - baseOrder.get(b)
+            );
+            const usedPathEdges = new Set();
+            const mainPaths = [];
+            const maxMainPaths = Math.min(28, Math.max(8, Math.ceil(Math.sqrt(nodeIds.length)) + 8));
+
+            for (let attempt = 0; attempt < maxMainPaths; attempt++) {
+                const bestScore = new Map(nodeIds.map(id => [id, 0]));
+                const bestNext = new Map();
+
+                nodeByDescendingLayer.forEach(id => {
+                    outgoingFlow.get(id).forEach(edge => {
+                        const span = Math.max(1, layerOf.get(edge.to) - layerOf.get(edge.from));
+                        const unusedWeight = usedPathEdges.has(edge.index) ? 0.08 : 1.18;
+                        const score = unusedWeight + span * 0.18 + bestScore.get(edge.to);
+                        if (score > bestScore.get(id)) {
+                            bestScore.set(id, score);
+                            bestNext.set(id, edge);
+                        }
+                    });
+                });
+
+                let start = null;
+                let score = 0;
+                const startCandidates = nodeIds
+                    .filter(id => outgoingFlow.get(id).length && (inletIds.has(id) || !incomingFlow.get(id).length || !outgoingFlow.get(id).every(edge => usedPathEdges.has(edge.index))));
+                startCandidates.forEach(id => {
+                    const candidateScore = bestScore.get(id) + (inletIds.has(id) ? 0.28 : 0);
+                    if (candidateScore > score) {
+                        score = candidateScore;
+                        start = id;
+                    }
+                });
+                if (!start || score < 1.15) break;
+
+                const path = [start];
+                const pathEdges = [];
+                const seen = new Set([start]);
+                let cursor = start;
+                while (bestNext.has(cursor)) {
+                    const edge = bestNext.get(cursor);
+                    if (seen.has(edge.to)) break;
+                    pathEdges.push(edge);
+                    path.push(edge.to);
+                    seen.add(edge.to);
+                    cursor = edge.to;
+                }
+
+                const freshEdges = pathEdges.filter(edge => !usedPathEdges.has(edge.index));
+                if (path.length < 3 || !freshEdges.length) break;
+                freshEdges.forEach(edge => usedPathEdges.add(edge.index));
+                mainPaths.push({ nodes: path, edges: pathEdges, score });
+            }
+
+            mainPaths.sort((a, b) => b.nodes.length - a.nodes.length || b.score - a.score);
+            const nodeLane = new Map();
+            const pathEdgeLane = new Map();
+            mainPaths.forEach((path, pathIndex) => {
+                const side = pathIndex % 2 === 0 ? -1 : 1;
+                const depth = Math.floor(pathIndex / 2);
+                const factor = Math.max(0.24, 0.96 - depth * 0.15);
+                const lane = { side, factor, pathIndex };
+
+                path.nodes.forEach(id => {
+                    if (!nodeLane.has(id)) nodeLane.set(id, lane);
+                });
+                path.edges.forEach(edge => {
+                    if (!pathEdgeLane.has(edge.key)) pathEdgeLane.set(edge.key, lane);
+                });
+            });
+
+            const maxLayerSize = Math.max(...layers.map(layer => layer.length));
+            const endLayerSize = Math.max(layers[0].length, layers[maxLayer].length);
+            const nodeGap = Math.max(52, Math.min(78, 720 / Math.max(1, Math.sqrt(nodeIds.length))));
+            const layerGap = Math.max(72, Math.min(118, 1040 / Math.max(1, maxLayer)));
+            const endSpread = Math.max(84, (endLayerSize - 1) * nodeGap + 42);
+            const ellipseSpread = Math.min(760, Math.max(330, maxLayer * layerGap * 0.52));
+            const middleSpread = Math.max(
+                ellipseSpread,
+                (maxLayerSize - 1) * nodeGap + 150,
+                Math.sqrt(Math.max(edgeList.length, nodeIds.length)) * 42
+            );
+            const layerSpread = (layer, count) => {
+                if (maxLayer <= 0) return middleSpread;
+                const t = layer / maxLayer;
+                const olive = endSpread + (middleSpread - endSpread) * Math.pow(Math.sin(Math.PI * t), 0.64);
+                return Math.max(olive, (count - 1) * nodeGap + 42);
+            };
+            const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+            const xById = new Map();
+            const slotXById = new Map();
+            const layerOrderBeforeTracks = new Map();
+            layers.forEach(layer => layer.forEach((id, i) => layerOrderBeforeTracks.set(id, i)));
+
+            const interiorSlotX = (index, count, spread) => {
+                if (count <= 1) return 0;
+                const centered = (index / (count - 1)) * 2 - 1;
+                return Math.sign(centered) * Math.pow(Math.abs(centered), 0.9) * (spread * 0.34);
+            };
+            const trackSlotX = (id, layerIndex, count, spread) => {
+                const lane = nodeLane.get(id);
+                if (lane) {
+                    const t = maxLayer <= 0 ? 0.5 : layerIndex / maxLayer;
+                    const radius = (spread / 2) * Math.pow(Math.sin(Math.PI * t), 0.18);
+                    return lane.side * radius * lane.factor;
+                }
+
+                return interiorSlotX(layerOrderBeforeTracks.get(id) ?? 0, count, spread);
+            };
+
+            layers.forEach((layer, layerIndex) => {
+                const spread = layerSpread(layerIndex, layer.length);
+                layer.sort((a, b) =>
+                    trackSlotX(a, layerIndex, layer.length, spread) -
+                    trackSlotX(b, layerIndex, layer.length, spread)
+                );
+            });
+
+            const resolveLayerX = (layerIndex, desired) => {
+                const layer = layers[layerIndex];
+                if (!layer.length) return;
+                const spread = layerSpread(layerIndex, layer.length);
+                const minX = -spread / 2;
+                const maxX = spread / 2;
+
+                if (layer.length === 1) {
+                    const id = layer[0];
+                    xById.set(id, clamp(desired.get(id) ?? xById.get(id) ?? slotXById.get(id) ?? 0, minX, maxX));
+                    return;
+                }
+
+                const xs = layer.map((id, i) => {
+                    const lower = minX + i * nodeGap;
+                    const upper = maxX - (layer.length - 1 - i) * nodeGap;
+                    const fallback = slotXById.get(id) ?? trackSlotX(id, layerIndex, layer.length, spread);
+                    return clamp(desired.get(id) ?? xById.get(id) ?? fallback, lower, upper);
+                });
+
+                for (let i = 1; i < xs.length; i++) xs[i] = Math.max(xs[i], xs[i - 1] + nodeGap);
+                for (let i = xs.length - 2; i >= 0; i--) xs[i] = Math.min(xs[i], xs[i + 1] - nodeGap);
+                layer.forEach((id, i) => xById.set(id, xs[i]));
+            };
+
+            layers.forEach((layer, layerIndex) => {
+                const desired = new Map();
+                const spread = layerSpread(layerIndex, layer.length);
+                layer.forEach((id, i) => {
+                    const x = trackSlotX(id, layerIndex, layer.length, spread);
+                    slotXById.set(id, x);
+                    desired.set(id, x);
+                });
+                resolveLayerX(layerIndex, desired);
+            });
+
+            const neighborAverageX = (id, side) => {
+                const ownLayer = layerOf.get(id);
+                const candidates = neighborBySide.get(id)[side].filter(next => layerOf.get(next) !== ownLayer);
+                if (!candidates.length) return null;
+
+                let total = 0;
+                let weight = 0;
+                candidates.forEach(next => {
+                    const layerDelta = Math.max(1, Math.abs(layerOf.get(next) - ownLayer));
+                    const w = 1 / layerDelta;
+                    total += (xById.get(next) ?? 0) * w;
+                    weight += w;
+                });
+                return weight ? total / weight : null;
+            };
+
+            for (let pass = 0; pass < 12; pass++) {
+                for (let layer = 1; layer <= maxLayer; layer++) {
+                    const desired = new Map();
+                    layers[layer].forEach(id => {
+                        const avg = neighborAverageX(id, 'left');
+                        const slot = slotXById.get(id) ?? xById.get(id) ?? 0;
+                        const current = xById.get(id) ?? slot;
+                        const trackWeight = nodeLane.has(id) ? 0.58 : 0.38;
+                        desired.set(id, avg == null ? slot : avg * (0.88 - trackWeight) + slot * trackWeight + current * 0.12);
+                    });
+                    resolveLayerX(layer, desired);
+                }
+                for (let layer = maxLayer - 1; layer >= 0; layer--) {
+                    const desired = new Map();
+                    layers[layer].forEach(id => {
+                        const avg = neighborAverageX(id, 'right');
+                        const slot = slotXById.get(id) ?? xById.get(id) ?? 0;
+                        const current = xById.get(id) ?? slot;
+                        const trackWeight = nodeLane.has(id) ? 0.58 : 0.38;
+                        desired.set(id, avg == null ? slot : avg * (0.88 - trackWeight) + slot * trackWeight + current * 0.12);
+                    });
+                    resolveLayerX(layer, desired);
+                }
+            }
+
+            cyInstance.batch(() => {
+                nodeIds.forEach(id => {
+                    const layer = layerOf.get(id);
+                    nodeById.get(id).position({
+                        x: xById.get(id) ?? 0,
+                        y: (maxLayer / 2 - layer) * layerGap
+                    });
+                });
+            });
+
+            const edgeHash = (value) => {
+                let hash = 0;
+                for (let i = 0; i < value.length; i++) hash = ((hash << 5) - hash + value.charCodeAt(i)) | 0;
+                return Math.abs(hash);
+            };
+
+            edges.forEach(edge => {
+                const sourceId = edge.source().id();
+                const targetId = edge.target().id();
+                const sourceLayer = layerOf.get(sourceId);
+                const targetLayer = layerOf.get(targetId);
+                const span = Math.abs(targetLayer - sourceLayer);
+                const sourceX = edge.source().position().x;
+                const targetX = edge.target().position().x;
+                const midX = (sourceX + targetX) / 2;
+                const flowFrom = sourceLayer <= targetLayer ? sourceId : targetId;
+                const flowTo = sourceLayer <= targetLayer ? targetId : sourceId;
+                const lane = pathEdgeLane.get(flowKey(flowFrom, flowTo)) ?? nodeLane.get(flowFrom) ?? nodeLane.get(flowTo);
+                const jitter = lane ? 0 : ((edgeHash(edge.id()) % 7) - 3) * 2;
+                let curveSide = lane?.side ?? Math.sign(midX);
+                if (curveSide === 0) curveSide = (edgeHash(edge.id()) % 2) ? 1 : -1;
+
+                const actualDirection = sourceLayer <= targetLayer ? 1 : -1;
+                const curveBase = lane
+                    ? Math.min(42, 18 + span * 4)
+                    : (span === 0 ? 74 : Math.min(116, 26 + span * 10 + Math.abs(targetX - sourceX) * 0.035));
+                let curveDist = curveSide * actualDirection * curveBase + jitter;
+                if (Math.abs(curveDist) < 16) curveDist = curveSide * actualDirection * 16;
+
+                edge.style({
+                    'control-point-distances': curveDist,
+                    'control-point-weights': 0.5,
+                    'source-arrow-shape': sourceLayer > targetLayer ? 'triangle' : 'none',
+                    'target-arrow-shape': sourceLayer > targetLayer ? 'none' : 'triangle',
+                    'source-arrow-color': '#999',
+                    'target-arrow-color': '#999'
+                });
+            });
+
+            cyInstance.fit(50);
+        }
+
+
+        // === 2. 2D 交互逻辑 (SVG) ===
+        function render2D() {
+            const container = document.getElementById('svg-container');
+            container.innerHTML = '';
+            const { nodes, edges } = state.data;
+            if(!nodes.length) return;
+
+            // 坐标映射
+            let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+            const pts = nodes.map(n => ({ x: n.position.x, y: -n.position.y, id: n.id })); // Y取反
+            pts.forEach(p => { 
+                if(p.x < minX) minX = p.x; if(p.x > maxX) maxX = p.x;
+                if(p.y < minY) minY = p.y; if(p.y > maxY) maxY = p.y;
+            });
+
+            const width = maxX - minX + 40;
+            const height = maxY - minY + 40;
+            
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("viewBox", `${minX-20} ${minY-20} ${width} ${height}`);
+            
+            // 绘制边
+            edges.forEach(e => {
+                const pathData = e.path.map(p => `${p.x},${-p.y}`).join(" ");
+                const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+                poly.setAttribute("points", pathData);
+                poly.setAttribute("class", "mine-edge");
+                poly.onclick = (evt) => { evt.stopPropagation(); selectItem(e.id); };
+                svg.appendChild(poly);
+                state.svgElements[e.id] = poly;
+            });
+
+            // 绘制节点
+            nodes.forEach(n => {
+                const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                c.setAttribute("cx", n.position.x);
+                c.setAttribute("cy", -n.position.y);
+                c.setAttribute("r", 4);
+                
+                // 应用状态样式
+                let cls = "mine-node";
+                const type = state.nodeProps[n.id]?.type;
+                if(type === 'inlet') cls += " status-inlet";
+                if(type === 'outlet') cls += " status-outlet";
+                c.setAttribute("class", cls);
+
+                c.id = `svg-node-${n.id}`;
+                c.onclick = (evt) => { evt.stopPropagation(); selectItem(n.id); };
+                c.oncontextmenu = (evt) => {
+                    evt.preventDefault();
+                    ctxMenu.show(evt.clientX, evt.clientY, n.id);
+                };
+                svg.appendChild(c);
+                state.svgElements[n.id] = c;
+            });
+
+            container.appendChild(svg);
+        }
+
+        // === 3. 网络图逻辑 (Cytoscape) ===
+        function buildNetworkViewData() {
+            const { nodes, edges } = state.data;
+            if (!state.mergeLinearPaths) {
+                return {
+                    nodes: nodes.map(n => ({
+                        id: n.id,
+                        label: n.id,
+                        type: state.nodeProps[n.id]?.type || 'normal',
+                        classes: state.nodeProps[n.id]?.type || 'normal'
+                    })),
+                    edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target }))
+                };
+            }
+
+            const nodeIds = nodes.map(n => n.id);
+            const nodeSet = new Set(nodeIds);
+            const adjacency = new Map(nodeIds.map(id => [id, []]));
+            edges.forEach(edge => {
+                if (!nodeSet.has(edge.source) || !nodeSet.has(edge.target)) return;
+                adjacency.get(edge.source).push({ edge, other: edge.target });
+                adjacency.get(edge.target).push({ edge, other: edge.source });
+            });
+
+            const isAnchor = (id) => {
+                const type = state.nodeProps[id]?.type;
+                return type === 'inlet' || type === 'outlet' || adjacency.get(id).length !== 2;
+            };
+            const outputNodes = new Map();
+            const outputEdges = new Map();
+            const visitedEdges = new Set();
+            const mergedMemberIds = new Set();
+            let mergeIndex = 0;
+
+            const addNode = (id, options = {}) => {
+                if (outputNodes.has(id)) return;
+                const type = options.type ?? state.nodeProps[id]?.type ?? 'normal';
+                outputNodes.set(id, {
+                    id,
+                    label: options.label ?? id,
+                    type,
+                    members: options.members ?? [id],
+                    classes: options.classes ?? type
+                });
+            };
+            const addEdge = (id, source, target) => {
+                if (!source || !target || source === target || outputEdges.has(id)) return;
+                outputEdges.set(id, { id, source, target });
+            };
+            const orientedEdge = (edge, fromNode, toNode, mergedFrom, mergedTo, id) => {
+                if (edge.source === fromNode && edge.target === toNode) addEdge(id, mergedFrom, mergedTo);
+                else if (edge.source === toNode && edge.target === fromNode) addEdge(id, mergedTo, mergedFrom);
+                else addEdge(id, mergedFrom, mergedTo);
+            };
+
+            nodeIds.forEach(id => {
+                if (isAnchor(id)) addNode(id);
+            });
+
+            nodeIds.filter(isAnchor).forEach(anchorId => {
+                adjacency.get(anchorId).forEach(({ edge, other }) => {
+                    if (visitedEdges.has(edge.id)) return;
+
+                    const chainNodes = [];
+                    const chainEdges = [edge];
+                    let previous = anchorId;
+                    let current = other;
+                    visitedEdges.add(edge.id);
+
+                    while (!isAnchor(current)) {
+                        chainNodes.push(current);
+                        const nextStep = adjacency.get(current).find(item =>
+                            item.other !== previous && !visitedEdges.has(item.edge.id)
+                        );
+                        if (!nextStep) break;
+
+                        previous = current;
+                        current = nextStep.other;
+                        chainEdges.push(nextStep.edge);
+                        visitedEdges.add(nextStep.edge.id);
+                    }
+
+                    const endAnchor = isAnchor(current) ? current : null;
+                    if (endAnchor) addNode(endAnchor);
+
+                    if (chainNodes.length > 1) {
+                        let mergeId;
+                        do {
+                            mergeId = `merge_node_${mergeIndex++}`;
+                        } while (nodeSet.has(mergeId) || outputNodes.has(mergeId));
+                        const label = `${chainNodes[0]}-${chainNodes[chainNodes.length - 1]} (${chainNodes.length})`;
+                        chainNodes.forEach(id => mergedMemberIds.add(id));
+                        addNode(mergeId, {
+                            label,
+                            members: chainNodes,
+                            classes: 'merged'
+                        });
+                        orientedEdge(chainEdges[0], anchorId, chainNodes[0], anchorId, mergeId, `${mergeId}_a`);
+                        if (endAnchor) {
+                            const lastEdge = chainEdges[chainEdges.length - 1];
+                            orientedEdge(lastEdge, chainNodes[chainNodes.length - 1], endAnchor, mergeId, endAnchor, `${mergeId}_b`);
+                        }
+                    } else {
+                        chainNodes.forEach(id => addNode(id));
+                        chainEdges.forEach(e => {
+                            addNode(e.source);
+                            addNode(e.target);
+                            addEdge(e.id, e.source, e.target);
+                        });
+                    }
+                });
+            });
+
+            edges.forEach(edge => {
+                if (visitedEdges.has(edge.id)) return;
+                addNode(edge.source);
+                addNode(edge.target);
+                addEdge(edge.id, edge.source, edge.target);
+            });
+
+            nodeIds.forEach(id => {
+                if (!mergedMemberIds.has(id)) addNode(id);
+            });
+            return {
+                nodes: [...outputNodes.values()],
+                edges: [...outputEdges.values()]
+            };
+        }
+
+        function renderNetwork() {
+            const { nodes, edges } = buildNetworkViewData();
+            const elements = [];
+
+            nodes.forEach(n => {
+                elements.push({ 
+                    data: { id: n.id, label: n.label, members: n.members?.join(', ') || n.id }, 
+                    classes: n.classes || 'normal' 
+                });
+            });
+
+            edges.forEach(e => {
+                elements.push({ 
+                    data: { id: e.id, source: e.source, target: e.target } 
+                });
+            });
+
+            if(cy) cy.destroy();
+            cy = cytoscape({
+                container: document.getElementById('view-net'),
+                elements: elements,
+                style: [
+                    {
+                        selector: 'node',
+                        style: {
+                            'label': 'data(label)', 'font-size': 10, 'color': '#333',
+                            'width': 20, 'height': 20, 'background-color': '#fff',
+                            'border-width': 2, 'border-color': '#666'
+                        }
+                    },
+                    {
+                        selector: '.inlet', style: { 'background-color': '#52c41a', 'border-color': '#237804', 'color': '#fff' }
+                    },
+                    {
+                        selector: '.outlet', style: { 'background-color': '#f5222d', 'border-color': '#a8071a', 'shape': 'rectangle', 'color': '#fff' }
+                    },
+                    {
+                        selector: '.merged', style: { 'background-color': '#f0f5ff', 'border-color': '#597ef7', 'shape': 'round-rectangle', 'width': 34, 'height': 18, 'font-size': 9 }
+                    },
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 1.5, 'line-color': '#999', 'target-arrow-color': '#999',
+                            'source-arrow-color': '#999', 'source-arrow-shape': 'none',
+                            'target-arrow-shape': 'triangle', 'arrow-scale': 0.8,
+                            'curve-style': 'unbundled-bezier', // 关键：允许手动控制曲线
+                            'control-point-distances': 0,
+                            'control-point-weights': 0.5
+                        }
+                    },
+                    {
+                        selector: ':selected', style: { 'border-color': '#faad14', 'border-width': 4, 'line-color': '#faad14', 'source-arrow-color': '#faad14', 'target-arrow-color': '#faad14' }
+                    }
+                ],
+                layout: { name: 'preset' } // 使用 preset，因为我们在 runVentilationLayout 中手动计算位置
+            });
+
+            cy.on('tap', (e) => {
+                if(e.target === cy) selectItem(null);
+                else selectItem(e.target.id());
+            });
+
+            // 运行自定义算法
+            runVentilationLayout(cy);
+        }
+
+        // === 4. Three.js 简易逻辑 ===
+        const threeObj = { scene: null, camera: null, objGroup: null, linesGroup: null };
+        function initThree() {
+            const container = document.getElementById('view-3d');
+            const w = container.clientWidth, h = container.clientHeight;
+            
+            threeObj.scene = new THREE.Scene();
+            threeObj.scene.background = new THREE.Color(0x111111);
+            
+            threeObj.camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 10000);
+            threeObj.camera.position.set(0, 200, 400);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(w, h);
+            container.appendChild(renderer.domElement);
+
+            const controls = new OrbitControls(threeObj.camera, renderer.domElement);
+            
+            threeObj.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            threeObj.scene.add(new THREE.DirectionalLight(0xffffff, 0.8));
+            threeObj.scene.add(new THREE.AxesHelper(1000));
+
+            threeObj.objGroup = new THREE.Group();
+            threeObj.linesGroup = new THREE.Group();
+            threeObj.scene.add(threeObj.objGroup);
+            threeObj.scene.add(threeObj.linesGroup);
+
+            function animate() { requestAnimationFrame(animate); renderer.render(threeObj.scene, threeObj.camera); }
+            animate();
+            
+            // 响应窗口
+            window.addEventListener('resize', () => {
+                const nw = container.clientWidth, nh = container.clientHeight;
+                threeObj.camera.aspect = nw/nh; threeObj.camera.updateProjectionMatrix();
+                renderer.setSize(nw, nh);
+            });
+        }
+        
+        function render3D() {
+            threeObj.linesGroup.clear();
+            const mat = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+            state.data.edges.forEach(e => {
+                const pts = e.path.map(p => new THREE.Vector3(p.x, p.y, p.z));
+                const geo = new THREE.BufferGeometry().setFromPoints(pts);
+                threeObj.linesGroup.add(new THREE.Line(geo, mat));
+            });
+            // Focus
+            if(state.data.nodes[0]) {
+                const p = state.data.nodes[0].position;
+                threeObj.camera.lookAt(p.x, p.y, p.z);
+            }
+        }
+
+        // === 5. 通用工具与交互 ===
+        function selectItem(id) {
+            state.selection = id;
+            // 2D 高亮
+            document.querySelectorAll('.hl-node, .hl-edge').forEach(el => el.classList.remove('hl-node', 'hl-edge'));
+            if(id && state.svgElements[id]) {
+                const el = state.svgElements[id];
+                el.classList.add(el.tagName === 'circle' ? 'hl-node' : 'hl-edge');
+            }
+            // 3D 高亮 (略，逻辑同前)
+            // Net 高亮
+            if(cy) { cy.$(':selected').unselect(); if(id) cy.$('#'+id).select(); }
+        }
+
+        const ctxMenu = {
+            el: document.getElementById('context-menu'),
+            targetId: null,
+            show: (x, y, id) => {
+                ctxMenu.targetId = id;
+                ctxMenu.el.style.left = x + 'px';
+                ctxMenu.el.style.top = y + 'px';
+                ctxMenu.el.style.display = 'block';
+            },
+            hide: () => ctxMenu.el.style.display = 'none'
+        };
+        document.addEventListener('click', ctxMenu.hide);
+
+        // 初始化
+        initThree();
+        
+        // 文件监听
+        document.getElementById('file-json').addEventListener('change', (e) => {
+            const f = e.target.files[0];
+            if(f) {
+                const r = new FileReader();
+                r.onload = (evt) => {
+                    state.data = JSON.parse(evt.target.result);
+                    render2D();
+                    render3D();
+                    renderNetwork();
+                };
+                r.readAsText(f);
+            }
+        });
+        
+        document.getElementById('file-obj').addEventListener('change', (e) => {
+            const f = e.target.files[0];
+            if(f) {
+                const r = new FileReader();
+                r.onload = (evt) => {
+                    new OBJLoader().parse(evt.target.result).traverse(c => {
+                        if(c.isMesh) {
+                             c.material = new THREE.MeshLambertMaterial({color:0x888888});
+                             threeObj.objGroup.add(c);
+                             state.loadedMeshes[c.name] = c; 
+                        }
+                    });
+                };
+                r.readAsText(f);
+            }
+        });
+
+    </script>
+</body>
+</html>

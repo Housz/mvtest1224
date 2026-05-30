@@ -1,0 +1,26 @@
+body_id,unit_id,unit_name,unit_type,layer_order,roof_surface_id,floor_surface_id,color,confidence
+GB_0,GU_0,1. Cover 第四系表土覆盖 - 表土 (Overburden),overburden,0,SURF_0_roof,SURF_0_floor,#a87545,1
+GB_1,GU_1,2. C1 顶板泥岩 - 泥岩 (Mudstone),roofMud,1,SURF_1_roof,SURF_1_floor,#5f6f78,1
+GB_2,GU_2,3. C1 主煤层 - 煤层 (Coal Seam),coal,2,SURF_2_roof,SURF_2_floor,#1a1a1a,1
+GB_3,GU_3,4. C1 座底泥岩/古土壤 - 泥岩 (Mudstone),seatEarth,3,SURF_3_roof,SURF_3_floor,#5f6f78,1
+GB_4,GU_4,5. C1 泛滥平原泥岩 - 泥岩 (Mudstone),floodplainMud,4,SURF_4_roof,SURF_4_floor,#5f6f78,1
+GB_5,GU_5,6. C1 天然堤/远砂粉砂岩 - 粉砂岩 (Silt),silt,5,SURF_5_roof,SURF_5_floor,#8fa36b,1
+GB_6,GU_6,7. C1 决口扇细砂岩 - 细砂岩 (F-Sand),fineSand,6,SURF_6_roof,SURF_6_floor,#f0c86a,1
+GB_7,GU_7,8. C1 河道砂岩/侵蚀基底 - 粗砂岩 (C-Sand),basalSand,7,SURF_7_roof,SURF_7_floor,#d99a32,1
+GB_8,GU_8,9. C2 海侵灰岩标志层 - 灰岩 (Limestone),limestone,8,SURF_8_roof,SURF_8_floor,#6fb7c8,1
+GB_9,GU_9,10. C2 海相顶板泥岩 - 泥岩 (Mudstone),roofMud,9,SURF_9_roof,SURF_9_floor,#5f6f78,1
+GB_10,GU_10,11. C2 上分层煤 - 煤层 (Coal Seam),coal,10,SURF_10_roof,SURF_10_floor,#1a1a1a,1
+GB_11,GU_11,12. C2 煤层夹矸 - 泥岩 (Mudstone),parting,11,SURF_11_roof,SURF_11_floor,#5f6f78,1
+GB_12,GU_12,13. C2 下分层煤 - 煤层 (Coal Seam),coal,12,SURF_12_roof,SURF_12_floor,#1a1a1a,1
+GB_13,GU_13,14. C2 座底泥岩/古土壤 - 泥岩 (Mudstone),seatEarth,13,SURF_13_roof,SURF_13_floor,#5f6f78,1
+GB_14,GU_14,15. C2 泛滥平原泥岩 - 泥岩 (Mudstone),floodplainMud,14,SURF_14_roof,SURF_14_floor,#5f6f78,1
+GB_15,GU_15,16. C2 天然堤/远砂粉砂岩 - 粉砂岩 (Silt),silt,15,SURF_15_roof,SURF_15_floor,#8fa36b,1
+GB_16,GU_16,17. C2 决口扇细砂岩 - 细砂岩 (F-Sand),fineSand,16,SURF_16_roof,SURF_16_floor,#f0c86a,1
+GB_17,GU_17,18. C2 河道砂岩/侵蚀基底 - 粗砂岩 (C-Sand),basalSand,17,SURF_17_roof,SURF_17_floor,#d99a32,1
+GB_18,GU_18,19. C3 顶板泥岩 - 泥岩 (Mudstone),roofMud,18,SURF_18_roof,SURF_18_floor,#5f6f78,1
+GB_19,GU_19,20. C3 主煤层 - 煤层 (Coal Seam),coal,19,SURF_19_roof,SURF_19_floor,#1a1a1a,1
+GB_20,GU_20,21. C3 座底泥岩/古土壤 - 泥岩 (Mudstone),seatEarth,20,SURF_20_roof,SURF_20_floor,#5f6f78,1
+GB_21,GU_21,22. C3 泛滥平原泥岩 - 泥岩 (Mudstone),floodplainMud,21,SURF_21_roof,SURF_21_floor,#5f6f78,1
+GB_22,GU_22,23. C3 天然堤/远砂粉砂岩 - 粉砂岩 (Silt),silt,22,SURF_22_roof,SURF_22_floor,#8fa36b,1
+GB_23,GU_23,24. C3 决口扇细砂岩 - 细砂岩 (F-Sand),fineSand,23,SURF_23_roof,SURF_23_floor,#f0c86a,1
+GB_24,GU_24,25. C3 河道砂岩/侵蚀基底 - 粗砂岩 (C-Sand),basalSand,24,SURF_24_roof,SURF_24_floor,#d99a32,1

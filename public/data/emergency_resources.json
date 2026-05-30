@@ -1,0 +1,33 @@
+{
+  "datasetType": "EmergencyResources",
+  "version": "1.0",
+  "metadata": {
+    "createdBy": "MineVis DataGenerator",
+    "createdAt": "2026-05-15T07:26:22.724Z",
+    "validation": {
+      "valid": true,
+      "errors": [],
+      "warnings": []
+    }
+  },
+  "resources": [
+    {
+      "resourceId": "ER_001",
+      "label": "Exit 001",
+      "resourceType": "exit",
+      "status": "available",
+      "capacity": 999,
+      "position": {
+        "x": 500.00601245129894,
+        "y": -38.362131543512405,
+        "z": -9.37754693246493
+      },
+      "roadwayAnchor": {
+        "type": "node",
+        "edgeId": null,
+        "nodeId": "Node_45",
+        "ratio": null
+      }
+    }
+  ]
+}

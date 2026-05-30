@@ -1,0 +1,5 @@
+surface_id,mesh_part_id,body_id,surface_type,confidence
+SURF_Sandstone_2,Sandstone_2,GB_Sandstone_2,stratigraphic_boundary,1
+SURF_Siltstone,Siltstone,GB_Siltstone,stratigraphic_boundary,1
+SURF_Shale,Shale,GB_Shale,stratigraphic_boundary,1
+SURF_Sandstone_1,Sandstone_1,GB_Sandstone_1,stratigraphic_boundary,1

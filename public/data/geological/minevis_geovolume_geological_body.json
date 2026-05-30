@@ -1,0 +1,248 @@
+{
+  "datasetType": "GeologicalBody",
+  "semanticClass": "GeologicalBody",
+  "version": "1.0",
+  "representationProfile": "hybrid",
+  "metadata": {
+    "createdBy": "MineVis DataGenerator GeoVolume",
+    "sourceTool": "GeoVolume/viewer_multi_attri_with_fault.html",
+    "exportKind": "geological-body",
+    "generatedAt": "2026-05-27T15:38:59.898Z",
+    "bounds": {
+      "min": [
+        0,
+        0,
+        0
+      ],
+      "max": [
+        2000,
+        2000,
+        750
+      ]
+    },
+    "grid": {
+      "width": 50,
+      "height": 50,
+      "depth": 50,
+      "totalVoxels": 125000
+    },
+    "binaryFile": "attributes.bin",
+    "attributes": [
+      {
+        "name": "Lithology ID",
+        "key": "lithology_id",
+        "dtype": "uint8",
+        "offset": 0,
+        "length": 125000,
+        "min": 2,
+        "max": 6,
+        "is_discrete": true
+      },
+      {
+        "name": "Density (g/cm3)",
+        "key": "density_(g/cm3)",
+        "dtype": "float32",
+        "offset": 125000,
+        "length": 125000,
+        "min": -0.22514577209949493,
+        "max": 2.941232681274414,
+        "is_discrete": false
+      },
+      {
+        "name": "Au Grade (g/t)",
+        "key": "au_grade_(g/t)",
+        "dtype": "float32",
+        "offset": 625000,
+        "length": 125000,
+        "min": 0.00000671775478622294,
+        "max": 13.85742473602295,
+        "is_discrete": false
+      },
+      {
+        "name": "RMR (Engineering)",
+        "key": "rmr_(engineering)",
+        "dtype": "uint8",
+        "offset": 1125000,
+        "length": 125000,
+        "min": 20,
+        "max": 89,
+        "is_discrete": false
+      }
+    ]
+  },
+  "units": [
+    {
+      "id": "GU_Sandstone_2",
+      "geologicalUnitId": "GU_Sandstone_2",
+      "geologicalUnitName": "Sandstone_2",
+      "geologicalUnitType": "stratigraphic_surface",
+      "layerOrder": 0
+    },
+    {
+      "id": "GU_Siltstone",
+      "geologicalUnitId": "GU_Siltstone",
+      "geologicalUnitName": "Siltstone",
+      "geologicalUnitType": "stratigraphic_surface",
+      "layerOrder": 1
+    },
+    {
+      "id": "GU_Shale",
+      "geologicalUnitId": "GU_Shale",
+      "geologicalUnitName": "Shale",
+      "geologicalUnitType": "stratigraphic_surface",
+      "layerOrder": 2
+    },
+    {
+      "id": "GU_Sandstone_1",
+      "geologicalUnitId": "GU_Sandstone_1",
+      "geologicalUnitName": "Sandstone_1",
+      "geologicalUnitType": "stratigraphic_surface",
+      "layerOrder": 3
+    }
+  ],
+  "bodies": [
+    {
+      "bodyId": "GB_Sandstone_2",
+      "bodyName": "Sandstone_2",
+      "geologicalUnitId": "GU_Sandstone_2",
+      "geologicalUnitType": "stratigraphic_domain"
+    },
+    {
+      "bodyId": "GB_Siltstone",
+      "bodyName": "Siltstone",
+      "geologicalUnitId": "GU_Siltstone",
+      "geologicalUnitType": "stratigraphic_domain"
+    },
+    {
+      "bodyId": "GB_Shale",
+      "bodyName": "Shale",
+      "geologicalUnitId": "GU_Shale",
+      "geologicalUnitType": "stratigraphic_domain"
+    },
+    {
+      "bodyId": "GB_Sandstone_1",
+      "bodyName": "Sandstone_1",
+      "geologicalUnitId": "GU_Sandstone_1",
+      "geologicalUnitType": "stratigraphic_domain"
+    }
+  ],
+  "surfaces": [
+    {
+      "surfaceId": "SURF_Main_Fault",
+      "surfaceType": "faultSurface",
+      "geologicalUnitId": null,
+      "layerOrder": 0,
+      "meshPartId": "surfaces/Surface_Main_Fault.stl",
+      "geometry": {
+        "form": "STL",
+        "path": "surfaces/Surface_Main_Fault.stl"
+      },
+      "color": "#ff3322",
+      "opacity": 0.45
+    },
+    {
+      "surfaceId": "SURF_Sandstone_2",
+      "surfaceType": "stratigraphicBoundary",
+      "geologicalUnitId": "GU_Sandstone_2",
+      "layerOrder": 1,
+      "meshPartId": "surfaces/Surface_Sandstone_2.stl",
+      "geometry": {
+        "form": "STL",
+        "path": "surfaces/Surface_Sandstone_2.stl"
+      },
+      "color": "#ffbe00",
+      "opacity": 0.35
+    },
+    {
+      "surfaceId": "SURF_Siltstone",
+      "surfaceType": "stratigraphicBoundary",
+      "geologicalUnitId": "GU_Siltstone",
+      "layerOrder": 2,
+      "meshPartId": "surfaces/Surface_Siltstone.stl",
+      "geometry": {
+        "form": "STL",
+        "path": "surfaces/Surface_Siltstone.stl"
+      },
+      "color": "#443988",
+      "opacity": 0.35
+    },
+    {
+      "surfaceId": "SURF_Shale",
+      "surfaceType": "stratigraphicBoundary",
+      "geologicalUnitId": "GU_Shale",
+      "layerOrder": 3,
+      "meshPartId": "surfaces/Surface_Shale.stl",
+      "geometry": {
+        "form": "STL",
+        "path": "surfaces/Surface_Shale.stl"
+      },
+      "color": "#728f02",
+      "opacity": 0.35
+    },
+    {
+      "surfaceId": "SURF_Sandstone_1",
+      "surfaceType": "stratigraphicBoundary",
+      "geologicalUnitId": "GU_Sandstone_1",
+      "layerOrder": 4,
+      "meshPartId": "surfaces/Surface_Sandstone_1.stl",
+      "geometry": {
+        "form": "STL",
+        "path": "surfaces/Surface_Sandstone_1.stl"
+      },
+      "color": "#9f0052",
+      "opacity": 0.35
+    }
+  ],
+  "attributes": [
+    {
+      "attributeName": "lithology_id",
+      "label": "Lithology ID",
+      "valueType": "uint8",
+      "min": 2,
+      "max": 6
+    },
+    {
+      "attributeName": "density_(g/cm3)",
+      "label": "Density (g/cm3)",
+      "valueType": "float32",
+      "min": -0.22514577209949493,
+      "max": 2.941232681274414
+    },
+    {
+      "attributeName": "au_grade_(g/t)",
+      "label": "Au Grade (g/t)",
+      "valueType": "float32",
+      "min": 0.00000671775478622294,
+      "max": 13.85742473602295
+    },
+    {
+      "attributeName": "rmr_(engineering)",
+      "label": "RMR (Engineering)",
+      "valueType": "uint8",
+      "min": 20,
+      "max": 89
+    }
+  ],
+  "relations": [
+    {
+      "relationType": "surfaceBelongsToGeologicalUnit",
+      "surfaceId": "SURF_Sandstone_2",
+      "geologicalUnitId": "GU_Sandstone_2"
+    },
+    {
+      "relationType": "surfaceBelongsToGeologicalUnit",
+      "surfaceId": "SURF_Siltstone",
+      "geologicalUnitId": "GU_Siltstone"
+    },
+    {
+      "relationType": "surfaceBelongsToGeologicalUnit",
+      "surfaceId": "SURF_Shale",
+      "geologicalUnitId": "GU_Shale"
+    },
+    {
+      "relationType": "surfaceBelongsToGeologicalUnit",
+      "surfaceId": "SURF_Sandstone_1",
+      "geologicalUnitId": "GU_Sandstone_1"
+    }
+  ]
+}
