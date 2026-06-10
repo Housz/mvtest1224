@@ -318,13 +318,15 @@ Developer-oriented details such as resolved source adaptors, semantic contracts,
 - `src/core/environmental/EnvironmentalPresets.js`: environmental readings and roadway scalar analysis preset metadata.
 - `src/core/nodes/DataNodes.js`: semantic Data Node definitions.
 - `src/core/datasets/`: runtime dataset classes and data loading registry.
-- `src/core/operators/OperatorNodes.js`: configurator-facing Operator Node definitions.
+- `src/core/operators/OperatorNodes.js`: compatibility facade that exports the aggregated `OperatorNodeDefinitions`.
+- `src/core/operators/environmental/`, `ventilation/`, `emergency/`, and `geology/`: operator family aggregators and operator packages. New operators should live in their own directory with `definition.js`, `runtime.js`, and optional `panels.js` / `views.js` / `sceneLayers.js`.
+- `src/core/operators/shared/`: shared operator runtime helpers, definition factory, canvas helpers, selection sync, and scene-layer utilities.
 - `src/core/operators/OperatorKernels.js`: low-level kernels used internally by operators. These are not editor nodes.
 - `src/core/modules/ModuleNodes.js`: Module Node definitions.
 - `src/core/graph/`: graph model and node definition registry.
 - `src/core/algorithms/FieldSolver.js`: roadway temperature field and mesh coloring algorithms.
 - `src/scene/SceneManager.js`: Three.js scene, OBJ roadway loading, sensor/ventilation picking, layer visibility/opacity.
-- `src/ui/`: node editor, inspector, chart, legend, and related UI helpers.
+- `src/ui/`: node editor, inspector, chart, legend, runtime panel/control/list/table/legend/canvas helpers, and related UI components.
 - `src/utils/colors.js`: colormap definitions and sampling utilities.
 - `public/data/`: bundled demo roadway, sensor registry, environmental readings, ventilation data, people, and emergency resources files.
 

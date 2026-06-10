@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { ViewHelper } from 'three/examples/jsm/helpers/ViewHelper.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { appPath } from '../utils/appPath.js';
 
 export class SceneManager {
   constructor(container) {
@@ -422,7 +423,7 @@ export class SceneManager {
 
     try {
       if (url) {
-        object = await loader.loadAsync(url);
+        object = await loader.loadAsync(appPath(url));
       } else if (text) {
         object = loader.parse(text);
       }

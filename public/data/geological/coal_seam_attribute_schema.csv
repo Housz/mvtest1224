@@ -1,0 +1,27 @@
+attribute_name,unit,value_type,applies_to,description
+thickness,m,number,all,Layer thickness from roof to floor at the sample point.
+elevation,m,number,all,Mid-layer elevation of the sample point.
+confidence,ratio,number,all,"Synthetic confidence, reduced near fault damage zones."
+fault_influence,ratio,number,all,Distance-weighted structural disturbance index.
+uncertainty,ratio,number,all,Synthetic uncertainty driven by faults and local heterogeneity.
+risk_value,ratio,number,all,Lithology-aware geological risk indicator.
+ash,%,number,coal,Coal ash content.
+sulfur,%,number,coal,Coal sulfur content.
+calorific_value,MJ/kg,number,coal,Coal calorific value.
+gas_content,m3/t,number,coal,Coal gas content.
+water_content,%,number,"coal,mudstone,overburden",Water or moisture content.
+coal_quality_index,ratio,number,coal,Composite coal quality index.
+porosity,%,number,"sandstone,siltstone",Effective porosity estimate.
+permeability,mD,number,"sandstone,siltstone",Permeability estimate.
+water_bearing_index,ratio,number,"sandstone,siltstone",Water-bearing potential.
+grain_size_index,ratio,number,sandstone,Relative grain-size indicator.
+strength_index,ratio,number,"sandstone,siltstone,limestone,overburden",Relative rock strength indicator.
+roof_stability_index,ratio,number,"mudstone,siltstone",Relative roof stability indicator.
+clay_content,%,number,mudstone,Clay-rich fraction estimate.
+softening_index,ratio,number,mudstone,Water-softening susceptibility.
+floor_heave_risk,ratio,number,mudstone,Floor heave potential.
+carbonate_purity,%,number,limestone,Carbonate purity estimate.
+karst_water_risk,ratio,number,limestone,Karst or fracture water risk.
+fracture_index,ratio,number,limestone,Fracture development indicator.
+weathering_index,ratio,number,overburden,Weathering intensity indicator.
+loose_layer_water_risk,ratio,number,overburden,Loose cover water risk.

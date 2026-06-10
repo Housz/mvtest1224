@@ -41,11 +41,41 @@ const interpolateSeriesPoints = (points = [], maxPoints = 360) => {
   return result;
 };
 
+const FALLBACK_CHART_WIDTH = 360;
+const FALLBACK_CHART_HEIGHT = 230;
+
+const parsePixelSize = (value) => {
+  const numeric = Number.parseFloat(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+};
+
+const getChartContainerSize = (container) => {
+  const rect = container?.getBoundingClientRect?.();
+  const computed = typeof window !== 'undefined' && container ? window.getComputedStyle?.(container) : null;
+  const width =
+    rect?.width ||
+    container?.clientWidth ||
+    parsePixelSize(container?.style?.width) ||
+    parsePixelSize(computed?.width) ||
+    FALLBACK_CHART_WIDTH;
+  const height =
+    rect?.height ||
+    container?.clientHeight ||
+    parsePixelSize(container?.style?.height) ||
+    parsePixelSize(computed?.height) ||
+    FALLBACK_CHART_HEIGHT;
+  return {
+    width: Math.max(1, Math.round(width)),
+    height: Math.max(1, Math.round(height))
+  };
+};
+
 export class ChartManager {
   constructor(container, sceneManager) {
     this.container = container;
     this.sceneManager = sceneManager;
-    this.chart = echarts.init(container, null, { renderer: 'canvas' });
+    const initialSize = getChartContainerSize(container);
+    this.chart = echarts.init(container, null, { renderer: 'canvas', ...initialSize });
     this.mode = 'overlay';
     this.billboard = null;
     this.currentTime = null;
@@ -80,8 +110,13 @@ export class ChartManager {
     if (this.isDisposed()) return;
     this.container.style.display = flag ? 'block' : 'none';
     if (flag) {
-      this.chart.resize();
+      this.resizeToContainer();
     }
+  }
+
+  resizeToContainer() {
+    if (this.isDisposed()) return;
+    this.chart.resize(getChartContainerSize(this.container));
   }
 
   setTimeChangeHandler(handler) {
@@ -165,7 +200,7 @@ export class ChartManager {
         }
       ]
     });
-    this.chart.resize();
+    this.resizeToContainer();
     this.refreshBillboardTexture();
   }
 

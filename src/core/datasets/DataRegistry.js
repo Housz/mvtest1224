@@ -1,4 +1,5 @@
 import Papa from 'papaparse';
+import { appPath } from '../../utils/appPath.js';
 
 /**
  * DataRegistry holds all dataset instances after loading.
@@ -18,14 +19,14 @@ export class DataRegistry {
   }
 
   async loadCsv(url) {
-    const res = await fetch(url);
+    const res = await fetch(appPath(url));
     const text = await res.text();
     const parsed = Papa.parse(text, { header: true, dynamicTyping: true });
     return parsed.data.filter((row) => Object.keys(row).length > 0);
   }
 
   async loadJson(url) {
-    const res = await fetch(url);
+    const res = await fetch(appPath(url));
     return res.json();
   }
 }

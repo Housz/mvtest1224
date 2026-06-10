@@ -6,6 +6,7 @@ import { NodeDefinitionRegistry } from './core/graph/NodeDefinitionRegistry.js';
 import { GraphModel } from './core/graph/GraphModel.js';
 import { NodeEditor } from './ui/NodeEditor.js';
 import { Inspector } from './ui/Inspector.js';
+import { appPagePath } from './utils/appPath.js';
 
 const app = document.querySelector('#app');
 app.innerHTML = `
@@ -331,7 +332,7 @@ graphFileInput.addEventListener('change', async () => {
 document.querySelector('#btn-open-preview').addEventListener('click', () => {
   const json = graph.serialize();
   localStorage.setItem('minevis.graph', json);
-  window.open('/preview.html', 'minevis-preview');
+  window.open(appPagePath('preview.html'), 'minevis-preview');
 });
 
 window.minevisGraph = graph;

@@ -325,6 +325,11 @@ class VisualContributionRegistry {
       item.cleanup?.();
       this.items.delete(id);
     }
+    this.items.forEach((item) => {
+      item._appliedVisible = undefined;
+      item._appliedOpacity = undefined;
+      item._appliedMuted = undefined;
+    });
     this.applyComposition();
     this.notify();
   }
@@ -847,7 +852,10 @@ async function bootstrap() {
       'selectedSurface',
       'selectedBorehole',
       'selectedStructure',
-      'selectedBlock'
+      'selectedBlock',
+      'selectedAttributeElement',
+      'selectedSectionElement',
+      'selectedGeologicalRegion'
     ].forEach((key) => workspace.context.set(key, null));
     sceneManager.highlightRoadwayEdges?.([]);
     sceneManager.highlightVentilationBranch?.(null);

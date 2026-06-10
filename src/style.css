@@ -3591,6 +3591,123 @@ button:hover {
   background: color-mix(in srgb, var(--function-accent) 78%, #ffffff);
 }
 
+.runtime-shell .geology-dual-range {
+  position: relative;
+  height: 26px;
+  min-width: 0;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.runtime-shell .geology-dual-range-track,
+.runtime-shell .geology-dual-range-selection {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 4px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+}
+
+.runtime-shell .geology-dual-range-track {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.runtime-shell .geology-dual-range-selection {
+  left: var(--min-pct, 0%);
+  right: calc(100% - var(--max-pct, 100%));
+  background: var(--function-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--function-accent) 24%, transparent);
+}
+
+.runtime-shell .geology-dual-range-handle {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  background: var(--function-accent);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.34);
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+  z-index: 2;
+}
+
+.runtime-shell .geology-dual-range-handle.min {
+  left: var(--min-pct, 0%);
+}
+
+.runtime-shell .geology-dual-range-handle.max {
+  left: var(--max-pct, 100%);
+  background: color-mix(in srgb, var(--function-accent) 78%, #ffffff);
+  z-index: 3;
+}
+
+.runtime-shell .geology-dual-range:focus-visible,
+.runtime-shell .geology-dual-range-handle:focus-visible {
+  outline: 2px solid rgba(102, 217, 239, 0.75);
+  outline-offset: 3px;
+}
+
+.runtime-shell .geology-collapsible-section > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  background: rgba(255, 255, 255, 0.045);
+  color: #edf3ff;
+  cursor: pointer;
+  list-style: none;
+}
+
+.runtime-shell .geology-collapsible-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.runtime-shell .geology-collapsible-section > summary strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.runtime-shell .geology-collapsible-section > summary span {
+  min-width: 24px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.075);
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.runtime-shell .geology-collapsible-section > summary::before {
+  content: '+';
+  width: 14px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.runtime-shell .geology-collapsible-section[open] > summary::before {
+  content: '-';
+}
+
+.runtime-shell .geology-collapsible-section > summary {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.runtime-shell .geology-collapsible-section > .geology-object-list {
+  margin-top: 6px;
+}
+
 .runtime-shell .geology-quick-note {
   margin: 2px 0 9px;
   color: var(--muted);
