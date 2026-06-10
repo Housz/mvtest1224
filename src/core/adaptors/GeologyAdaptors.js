@@ -1,5 +1,6 @@
 import Papa from 'papaparse';
 import { collectObjectPaths, extensionOf, fetchText, pickSuggestedRoleMapping } from './adaptorUtils.js';
+import { appPath } from '../../utils/appPath.js';
 
 async function readJsonSource(source, fallback = {}) {
   if (source?.data) return source.data;
@@ -14,7 +15,7 @@ async function readArrayBufferSource(source) {
   if (source?.data instanceof ArrayBuffer) return source.data;
   if (source?.data?.buffer instanceof ArrayBuffer) return source.data.buffer;
   if (source?.path) {
-    const response = await fetch(source.path);
+    const response = await fetch(appPath(source.path));
     if (!response.ok) throw new Error(`Failed to fetch ${source.path}: ${response.status}`);
     return response.arrayBuffer();
   }

@@ -571,7 +571,7 @@ const coalSeamAttributeModelDefaults = {
   sources: {
     descriptor: { label: 'Dataset Descriptor', template: 'Descriptor', path: '', adaptor: 'JSONGraphAdaptor', acceptedFormats: ['json'], required: false },
     elements: { label: 'Attribute Samples Table', template: 'Field', path: `${GEOLOGY_BASE}coal_seam_attribute_grid.csv`, adaptor: 'GeologicalAttributeTableAdaptor', acceptedFormats: ['csv'], required: true },
-    schema: { label: 'Attribute Schema Table', template: 'Field', path: '', adaptor: 'CSVTableAdaptor', acceptedFormats: ['csv'], required: false },
+    schema: { label: 'Attribute Schema Table', template: 'Field', path: `${GEOLOGY_BASE}coal_seam_attribute_schema.csv`, adaptor: 'CSVTableAdaptor', acceptedFormats: ['csv'], required: false },
     relations: { label: 'Relations Source', template: 'Relation', path: '', adaptor: 'CSVTableAdaptor', acceptedFormats: ['csv', 'json'], required: false },
     geometry: { label: 'Support Geometry', template: 'Geometry', path: '', adaptor: 'SurfaceMeshGeologyAdaptor', acceptedFormats: ['obj', 'gltf', 'glb'], required: false },
     model: { label: 'Legacy Single JSON', template: 'Legacy', path: '', adaptor: 'GeologicalAttributeTableAdaptor', acceptedFormats: ['json'], required: false }

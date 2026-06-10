@@ -25,16 +25,121 @@ const KNOWN_ATTRIBUTES = [
   'density',
   'tonnage',
   'thickness',
+  'elevation',
+  'confidence',
+  'fault_influence',
+  'faultInfluence',
   'ash',
   'sulfur',
   'calorificValue',
+  'calorific_value',
   'gasContent',
+  'gas_content',
   'waterContent',
+  'water_content',
+  'coal_quality_index',
+  'porosity',
+  'permeability',
+  'water_bearing_index',
+  'grain_size_index',
+  'strength_index',
+  'roof_stability_index',
+  'clay_content',
+  'softening_index',
+  'floor_heave_risk',
+  'carbonate_purity',
+  'karst_water_risk',
+  'fracture_index',
+  'weathering_index',
+  'loose_layer_water_risk',
   'riskValue',
+  'risk_value',
   'uncertainty',
   'probability',
   'lithology'
 ];
+
+const ATTRIBUTE_ALIAS_TO_SNAKE = {
+  calorificValue: 'calorific_value',
+  gasContent: 'gas_content',
+  waterContent: 'water_content',
+  riskValue: 'risk_value',
+  faultInfluence: 'fault_influence'
+};
+
+const NON_ATTRIBUTE_KEYS = new Set([
+  'id',
+  'elementId',
+  'element_id',
+  'supportElementId',
+  'support_element_id',
+  'blockId',
+  'block_id',
+  'cellId',
+  'modelId',
+  'model_id',
+  'unitId',
+  'unit_id',
+  'seamId',
+  'seam_id',
+  'surfaceId',
+  'surface_id',
+  'orebodyId',
+  'orebody_id',
+  'domainId',
+  'domain_id',
+  'lithology',
+  'unitType',
+  'unit_type',
+  'category',
+  'resourceCategory',
+  'resource_category',
+  'x',
+  'X',
+  'y',
+  'Y',
+  'z',
+  'Z',
+  'centroid',
+  'centroidX',
+  'centroidY',
+  'centroidZ',
+  'centroid_x',
+  'centroid_y',
+  'centroid_z',
+  'gridX',
+  'gridY',
+  'grid_x',
+  'grid_y',
+  'blockSizeX',
+  'blockSizeY',
+  'blockSizeZ',
+  'block_size_x',
+  'block_size_y',
+  'block_size_z',
+  'dx',
+  'dy',
+  'dz',
+  'size',
+  'attributeName',
+  'attributeValue',
+  'attribute_name',
+  'attribute_value',
+  'name',
+  'value',
+  'valueType',
+  'value_type',
+  'unit',
+  'layerOrder',
+  'layer_order'
+]);
+
+function isNumericAttributeColumn(key, value) {
+  if (!key || NON_ATTRIBUTE_KEYS.has(key)) return false;
+  if (value == null || value === '') return false;
+  if (typeof value === 'object') return false;
+  return Number.isFinite(Number(value));
+}
 
 export class GeologicalAttributeModelDataset {
   constructor({
@@ -81,7 +186,12 @@ export class GeologicalAttributeModelDataset {
     Object.keys(this.binaryAttributes || {}).forEach((name) => names.add(name));
     this.elements.forEach((element) => {
       KNOWN_ATTRIBUTES.forEach((key) => {
+        const canonical = ATTRIBUTE_ALIAS_TO_SNAKE[key];
+        if (canonical && element[canonical] != null) return;
         if (element[key] != null) names.add(key);
+      });
+      Object.entries(element).forEach(([key, value]) => {
+        if (isNumericAttributeColumn(key, value)) names.add(key);
       });
     });
     return [...names];

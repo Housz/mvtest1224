@@ -1,5 +1,8 @@
+import { appPath } from '../../utils/appPath.js';
+
 export async function fetchText(path) {
-  const response = await fetch(path);
+  const url = appPath(path);
+  const response = await fetch(url);
   if (!response.ok) throw new Error(`Failed to load ${path}: ${response.status}`);
   return response.text();
 }

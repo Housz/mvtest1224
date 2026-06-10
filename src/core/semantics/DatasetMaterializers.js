@@ -113,6 +113,74 @@ function fieldRoleMapping(mapping, keys = []) {
   return Object.fromEntries(keys.map((key) => [key, mapping[key]]).filter(([, value]) => value));
 }
 
+const GEOLOGICAL_ATTRIBUTE_NON_VALUE_KEYS = new Set([
+  'id',
+  'elementId',
+  'element_id',
+  'supportElementId',
+  'support_element_id',
+  'blockId',
+  'block_id',
+  'modelId',
+  'model_id',
+  'unitId',
+  'unit_id',
+  'seamId',
+  'seam_id',
+  'surfaceId',
+  'surface_id',
+  'lithology',
+  'unitType',
+  'unit_type',
+  'category',
+  'resourceCategory',
+  'resource_category',
+  'x',
+  'X',
+  'y',
+  'Y',
+  'z',
+  'Z',
+  'centroid',
+  'centroidX',
+  'centroidY',
+  'centroidZ',
+  'centroid_x',
+  'centroid_y',
+  'centroid_z',
+  'gridX',
+  'gridY',
+  'grid_x',
+  'grid_y',
+  'blockSizeX',
+  'blockSizeY',
+  'blockSizeZ',
+  'block_size_x',
+  'block_size_y',
+  'block_size_z',
+  'dx',
+  'dy',
+  'dz',
+  'size',
+  'layerOrder',
+  'layer_order',
+  'attributeName',
+  'attributeValue',
+  'attribute_name',
+  'attribute_value',
+  'valueType',
+  'value_type',
+  'name',
+  'value',
+  'unit'
+]);
+
+function isGeologicalAttributeValueColumn(key, value) {
+  if (!key || GEOLOGICAL_ATTRIBUTE_NON_VALUE_KEYS.has(key)) return false;
+  if (value == null || value === '' || typeof value === 'object') return false;
+  return isFiniteNumber(value);
+}
+
 function materializeRoadway({ contract, adaptorResults, roleMapping, sources }) {
   const topology = adaptorResults.topology || {};
   const geometry = adaptorResults.geometry || {};
@@ -1681,6 +1749,9 @@ function materializeGeologicalAttributeModel({ contract, adaptorResults, roleMap
   elements.forEach((element) => {
     ['grade', 'density', 'tonnage', 'thickness', 'ash', 'sulfur', 'calorificValue', 'gasContent', 'waterContent', 'riskValue', 'uncertainty'].forEach((key) => {
       if (element[key] != null && element[key] !== '') attributeNames.add(key);
+    });
+    Object.entries(element).forEach(([key, value]) => {
+      if (isGeologicalAttributeValueColumn(key, value)) attributeNames.add(key);
     });
     if (element.attributeName) attributeNames.add(element.attributeName);
   });
