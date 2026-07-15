@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>GemPy Visual Analytics: Volume + Geological Surfaces</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body { margin: 0; background-color: #050505; color: #fff; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; overflow: hidden; }
+
+        #info { position: absolute; top: 10px; width: 100%; text-align: center; pointer-events: none; z-index: 10; text-shadow: 1px 1px 2px black;}
+        .instruction { font-size: 12px; color: #aaa; margin-top: 4px;}
+
+        #loading { position: absolute; top: 50%; width: 100%; text-align: center; font-size: 24px; font-weight: 300; transition: opacity 0.5s; }
+
+        #tooltip {
+            position: absolute; display: none;
+            background: rgba(15, 15, 20, 0.95);
+            border: 1px solid #555; border-left: 3px solid #4af;
+            padding: 10px; border-radius: 4px; pointer-events: none; z-index: 20;
+            font-family: monospace; font-size: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            min-width: 150px;
+        }
+        .tt-key { color: #888; }
+        .tt-val { color: #eee; font-weight: bold; float: right; margin-left: 15px;}
+        .tt-row { border-bottom: 1px solid #333; padding: 3px 0; clear: both; display: block; overflow: auto;}
+
+        #legend-container {
+            position: absolute; bottom: 20px; left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px; border-radius: 6px;
+            pointer-events: none; user-select: none;
+            backdrop-filter: blur(4px);
+        }
+        #legend-title { font-size: 14px; margin-bottom: 5px; font-weight: bold; color: #ddd; }
+        #legend-bar { width: 200px; height: 16px; margin-bottom: 4px; border: 1px solid #555; }
+        .legend-labels { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; font-family: monospace;}
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <div id="info">
+        GemPy Volume + Geological Surfaces<br/>
+        <div class="instruction">
+            <b>Left Click + Drag</b>: Rotate &nbsp;|&nbsp;
+            <b>CTRL + Click</b>: Query Voxel &nbsp;|&nbsp;
+            <b>GUI</b>: Toggle Surfaces &amp; Attributes
+        </div>
+    </div>
+
+    <div id="loading">Loading Data...</div>
+    <div id="tooltip"></div>
+
+    <div id="legend-container">
+        <div id="legend-title">Attribute</div>
+        <canvas id="legend-bar"></canvas>
+        <div class="legend-labels">
+            <span id="legend-min">0</span>
+            <span id="legend-max">1</span>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+        import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+        let renderer, scene, camera, controls, mesh, material;
+
+        // 多表面管理
+        const surfaceMeshes = {};       // { name: THREE.Mesh }
+        const surfaceDefaults = {};     // { name: { color, opacity } }
+        const roadwayGroup = new THREE.Group();
+        roadwayGroup.name = 'generated-hard-rock-roadway';
+        let roadwayData = null;
+        const roadwayParams = {
+            gradeCutoff: 0,
+            levelCount: 5,
+            faultBuffer: 90,
+            roadwayRadius: 12,
+            showRoadway: true,
+            includeRaises: true,
+            includeOreDrives: true
+        };
+
+        const DATA_BASE_URL = './';
+
+        let meta = null;
+        let fullDataBuffer = null;
+        const dataViews = {};
+        let currentAttrKey = '';
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        // 地层颜色配置（与 GemPy 官方色表一致）
+        const SURFACE_CONFIG = [
+            { file: 'surfaces/Surface_Main_Fault.stl',  name: 'Main_Fault',   color: '#ff3322', opacity: 0.45, isFault: true  },
+            { file: 'surfaces/Surface_Sandstone_2.stl', name: 'Sandstone_2',  color: '#ffbe00', opacity: 0.35, isFault: false },
+            { file: 'surfaces/Surface_Siltstone.stl',   name: 'Siltstone',    color: '#443988', opacity: 0.35, isFault: false },
+            { file: 'surfaces/Surface_Shale.stl',       name: 'Shale',        color: '#728f02', opacity: 0.35, isFault: false },
+            { file: 'surfaces/Surface_Sandstone_1.stl', name: 'Sandstone_1',  color: '#9f0052', opacity: 0.35, isFault: false },
+        ];
+
+        init();
+
+        async function init() {
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x050505);
+            document.body.appendChild(renderer.domElement);
+
+            scene = new THREE.Scene();
+            scene.add(roadwayGroup);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
+            camera.position.set(600, 600, 600);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            try {
+                await loadData();
+                createVolume();
+                addLights();
+                await loadAllSurfaces();
+                setupGUI();
+
+                switchAttribute(meta.attributes[0].key);
+
+                window.addEventListener('resize', onWindowResize);
+                window.addEventListener('mousedown', onMouseDown);
+
+                document.getElementById('loading').style.opacity = 0;
+                setTimeout(() => document.getElementById('loading').style.display = 'none', 500);
+
+                renderer.setAnimationLoop(animate);
+            } catch (e) {
+                document.getElementById('loading').innerText = "Error: " + e.message;
+                console.error(e);
+            }
+        }
+
+        async function loadData() {
+            const metaResp = await fetch(`${DATA_BASE_URL}/model_meta.json`);
+            meta = await metaResp.json();
+
+            const binResp = await fetch(`${DATA_BASE_URL}/${meta.binary_file}`);
+            fullDataBuffer = await binResp.arrayBuffer();
+
+            meta.attributes.forEach(attr => {
+                if (attr.dtype === 'uint8') {
+                    dataViews[attr.key] = new Uint8Array(fullDataBuffer, attr.offset, attr.length);
+                } else if (attr.dtype === 'float32') {
+                    dataViews[attr.key] = new Float32Array(fullDataBuffer, attr.offset, attr.length);
+                }
+            });
+        }
+
+        function addLights() {
+            scene.add(new THREE.AmbientLight(0x404040, 0.6));
+            const d1 = new THREE.DirectionalLight(0xffffff, 0.8);
+            d1.position.set(1, 1, 1);
+            scene.add(d1);
+            const d2 = new THREE.DirectionalLight(0x8888ff, 0.3);
+            d2.position.set(-0.5, -0.2, -1);
+            scene.add(d2);
+        }
+
+        async function loadAllSurfaces() {
+            const loader = new STLLoader();
+            let loaded = 0;
+
+            for (const cfg of SURFACE_CONFIG) {
+                try {
+                    const geometry = await loader.loadAsync(`${DATA_BASE_URL}/${cfg.file}`);
+
+                    const mat = new THREE.MeshPhongMaterial({
+                        color: new THREE.Color(cfg.color),
+                        specular: 0x111111,
+                        shininess: 20,
+                        transparent: true,
+                        opacity: cfg.opacity,
+                        side: THREE.DoubleSide,
+                        depthTest: true,
+                        depthWrite: true,
+                    });
+
+                    const surfaceMesh = new THREE.Mesh(geometry, mat);
+                    surfaceMesh.name = cfg.name;
+                    surfaceMesh.renderOrder = 1;
+                    surfaceMesh.visible = true;
+                    scene.add(surfaceMesh);
+
+                    surfaceMeshes[cfg.name] = surfaceMesh;
+                    surfaceDefaults[cfg.name] = { color: cfg.color, opacity: cfg.opacity, isFault: cfg.isFault };
+
+                    loaded++;
+                    console.log(`Surface loaded: ${cfg.name} (${geometry.attributes.position.count} verts)`);
+                } catch (e) {
+                    console.warn(`Failed to load ${cfg.name}: ${e.message}`);
+                }
+            }
+            document.getElementById('loading').innerText = `Loading Data... (surfaces: ${loaded}/${SURFACE_CONFIG.length})`;
+        }
+
+        function createVolume() {
+            const voxelCount = meta.width * meta.height * meta.depth;
+            const data = new Uint8Array(voxelCount);
+
+            const texture = new THREE.Data3DTexture(data, meta.width, meta.height, meta.depth);
+            texture.format = THREE.RedFormat;
+            texture.type = THREE.UnsignedByteType;
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            texture.unpackAlignment = 1;
+            texture.needsUpdate = true;
+
+            const vertexShader = /* glsl */`
+                in vec3 position;
+                uniform mat4 modelMatrix;
+                uniform mat4 modelViewMatrix;
+                uniform mat4 projectionMatrix;
+                uniform vec3 cameraPos;
+                out vec3 vOrigin;
+                out vec3 vDirection;
+                void main() {
+                    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+                    vOrigin = vec3( inverse( modelMatrix ) * vec4( cameraPos, 1.0 ) ).xyz;
+                    vDirection = position - vOrigin;
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+            `;
+
+            const fragmentShader = /* glsl */`
+                precision highp float;
+                precision highp sampler3D;
+
+                in vec3 vOrigin;
+                in vec3 vDirection;
+                out vec4 color;
+
+                uniform sampler3D map;
+                uniform float opacity;
+                uniform float steps;
+
+                uniform int uRenderMode;
+                uniform float uIsoThreshold;
+
+                uniform float uFilterMin;
+                uniform float uFilterMax;
+                uniform bool uIsDiscrete;
+
+                uniform vec3 uVolDims;
+                uniform vec3 uPickedCoord;
+                uniform vec3 uClipMin;
+                uniform vec3 uClipMax;
+
+                vec3 getDiscreteColor(float n) {
+                    float id = floor(n * 255.0 + 0.5);
+                    if (id < 0.5) return vec3(0.0);
+                    float r = fract(sin(id * 12.9898) * 43758.5453);
+                    float g = fract(sin(id * 78.233) * 43758.5453);
+                    float b = fract(sin(id * 34.123) * 43758.5453);
+                    return vec3(0.2) + 0.8 * vec3(r, g, b);
+                }
+
+                vec3 getContinuousColor(float t) {
+                    return vec3(
+                        smoothstep(0.5, 0.8, t) + smoothstep(0.95, 1.0, t)*0.5,
+                        smoothstep(0.1, 0.45, t) - smoothstep(0.8, 1.0, t),
+                        smoothstep(0.0, 0.2, t) - smoothstep(0.6, 0.9, t)
+                    );
+                }
+
+                vec3 getGradient(vec3 p) {
+                    vec3 eps = vec3(1.0) / uVolDims;
+                    float dx = texture(map, p + vec3(eps.x, 0, 0)).r - texture(map, p - vec3(eps.x, 0, 0)).r;
+                    float dy = texture(map, p + vec3(0, eps.y, 0)).r - texture(map, p - vec3(0, eps.y, 0)).r;
+                    float dz = texture(map, p + vec3(0, 0, eps.z)).r - texture(map, p - vec3(0, 0, eps.z)).r;
+                    return normalize(vec3(dx, dy, dz));
+                }
+
+                vec3 calculateLighting(vec3 pos, vec3 normal, vec3 baseColor, vec3 viewDir) {
+                    vec3 lightDir = normalize(vec3(0.5, 0.8, 1.0));
+                    vec3 ambient = 0.3 * baseColor;
+                    float diff = max(dot(normal, lightDir), 0.0);
+                    vec3 diffuse = diff * baseColor;
+                    vec3 reflectDir = reflect(-lightDir, normal);
+                    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
+                    vec3 specular = vec3(0.3) * spec;
+                    return ambient + diffuse + specular;
+                }
+
+                vec2 hitBox( vec3 orig, vec3 dir ) {
+                    const vec3 box_min = vec3( - 0.5 );
+                    const vec3 box_max = vec3( 0.5 );
+                    vec3 inv_dir = 1.0 / dir;
+                    vec3 tmin_tmp = ( box_min - orig ) * inv_dir;
+                    vec3 tmax_tmp = ( box_max - orig ) * inv_dir;
+                    vec3 tmin = min( tmin_tmp, tmax_tmp );
+                    vec3 tmax = max( tmin_tmp, tmax_tmp );
+                    float t0 = max( tmin.x, max( tmin.y, tmin.z ) );
+                    float t1 = min( tmax.x, min( tmax.y, tmax.z ) );
+                    return vec2( t0, t1 );
+                }
+
+                void main(){
+                    vec3 rayDir = normalize( vDirection );
+                    vec2 bounds = hitBox( vOrigin, rayDir );
+                    if ( bounds.x > bounds.y ) discard;
+                    bounds.x = max( bounds.x, 0.0 );
+
+                    vec3 p = vOrigin + bounds.x * rayDir;
+                    vec3 inc = 1.0 / abs( rayDir );
+                    float delta = min( inc.x, min( inc.y, inc.z ) ) / steps;
+
+                    vec4 ac = vec4( 0.0 );
+
+                    for ( float t = bounds.x; t < bounds.y; t += delta ) {
+                        vec3 texCoord = p + 0.5;
+
+                        if ( any(lessThan(texCoord, uClipMin)) || any(greaterThan(texCoord, uClipMax)) ) {
+                            p += rayDir * delta; continue;
+                        }
+
+                        float val = texture( map, texCoord ).r;
+
+                        if (uRenderMode == 1) {
+                            if (val >= uIsoThreshold) {
+                                vec3 col;
+                                if (uIsDiscrete) col = getDiscreteColor(val);
+                                else col = getContinuousColor(val);
+
+                                vec3 normal = getGradient(texCoord);
+                                if (length(normal) < 0.1) normal = -rayDir;
+
+                                vec3 litColor = calculateLighting(p, normal, col, -rayDir);
+                                color = vec4(litColor, 1.0);
+
+                                ivec3 currentIdx = ivec3(floor(texCoord * uVolDims));
+                                if (currentIdx == ivec3(uPickedCoord)) {
+                                    color.rgb = vec3(1.0);
+                                }
+                                return;
+                            }
+                        }
+                        else {
+                            if ( val >= uFilterMin && val <= uFilterMax ) {
+                                vec3 col;
+                                if (uIsDiscrete) col = getDiscreteColor(val);
+                                else col = getContinuousColor(val);
+
+                                ivec3 currentIdx = ivec3(floor(texCoord * uVolDims));
+                                float alpha = opacity;
+
+                                if (currentIdx == ivec3(uPickedCoord)) {
+                                    col = vec3(1.0); alpha = 1.0;
+                                } else if (uPickedCoord.x >= 0.0) {
+                                    alpha *= 0.15; col *= 0.5;
+                                }
+
+                                ac.rgb += ( 1.0 - ac.a ) * alpha * col;
+                                ac.a += ( 1.0 - ac.a ) * alpha;
+                                if ( ac.a >= 0.98 ) break;
+                            }
+                        }
+
+                        p += rayDir * delta;
+                    }
+
+                    color = ac;
+                    if ( color.a == 0.0 ) discard;
+                }
+            `;
+
+            material = new THREE.RawShaderMaterial({
+                glslVersion: THREE.GLSL3,
+                uniforms: {
+                    map: { value: texture },
+                    cameraPos: { value: new THREE.Vector3() },
+                    uRenderMode: { value: 0 },
+                    uIsoThreshold: { value: 0.5 },
+                    uFilterMin: { value: 0.0 },
+                    uFilterMax: { value: 1.0 },
+                    opacity: { value: 0.5 },
+                    steps: { value: 200 },
+                    uIsDiscrete: { value: true },
+                    uVolDims: { value: new THREE.Vector3(meta.width, meta.height, meta.depth) },
+                    uPickedCoord: { value: new THREE.Vector3(-1, -1, -1) },
+                    uClipMin: { value: new THREE.Vector3(0,0,0) },
+                    uClipMax: { value: new THREE.Vector3(1,1,1) }
+                },
+                vertexShader,
+                fragmentShader,
+                side: THREE.BackSide,
+                transparent: true,
+                depthWrite: true,
+            });
+
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            mesh = new THREE.Mesh(geometry, material);
+            mesh.renderOrder = 0;
+
+            const b = meta.bounds;
+            const realSize = new THREE.Vector3(b.max[0]-b.min[0], b.max[1]-b.min[1], b.max[2]-b.min[2]);
+            const center = new THREE.Vector3((b.max[0]+b.min[0])/2, (b.max[1]+b.min[1])/2, (b.max[2]+b.min[2])/2);
+
+            mesh.scale.copy(realSize);
+            mesh.position.copy(center);
+
+            scene.add(mesh);
+            controls.target.copy(center);
+            controls.update();
+        }
+
+        function switchAttribute(attrKey) {
+            currentAttrKey = attrKey;
+            const attrMeta = meta.attributes.find(a => a.key === attrKey);
+
+            const view = dataViews[attrKey];
+            const voxelCount = meta.width * meta.height * meta.depth;
+            const texData = new Uint8Array(voxelCount);
+
+            const min = attrMeta.min;
+            const max = attrMeta.max;
+            const range = max - min;
+
+            for(let i=0; i<voxelCount; i++) {
+                let norm = (view[i] - min) / (range > 1e-5 ? range : 1.0);
+                if (norm < 0) norm = 0; if (norm > 1) norm = 1;
+                texData[i] = Math.floor(norm * 255);
+            }
+
+            material.uniforms.map.value.image.data = texData;
+            material.uniforms.map.value.needsUpdate = true;
+            material.uniforms.uIsDiscrete.value = attrMeta.is_discrete;
+            material.uniforms.uFilterMin.value = 0.0;
+            material.uniforms.uFilterMax.value = 1.0;
+
+            document.getElementById('legend-title').innerText = attrMeta.name;
+            document.getElementById('legend-min').innerText = attrMeta.min.toFixed(2);
+            document.getElementById('legend-max').innerText = attrMeta.max.toFixed(2);
+            updateLegendCanvas(attrMeta.is_discrete);
+        }
+
+        function updateLegendCanvas(isDiscrete) {
+            const canvas = document.getElementById('legend-bar');
+            canvas.width = 200; canvas.height = 16;
+            const ctx = canvas.getContext('2d');
+
+            if (isDiscrete) {
+                const w = 200 / 6;
+                for(let i=0; i<6; i++) {
+                    const r = Math.abs(Math.sin(i * 12.9898) * 43758.5453 % 1);
+                    const g = Math.abs(Math.sin(i * 78.233) * 43758.5453 % 1);
+                    const b = Math.abs(Math.sin(i * 34.123) * 43758.5453 % 1);
+                    ctx.fillStyle = `rgb(${Math.floor((0.2+0.8*r)*255)},${Math.floor((0.2+0.8*g)*255)},${Math.floor((0.2+0.8*b)*255)})`;
+                    ctx.fillRect(i*w, 0, w, 16);
+                }
+            } else {
+                const grad = ctx.createLinearGradient(0, 0, 200, 0);
+                grad.addColorStop(0.0, '#000033');
+                grad.addColorStop(0.2, '#00aaff');
+                grad.addColorStop(0.5, '#00ff00');
+                grad.addColorStop(0.8, '#ffff00');
+                grad.addColorStop(1.0, '#ff0000');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, 200, 16);
+            }
+        }
+
+        function roundValue(value, digits = 4) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return null;
+            const scale = Math.pow(10, digits);
+            return Math.round(n * scale) / scale;
+        }
+
+        const EXPORT_HAN_PATTERN = /\p{Script=Han}/u;
+
+        function decodeExportUnicodeEscapes(value) {
+            return String(value ?? '').replace(/\\u([0-9a-fA-F]{4})/g, (_, code) =>
+                String.fromCharCode(Number.parseInt(code, 16))
+            );
+        }
+
+        function findCjkExportIssue(filename, content) {
+            const decodedFilename = decodeExportUnicodeEscapes(filename);
+            const filenameMatch = decodedFilename.match(EXPORT_HAN_PATTERN);
+            if (filenameMatch) {
+                return { line: 0, character: filenameMatch[0], excerpt: decodedFilename };
+            }
+
+            const lines = String(content ?? '').split(/\r?\n/);
+            for (let index = 0; index < lines.length; index += 1) {
+                const decodedLine = decodeExportUnicodeEscapes(lines[index]);
+                const match = decodedLine.match(EXPORT_HAN_PATTERN);
+                if (match) {
+                    return {
+                        line: index + 1,
+                        character: match[0],
+                        excerpt: decodedLine.trim().slice(0, 160) || match[0]
+                    };
+                }
+            }
+            return null;
+        }
+
+        function assertEnglishExport(filename, content) {
+            const issue = findCjkExportIssue(filename, content);
+            if (!issue) return;
+            const location = issue.line === 0 ? 'filename' : 'line ' + issue.line;
+            const message = 'Export blocked: "' + filename + '" contains CJK text at ' + location + ': ' + issue.excerpt;
+            if (typeof alert === 'function') alert(message);
+            throw new Error(message);
+        }
+
+        function downloadJson(filename, data) {
+            assertEnglishExport(filename, JSON.stringify(data, null, 2));
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        function csvValue(value) {
+            if (value == null) return '';
+            const text = String(value);
+            return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+        }
+
+        function toCsv(rows, fields) {
+            return [fields.join(','), ...rows.map(row => fields.map(field => csvValue(row[field])).join(','))].join('\n');
+        }
+
+        function downloadText(filename, text, type = 'text/plain') {
+            assertEnglishExport(filename, text);
+            const blob = new Blob([text], { type });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        function downloadBuffer(filename, buffer) {
+            const blob = new Blob([buffer], { type: 'application/octet-stream' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        function downloadFiles(files) {
+            files.forEach((file) => {
+                if (!file.buffer) assertEnglishExport(file.filename, file.content ?? '');
+            });
+            files.forEach((file, index) => {
+                setTimeout(() => {
+                    if (file.buffer) downloadBuffer(file.filename, file.buffer);
+                    else downloadText(file.filename, file.content, file.type || 'text/plain');
+                }, index * 120);
+            });
+        }
+
+        function voxelCenter(ix, iy, iz) {
+            const min = meta.bounds.min;
+            const max = meta.bounds.max;
+            const sx = (max[0] - min[0]) / meta.width;
+            const sy = (max[1] - min[1]) / meta.height;
+            const sz = (max[2] - min[2]) / meta.depth;
+            return {
+                x: min[0] + (ix + 0.5) * sx,
+                y: min[1] + (iy + 0.5) * sy,
+                z: min[2] + (iz + 0.5) * sz,
+                sizeX: sx,
+                sizeY: sy,
+                sizeZ: sz
+            };
+        }
+
+        function minevisVolumeMetadata(kind) {
+            return {
+                createdBy: 'MineVis DataGenerator GeoVolume',
+                sourceTool: 'GeoVolume/viewer_multi_attri_with_fault.html',
+                exportKind: kind,
+                generatedAt: new Date().toISOString(),
+                bounds: meta.bounds,
+                grid: { width: meta.width, height: meta.height, depth: meta.depth, totalVoxels: meta.total_voxels },
+                binaryFile: meta.binary_file,
+                attributes: meta.attributes
+            };
+        }
+
+        function meshGeometryToObj(meshEntries) {
+            const lines = ['# MineVis GeoVolume surface geometry'];
+            let vertexOffset = 1;
+            meshEntries.forEach(({ name, mesh }) => {
+                if (!mesh?.geometry?.attributes?.position) return;
+                const geometry = mesh.geometry;
+                const position = geometry.attributes.position;
+                const index = geometry.index;
+                lines.push(`o ${name}`);
+                for (let i = 0; i < position.count; i++) {
+                    lines.push(`v ${roundValue(position.getX(i), 5)} ${roundValue(position.getY(i), 5)} ${roundValue(position.getZ(i), 5)}`);
+                }
+                if (index) {
+                    for (let i = 0; i < index.count; i += 3) {
+                        lines.push(`f ${vertexOffset + index.getX(i)} ${vertexOffset + index.getX(i + 1)} ${vertexOffset + index.getX(i + 2)}`);
+                    }
+                } else {
+                    for (let i = 0; i < position.count; i += 3) {
+                        lines.push(`f ${vertexOffset + i} ${vertexOffset + i + 1} ${vertexOffset + i + 2}`);
+                    }
+                }
+                vertexOffset += position.count;
+            });
+            return lines.join('\n');
+        }
+
+        function buildVolumeBodyFiles() {
+            const bodyConfigs = SURFACE_CONFIG.filter(cfg => !cfg.isFault);
+            const bodyRows = bodyConfigs.map((cfg) => ({
+                body_id: `GB_${cfg.name}`,
+                body_name: cfg.name,
+                body_type: 'stratigraphic_domain',
+                lithology: cfg.name,
+                ore_type: '',
+                color: cfg.color,
+                confidence: 1
+            }));
+            const surfaceRows = bodyConfigs.map((cfg) => ({
+                surface_id: `SURF_${cfg.name}`,
+                mesh_part_id: cfg.name,
+                body_id: `GB_${cfg.name}`,
+                surface_type: 'stratigraphic_boundary',
+                confidence: 1
+            }));
+            const meshEntries = bodyConfigs.map(cfg => ({ name: cfg.name, mesh: surfaceMeshes[cfg.name] })).filter(entry => entry.mesh);
+            return [
+                { filename: 'geovolume_geological_bodies.obj', content: meshGeometryToObj(meshEntries), type: 'text/plain' },
+                { filename: 'geovolume_bodies.csv', content: toCsv(bodyRows, ['body_id','body_name','body_type','lithology','ore_type','color','confidence']), type: 'text/csv' },
+                { filename: 'geovolume_surfaces.csv', content: toCsv(surfaceRows, ['surface_id','mesh_part_id','body_id','surface_type','confidence']), type: 'text/csv' }
+            ];
+        }
+
+        function buildVolumeStructureFiles() {
+            const faults = SURFACE_CONFIG.filter(cfg => cfg.isFault);
+            const rows = faults.map((cfg) => ({
+                structure_id: `FAULT_${cfg.name}`,
+                structure_name: cfg.name,
+                structure_type: 'fault',
+                mesh_part_id: cfg.name,
+                strike: '',
+                dip: '',
+                throw: '',
+                width: '',
+                risk_level: 'structural_zone',
+                water_conductivity: '',
+                confidence: 1
+            }));
+            const meshEntries = faults.map(cfg => ({ name: `FAULT_${cfg.name}`, mesh: surfaceMeshes[cfg.name] })).filter(entry => entry.mesh);
+            return [
+                { filename: 'geovolume_structures.obj', content: meshGeometryToObj(meshEntries), type: 'text/plain' },
+                { filename: 'geovolume_structures.csv', content: toCsv(rows, ['structure_id','structure_name','structure_type','mesh_part_id','strike','dip','throw','width','risk_level','water_conductivity','confidence']), type: 'text/csv' }
+            ];
+        }
+
+        function buildResourceBlockGridJson() {
+            const min = meta.bounds.min;
+            const max = meta.bounds.max;
+            return {
+                nx: meta.width,
+                ny: meta.height,
+                nz: meta.depth,
+                origin: min,
+                cellSize: [
+                    (max[0] - min[0]) / meta.width,
+                    (max[1] - min[1]) / meta.height,
+                    (max[2] - min[2]) / meta.depth
+                ],
+                bounds: meta.bounds,
+                coordinateSystem: 'local',
+                binaryFile: 'resource_block_attributes.bin',
+                attributes: meta.attributes.map(attr => ({
+                    attributeName: attr.key,
+                    key: attr.key,
+                    label: attr.name,
+                    dtype: attr.dtype,
+                    offset: attr.offset,
+                    length: attr.length,
+                    min: attr.min,
+                    max: attr.max,
+                    nodata: null
+                }))
+            };
+        }
+
+        function buildAttributeSchemaCsv() {
+            const rows = meta.attributes.map(attr => ({
+                attribute_name: attr.key,
+                unit: attr.name.match(/\(([^)]+)\)/)?.[1] || '',
+                value_type: attr.dtype,
+                min: attr.min,
+                max: attr.max,
+                nodata: '',
+                description: attr.name
+            }));
+            return toCsv(rows, ['attribute_name','unit','value_type','min','max','nodata','description']);
+        }
+
+        function buildResourceBlockFiles() {
+            return [
+                { filename: 'resource_block_grid.json', content: JSON.stringify(buildResourceBlockGridJson(), null, 2), type: 'application/json' },
+                { filename: 'resource_block_attribute_schema.csv', content: buildAttributeSchemaCsv(), type: 'text/csv' },
+                { filename: 'resource_block_attributes.bin', buffer: fullDataBuffer }
+            ];
+        }
+
+        function buildMineVisVolumeGeologicalBody() {
+            const units = SURFACE_CONFIG.filter(cfg => !cfg.isFault).map((cfg, index) => ({
+                id: `GU_${cfg.name}`,
+                geologicalUnitId: `GU_${cfg.name}`,
+                geologicalUnitName: cfg.name,
+                geologicalUnitType: 'stratigraphic_surface',
+                layerOrder: index
+            }));
+            const surfaces = SURFACE_CONFIG.map((cfg, index) => ({
+                surfaceId: `SURF_${cfg.name}`,
+                surfaceType: cfg.isFault ? 'faultSurface' : 'stratigraphicBoundary',
+                geologicalUnitId: cfg.isFault ? null : `GU_${cfg.name}`,
+                layerOrder: index,
+                meshPartId: cfg.file,
+                geometry: { form: 'STL', path: cfg.file },
+                color: cfg.color,
+                opacity: cfg.opacity
+            }));
+            return {
+                datasetType: 'GeologicalBody',
+                semanticClass: 'GeologicalBody',
+                version: '1.0',
+                representationProfile: 'hybrid',
+                metadata: minevisVolumeMetadata('geological-body'),
+                units,
+                bodies: units.map(unit => ({
+                    bodyId: `GB_${unit.geologicalUnitName}`,
+                    bodyName: unit.geologicalUnitName,
+                    geologicalUnitId: unit.geologicalUnitId,
+                    geologicalUnitType: 'stratigraphic_domain'
+                })),
+                surfaces,
+                attributes: meta.attributes.map(attr => ({
+                    attributeName: attr.key,
+                    label: attr.name,
+                    valueType: attr.dtype,
+                    min: attr.min,
+                    max: attr.max
+                })),
+                relations: surfaces.filter(surface => surface.geologicalUnitId).map(surface => ({
+                    relationType: 'surfaceBelongsToGeologicalUnit',
+                    surfaceId: surface.surfaceId,
+                    geologicalUnitId: surface.geologicalUnitId
+                }))
+            };
+        }
+
+        function buildMineVisVolumeStructure() {
+            const faults = SURFACE_CONFIG.filter(cfg => cfg.isFault);
+            return {
+                datasetType: 'GeologicalStructure',
+                semanticClass: 'GeologicalStructure',
+                version: '1.0',
+                metadata: minevisVolumeMetadata('geological-structure'),
+                structures: faults.map((cfg, index) => ({
+                    structureId: `FAULT_${cfg.name}`,
+                    structureName: cfg.name,
+                    structureType: 'fault',
+                    confidence: 1,
+                    riskLevel: 'structural_zone',
+                    geometry: { form: 'STL', path: cfg.file, color: cfg.color, opacity: cfg.opacity }
+                })),
+                relations: []
+            };
+        }
+
+        function buildMineVisVolumeAttributeModel() {
+            const lithology = dataViews['lithology_id'];
+            const density = dataViews['density_(g/cm3)'];
+            const au = dataViews['au_grade_(g/t)'];
+            const rmr = dataViews['rmr_(engineering)'];
+            const elements = [];
+            for (let iz = 0; iz < meta.depth; iz++) {
+                for (let iy = 0; iy < meta.height; iy++) {
+                    for (let ix = 0; ix < meta.width; ix++) {
+                        const i = ix + iy * meta.width + iz * meta.width * meta.height;
+                        const center = voxelCenter(ix, iy, iz);
+                        elements.push({
+                            elementId: `VOX_${ix}_${iy}_${iz}`,
+                            blockId: `VOX_${ix}_${iy}_${iz}`,
+                            centroidX: roundValue(center.x, 3),
+                            centroidY: roundValue(center.y, 3),
+                            centroidZ: roundValue(center.z, 3),
+                            blockSizeX: roundValue(center.sizeX, 3),
+                            blockSizeY: roundValue(center.sizeY, 3),
+                            blockSizeZ: roundValue(center.sizeZ, 3),
+                            lithology_id: lithology ? lithology[i] : null,
+                            lithology: lithology ? `lithology_${lithology[i]}` : null,
+                            density: density ? roundValue(density[i], 4) : null,
+                            grade: au ? roundValue(au[i], 5) : null,
+                            auGrade: au ? roundValue(au[i], 5) : null,
+                            rmr: rmr ? rmr[i] : null,
+                            resourceCategory: au && au[i] >= 3 ? 'high_grade' : 'background'
+                        });
+                    }
+                }
+            }
+            return {
+                datasetType: 'GeologicalAttributeModel',
+                semanticClass: 'GeologicalAttributeModel',
+                version: '1.0',
+                representationProfile: 'resource-block',
+                metadata: minevisVolumeMetadata('resource-block-model'),
+                attributes: [
+                    { attributeName: 'lithology_id', valueType: 'uint8', unit: 'category' },
+                    { attributeName: 'density', valueType: 'float32', unit: 'g/cm3' },
+                    { attributeName: 'grade', valueType: 'float32', unit: 'g/t' },
+                    { attributeName: 'rmr', valueType: 'uint8', unit: 'index' }
+                ],
+                elements
+            };
+        }
+
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function quantile(values, q) {
+            const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
+            if (!sorted.length) return 0;
+            const index = clamp(Math.floor((sorted.length - 1) * q), 0, sorted.length - 1);
+            return sorted[index];
+        }
+
+        function disposeRoadwayGroup() {
+            while (roadwayGroup.children.length) {
+                const child = roadwayGroup.children.pop();
+                child.traverse?.((obj) => {
+                    obj.geometry?.dispose?.();
+                    const materials = Array.isArray(obj.material) ? obj.material : [obj.material].filter(Boolean);
+                    materials.forEach(mat => mat.dispose?.());
+                });
+            }
+        }
+
+        function roadwayElevationColor(z, minZ, maxZ) {
+            const t = clamp((z - minZ) / Math.max(maxZ - minZ, 0.0001), 0, 1);
+            const stops = [
+                { t: 0.00, color: new THREE.Color(0x1647ff) },
+                { t: 0.33, color: new THREE.Color(0x00d0d5) },
+                { t: 0.58, color: new THREE.Color(0x19c83f) },
+                { t: 0.78, color: new THREE.Color(0xf2d51b) },
+                { t: 1.00, color: new THREE.Color(0xe33418) }
+            ];
+            for (let i = 1; i < stops.length; i++) {
+                if (t <= stops[i].t) {
+                    const a = stops[i - 1];
+                    const b = stops[i];
+                    return a.color.clone().lerp(b.color, (t - a.t) / Math.max(b.t - a.t, 0.0001));
+                }
+            }
+            return stops[stops.length - 1].color.clone();
+        }
+
+        function createRoadwayTubeBetween(start, end, radius, color, roadwayType = 'roadway') {
+            const a = new THREE.Vector3(start.x, start.y, start.z);
+            const b = new THREE.Vector3(end.x, end.y, end.z);
+            const direction = b.clone().sub(a);
+            const length = direction.length();
+            if (length < 0.001) return null;
+            const typeScale = roadwayType === 'raise' ? 0.72 : roadwayType === 'ore_drive' ? 0.82 : 1.0;
+            const geometry = new THREE.CylinderGeometry(radius * typeScale, radius * typeScale, length, 12, 1, false);
+            const material = new THREE.MeshLambertMaterial({
+                color,
+                emissive: color.clone().multiplyScalar(0.16),
+                depthTest: false,
+                depthWrite: false
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.copy(a.clone().add(b).multiplyScalar(0.5));
+            mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+            mesh.renderOrder = 70;
+            return mesh;
+        }
+
+        function getFaultPointCloud() {
+            if (getFaultPointCloud.cache) return getFaultPointCloud.cache;
+            const points = [];
+            SURFACE_CONFIG.filter(cfg => cfg.isFault).forEach(cfg => {
+                const faultMesh = surfaceMeshes[cfg.name];
+                const position = faultMesh?.geometry?.attributes?.position;
+                if (!position) return;
+                faultMesh.updateMatrixWorld(true);
+                const step = Math.max(1, Math.ceil(position.count / 1800));
+                for (let i = 0; i < position.count; i += step) {
+                    points.push(new THREE.Vector3(position.getX(i), position.getY(i), position.getZ(i)).applyMatrix4(faultMesh.matrixWorld));
+                }
+            });
+            getFaultPointCloud.cache = points;
+            return points;
+        }
+
+        function distanceToFault(point) {
+            const faults = getFaultPointCloud();
+            if (!faults.length) return Infinity;
+            let best = Infinity;
+            for (const fp of faults) {
+                const dx = fp.x - point.x;
+                const dy = fp.y - point.y;
+                const dz = fp.z - point.z;
+                const d2 = dx * dx + dy * dy + dz * dz;
+                if (d2 < best) best = d2;
+            }
+            return Math.sqrt(best);
+        }
+
+        function collectOreCandidates() {
+            const au = dataViews['au_grade_(g/t)'];
+            const rmr = dataViews['rmr_(engineering)'];
+            if (!au?.length) return { candidates: [], cutoff: 0 };
+            const values = [];
+            for (let i = 0; i < au.length; i++) {
+                const value = Number(au[i]);
+                if (Number.isFinite(value) && value > 0) values.push(value);
+            }
+            const autoCutoff = quantile(values, 0.75);
+            const cutoff = Number(roadwayParams.gradeCutoff) > 0 ? Number(roadwayParams.gradeCutoff) : autoCutoff;
+            const candidates = [];
+            const minRmr = 35;
+            for (let iz = 0; iz < meta.depth; iz++) {
+                for (let iy = 0; iy < meta.height; iy++) {
+                    for (let ix = 0; ix < meta.width; ix++) {
+                        const idx = ix + iy * meta.width + iz * meta.width * meta.height;
+                        const grade = Number(au[idx]);
+                        const rockMass = rmr ? Number(rmr[idx]) : 60;
+                        if (!Number.isFinite(grade) || grade < cutoff || rockMass < minRmr) continue;
+                        const center = voxelCenter(ix, iy, iz);
+                        candidates.push({ ...center, ix, iy, iz, grade, rmr: rockMass });
+                    }
+                }
+            }
+            if (candidates.length) return { candidates, cutoff };
+
+            const relaxedCutoff = quantile(values, 0.65);
+            for (let iz = 0; iz < meta.depth; iz++) {
+                for (let iy = 0; iy < meta.height; iy++) {
+                    for (let ix = 0; ix < meta.width; ix++) {
+                        const idx = ix + iy * meta.width + iz * meta.width * meta.height;
+                        const grade = Number(au[idx]);
+                        if (!Number.isFinite(grade) || grade < relaxedCutoff) continue;
+                        const rockMass = rmr ? Number(rmr[idx]) : 60;
+                        const center = voxelCenter(ix, iy, iz);
+                        candidates.push({ ...center, ix, iy, iz, grade, rmr: rockMass });
+                    }
+                }
+            }
+            return { candidates, cutoff: relaxedCutoff };
+        }
+
+        function summarizePoints(points) {
+            const bounds = {
+                minX: Math.min(...points.map(p => p.x)),
+                maxX: Math.max(...points.map(p => p.x)),
+                minY: Math.min(...points.map(p => p.y)),
+                maxY: Math.max(...points.map(p => p.y)),
+                minZ: Math.min(...points.map(p => p.z)),
+                maxZ: Math.max(...points.map(p => p.z))
+            };
+            const mean = (key) => points.reduce((sum, p) => sum + Number(p[key] || 0), 0) / Math.max(points.length, 1);
+            return {
+                ...bounds,
+                centerX: mean('x'),
+                centerY: mean('y'),
+                centerZ: mean('z'),
+                meanGrade: mean('grade'),
+                meanRmr: mean('rmr'),
+                count: points.length
+            };
+        }
+
+        function buildHardRockRoadwayLayout() {
+            const { candidates, cutoff } = collectOreCandidates();
+            if (!candidates.length) return null;
+            const modelMin = meta.bounds.min;
+            const modelMax = meta.bounds.max;
+            const oreSummary = summarizePoints(candidates);
+            const levelCount = clamp(Math.round(Number(roadwayParams.levelCount) || 5), 2, 8);
+            let zMin = Math.max(modelMin[2] + 35, oreSummary.minZ);
+            let zMax = Math.min(modelMax[2] - 35, oreSummary.maxZ);
+            if (zMax <= zMin) {
+                const halfWindow = Math.max(60, (modelMax[2] - modelMin[2]) * 0.22);
+                zMin = clamp(oreSummary.centerZ - halfWindow, modelMin[2] + 35, modelMax[2] - 70);
+                zMax = clamp(oreSummary.centerZ + halfWindow, zMin + 35, modelMax[2] - 35);
+            }
+            const levelStep = levelCount > 1 ? (zMax - zMin) / (levelCount - 1) : 0;
+            const verticalWindow = Math.max((zMax - zMin) / Math.max(levelCount, 1) * 0.65, (modelMax[2] - modelMin[2]) / meta.depth * 2.5);
+            const footwallLowY = oreSummary.centerY > (modelMin[1] + modelMax[1]) * 0.5;
+            const footwallY = footwallLowY ? modelMin[1] + 95 : modelMax[1] - 95;
+            const stationYOffset = footwallLowY ? -70 : 70;
+            const layout = [];
+            const levels = [];
+
+            for (let li = 0; li < levelCount; li++) {
+                const z = zMax - li * levelStep;
+                const near = candidates.filter(p => Math.abs(p.z - z) <= verticalWindow);
+                const points = near.length ? near : candidates.slice();
+                const summary = summarizePoints(points);
+                const spanX = Math.max(160, summary.maxX - summary.minX);
+                const xStart = clamp(summary.minX - spanX * 0.18, modelMin[0] + 70, modelMax[0] - 70);
+                const xEnd = clamp(summary.maxX + spanX * 0.18, modelMin[0] + 70, modelMax[0] - 70);
+                const stationX = clamp(xStart - 90 - (li % 2) * 120, modelMin[0] + 70, modelMax[0] - 70);
+                const stationY = clamp(footwallY + stationYOffset, modelMin[1] + 55, modelMax[1] - 55);
+                const haulageY = footwallY;
+                const oreY = clamp(summary.centerY, modelMin[1] + 80, modelMax[1] - 80);
+                const crosscutCount = Math.min(4, Math.max(2, Math.round(spanX / 320)));
+                const crosscutXs = [];
+                for (let ci = 0; ci < crosscutCount; ci++) {
+                    const t = crosscutCount === 1 ? 0.5 : ci / (crosscutCount - 1);
+                    crosscutXs.push(xStart + (xEnd - xStart) * t);
+                }
+                const sortedHaulageXs = [...new Set([stationX, xStart, ...crosscutXs, xEnd].map(v => roundValue(v, 4)))].sort((a, b) => a - b);
+                const level = { index: li, z, xStart, xEnd, stationX, stationY, haulageY, oreY, summary };
+                levels.push(level);
+
+                layout.push({
+                    id: `level_${li + 1}_haulage`,
+                    type: 'haulage',
+                    levelIndex: li,
+                    stats: summary,
+                    path: sortedHaulageXs.map(x => ({ x, y: haulageY, z }))
+                });
+
+                crosscutXs.forEach((x, ci) => {
+                    layout.push({
+                        id: `level_${li + 1}_crosscut_${ci + 1}`,
+                        type: 'crosscut',
+                        levelIndex: li,
+                        stats: summary,
+                        path: [
+                            { x, y: haulageY, z },
+                            { x, y: (haulageY + oreY) * 0.5, z },
+                            { x, y: oreY, z }
+                        ]
+                    });
+                });
+
+                if (roadwayParams.includeOreDrives) {
+                    const oreDriveXs = [...new Set([
+                        clamp(summary.minX, modelMin[0] + 65, modelMax[0] - 65),
+                        ...crosscutXs,
+                        summary.centerX,
+                        clamp(summary.maxX, modelMin[0] + 65, modelMax[0] - 65)
+                    ].map(v => roundValue(v, 4)))].sort((a, b) => a - b);
+                    layout.push({
+                        id: `level_${li + 1}_ore_drive`,
+                        type: 'ore_drive',
+                        levelIndex: li,
+                        stats: summary,
+                        path: oreDriveXs.map(x => ({ x, y: oreY, z }))
+                    });
+                }
+            }
+
+            const entry = {
+                x: levels[0].stationX,
+                y: footwallLowY ? modelMin[1] + 25 : modelMax[1] - 25,
+                z: clamp(levels[0].z + 80, modelMin[2] + 30, modelMax[2] - 20)
+            };
+            let previous = entry;
+            levels.forEach((level, index) => {
+                const station = { x: level.stationX, y: level.haulageY, z: level.z };
+                const mid = {
+                    x: clamp((previous.x + station.x) * 0.5 + (index % 2 === 0 ? 110 : -110), modelMin[0] + 55, modelMax[0] - 55),
+                    y: clamp((previous.y + station.y) * 0.5, modelMin[1] + 35, modelMax[1] - 35),
+                    z: (previous.z + station.z) * 0.5
+                };
+                layout.push({
+                    id: `decline_ramp_${index + 1}`,
+                    type: 'decline',
+                    levelIndex: index,
+                    stats: level.summary,
+                    path: [previous, mid, station]
+                });
+                previous = station;
+            });
+
+            if (roadwayParams.includeRaises) {
+                for (let i = 1; i < levels.length; i++) {
+                    const upper = levels[i - 1];
+                    const lower = levels[i];
+                    const x = clamp((upper.summary.centerX + lower.summary.centerX) * 0.5, modelMin[0] + 90, modelMax[0] - 90);
+                    const y = clamp((upper.oreY + lower.oreY) * 0.5, modelMin[1] + 90, modelMax[1] - 90);
+                    layout.push({
+                        id: `raise_${i}`,
+                        type: 'raise',
+                        levelIndex: i,
+                        stats: {
+                            meanGrade: (upper.summary.meanGrade + lower.summary.meanGrade) * 0.5,
+                            meanRmr: (upper.summary.meanRmr + lower.summary.meanRmr) * 0.5
+                        },
+                        path: [
+                            { x, y, z: upper.z },
+                            { x, y, z: lower.z }
+                        ]
+                    });
+                }
+            }
+
+            return { layout, levels, cutoff };
+        }
+
+        function pathLength(path) {
+            let length = 0;
+            for (let i = 1; i < path.length; i++) {
+                const a = path[i - 1];
+                const b = path[i];
+                length += Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2);
+            }
+            return length;
+        }
+
+        function generateHardRockRoadway() {
+            disposeRoadwayGroup();
+            roadwayData = null;
+            if (!meta || !dataViews['au_grade_(g/t)']) {
+                alert('Load GeoVolume attributes before generating roadway.');
+                return;
+            }
+
+            const built = buildHardRockRoadwayLayout();
+            if (!built?.layout?.length) {
+                alert('Could not find a high-grade target zone for roadway generation.');
+                return;
+            }
+
+            const elevations = built.layout.flatMap(segment => segment.path.map(p => p.z));
+            const minZ = Math.min(...elevations);
+            const maxZ = Math.max(...elevations);
+            const nodes = [];
+            const edges = [];
+            const nodeByKey = new Map();
+            const radius = Math.max(3, Math.min(28, Number(roadwayParams.roadwayRadius) || 12));
+
+            const ensureNode = (point, role) => {
+                const key = `${Math.round(point.x * 20)}_${Math.round(point.y * 20)}_${Math.round(point.z * 20)}`;
+                if (nodeByKey.has(key)) return nodeByKey.get(key);
+                const nodeId = `RN_${String(nodes.length + 1).padStart(3, '0')}`;
+                nodes.push({ nodeId, role, position: { x: point.x, y: point.y, z: point.z } });
+                nodeByKey.set(key, nodeId);
+                return nodeId;
+            };
+
+            built.layout.forEach(segment => {
+                const sourcePath = segment.path.map(point => ({
+                    x: roundValue(point.x, 4),
+                    y: roundValue(point.y, 4),
+                    z: roundValue(point.z, 4)
+                }));
+                for (let i = 1; i < sourcePath.length; i++) {
+                    const path = [sourcePath[i - 1], sourcePath[i]];
+                    const fromNodeId = ensureNode(path[0], `${segment.type}-junction`);
+                    const toNodeId = ensureNode(path[1], `${segment.type}-junction`);
+                    const edgeId = `RE_${String(edges.length + 1).padStart(3, '0')}`;
+                    const nearFault = path.some(point => distanceToFault(point) <= Number(roadwayParams.faultBuffer));
+                    const color = roadwayElevationColor((path[0].z + path[1].z) * 0.5, minZ, maxZ);
+                    const tube = createRoadwayTubeBetween(path[0], path[1], radius, color, segment.type);
+                    if (tube) {
+                        tube.name = edgeId;
+                        tube.userData = { type: 'generatedRoadway', edgeId, roadwayType: segment.type, levelIndex: segment.levelIndex, nearFault };
+                        roadwayGroup.add(tube);
+                    }
+                    edges.push({
+                        edgeId,
+                        layoutId: segment.id,
+                        roadwayType: segment.type,
+                        levelIndex: segment.levelIndex,
+                        fromNodeId,
+                        toNodeId,
+                        length: roundValue(pathLength(path), 3),
+                        nearFault,
+                        meanGrade: roundValue(segment.stats?.meanGrade, 4),
+                        meanRmr: roundValue(segment.stats?.meanRmr, 2),
+                        path
+                    });
+                }
+            });
+
+            nodes.forEach(node => {
+                const color = roadwayElevationColor(node.position.z, minZ, maxZ);
+                const marker = new THREE.Mesh(
+                    new THREE.SphereGeometry(radius * 0.92, 12, 8),
+                    new THREE.MeshLambertMaterial({ color, emissive: color.clone().multiplyScalar(0.12), depthTest: false, depthWrite: false })
+                );
+                marker.position.set(node.position.x, node.position.y, node.position.z);
+                marker.renderOrder = 71;
+                marker.userData = { type: 'generatedRoadwayNode', nodeId: node.nodeId };
+                roadwayGroup.add(marker);
+            });
+
+            roadwayGroup.visible = !!roadwayParams.showRoadway;
+            roadwayData = {
+                datasetType: 'GeneratedRoadwayDraft',
+                version: '0.1',
+                miningStyle: 'hard-rock-decline-level-crosscut-ore-drive',
+                nodes,
+                edges,
+                metadata: {
+                    generatedBy: 'GeoVolume Hard-rock Roadway Generator',
+                    sourceTool: 'GeoVolume/viewer_multi_attri_with_fault.html',
+                    gradeCutoff: roundValue(built.cutoff, 4),
+                    levelCount: built.levels.length,
+                    roadwayRadius: radius,
+                    modelBounds: meta.bounds
+                }
+            };
+            console.log('Generated hard-rock roadway draft', roadwayData);
+        }
+
+        function getExportRoadwayMaps() {
+            const nodeIdMap = new Map();
+            const edgeIdMap = new Map();
+            (roadwayData?.nodes || []).forEach((node, index) => nodeIdMap.set(node.nodeId, `Node_${index + 1}`));
+            (roadwayData?.edges || []).forEach((edge, index) => edgeIdMap.set(edge.edgeId, `Edge_${index + 1}`));
+            return { nodeIdMap, edgeIdMap };
+        }
+
+        function buildRoadwayTopologyJson() {
+            const { nodeIdMap, edgeIdMap } = getExportRoadwayMaps();
+            return {
+                nodes: (roadwayData?.nodes || []).map(node => ({
+                    id: nodeIdMap.get(node.nodeId) || node.nodeId,
+                    position: {
+                        x: roundValue(node.position.x, 4),
+                        y: roundValue(node.position.y, 4),
+                        z: roundValue(node.position.z, 4)
+                    },
+                    role: node.role
+                })),
+                edges: (roadwayData?.edges || []).map(edge => ({
+                    id: edgeIdMap.get(edge.edgeId) || edge.edgeId,
+                    source: nodeIdMap.get(edge.fromNodeId) || edge.fromNodeId,
+                    target: nodeIdMap.get(edge.toNodeId) || edge.toNodeId,
+                    roadwayType: edge.roadwayType,
+                    levelIndex: edge.levelIndex,
+                    nearFault: edge.nearFault,
+                    meanGrade: edge.meanGrade,
+                    meanRmr: edge.meanRmr,
+                    path: (edge.path || []).map(point => ({
+                        x: roundValue(point.x, 4),
+                        y: roundValue(point.y, 4),
+                        z: roundValue(point.z, 4)
+                    }))
+                }))
+            };
+        }
+
+        function appendObjTubeSegment(lines, p0, p1, radius, radialSegments, vertexOffsetRef) {
+            const start = new THREE.Vector3(p0.x, p0.y, p0.z);
+            const end = new THREE.Vector3(p1.x, p1.y, p1.z);
+            const axis = end.clone().sub(start);
+            const length = axis.length();
+            if (length < 0.001) return;
+            axis.normalize();
+            const up = Math.abs(axis.dot(new THREE.Vector3(0, 0, 1))) > 0.92 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 0, 1);
+            const normal = new THREE.Vector3().crossVectors(axis, up).normalize();
+            const binormal = new THREE.Vector3().crossVectors(axis, normal).normalize();
+            const ringStart = [];
+            const ringEnd = [];
+            for (let i = 0; i < radialSegments; i++) {
+                const angle = (Math.PI * 2 * i) / radialSegments;
+                const offset = normal.clone().multiplyScalar(Math.cos(angle) * radius).add(binormal.clone().multiplyScalar(Math.sin(angle) * radius));
+                const v0 = start.clone().add(offset);
+                const v1 = end.clone().add(offset);
+                lines.push(`v ${roundValue(v0.x, 4)} ${roundValue(v0.y, 4)} ${roundValue(v0.z, 4)}`);
+                ringStart.push(vertexOffsetRef.value++);
+                lines.push(`v ${roundValue(v1.x, 4)} ${roundValue(v1.y, 4)} ${roundValue(v1.z, 4)}`);
+                ringEnd.push(vertexOffsetRef.value++);
+            }
+            for (let i = 0; i < radialSegments; i++) {
+                const next = (i + 1) % radialSegments;
+                lines.push(`f ${ringStart[i]} ${ringStart[next]} ${ringEnd[next]} ${ringEnd[i]}`);
+            }
+            lines.push(`f ${ringStart.slice().reverse().join(' ')}`);
+            lines.push(`f ${ringEnd.join(' ')}`);
+        }
+
+        function appendObjSphere(lines, center, radius, vertexOffsetRef) {
+            const rings = 5;
+            const segments = 10;
+            const indices = [];
+            for (let r = 0; r <= rings; r++) {
+                const v = r / rings;
+                const theta = v * Math.PI;
+                const z = Math.cos(theta) * radius;
+                const ringRadius = Math.sin(theta) * radius;
+                const row = [];
+                for (let s = 0; s < segments; s++) {
+                    const u = s / segments;
+                    const phi = u * Math.PI * 2;
+                    const x = Math.cos(phi) * ringRadius;
+                    const y = Math.sin(phi) * ringRadius;
+                    lines.push(`v ${roundValue(center.x + x, 4)} ${roundValue(center.y + y, 4)} ${roundValue(center.z + z, 4)}`);
+                    row.push(vertexOffsetRef.value++);
+                }
+                indices.push(row);
+            }
+            for (let r = 0; r < rings; r++) {
+                for (let s = 0; s < segments; s++) {
+                    const next = (s + 1) % segments;
+                    lines.push(`f ${indices[r][s]} ${indices[r][next]} ${indices[r + 1][next]} ${indices[r + 1][s]}`);
+                }
+            }
+        }
+
+        function buildRoadwayObj() {
+            const { nodeIdMap, edgeIdMap } = getExportRoadwayMaps();
+            const lines = [
+                '# MineVis roadway model exported from GeoVolume',
+                '# Objects are named to match roadway_topo.json node and edge ids.'
+            ];
+            const vertexOffsetRef = { value: 1 };
+            const radius = roadwayData?.metadata?.roadwayRadius || Number(roadwayParams.roadwayRadius) || 12;
+            const radialSegments = 12;
+            (roadwayData?.nodes || []).forEach(node => {
+                const exportId = nodeIdMap.get(node.nodeId) || node.nodeId;
+                lines.push(`o ${exportId}`);
+                appendObjSphere(lines, node.position, radius * 0.92, vertexOffsetRef);
+            });
+            (roadwayData?.edges || []).forEach(edge => {
+                const exportId = edgeIdMap.get(edge.edgeId) || edge.edgeId;
+                lines.push(`o ${exportId}`);
+                const path = edge.path || [];
+                for (let i = 1; i < path.length; i++) {
+                    appendObjTubeSegment(lines, path[i - 1], path[i], radius, radialSegments, vertexOffsetRef);
+                }
+            });
+            return lines.join('\n');
+        }
+
+        function buildRoadwayFiles() {
+            return [
+                { filename: 'roadway_topo.json', content: JSON.stringify(buildRoadwayTopologyJson(), null, 2), type: 'application/json' },
+                { filename: 'roadway_model.obj', content: buildRoadwayObj(), type: 'text/plain' }
+            ];
+        }
+
+        function setupGUI() {
+            const gui = new GUI({ title: 'GemPy Analytics + Surfaces', width: 320 });
+
+            const dataFolder = gui.addFolder('Data & Attribute');
+            const attrObj = {};
+            meta.attributes.forEach(a => attrObj[a.name] = a.key);
+            dataFolder.add({ attr: meta.attributes[0].key }, 'attr', attrObj)
+                .name('Select Attribute')
+                .onChange(val => switchAttribute(val));
+
+            const exportFolder = gui.addFolder('MineVis Dataset Export');
+            exportFolder.add({
+                exportGeologicalBody: () => downloadFiles(buildVolumeBodyFiles())
+            }, 'exportGeologicalBody').name('Export Geological Body Files');
+            exportFolder.add({
+                exportStructure: () => downloadFiles(buildVolumeStructureFiles())
+            }, 'exportStructure').name('Export Geological Structure Files');
+            exportFolder.add({
+                exportAttributeModel: () => downloadFiles(buildResourceBlockFiles())
+            }, 'exportAttributeModel').name('Export Resource Block Files');
+            exportFolder.add({
+                exportLegacyJson: () => {
+                    downloadJson('minevis_geovolume_geological_body.json', buildMineVisVolumeGeologicalBody());
+                    setTimeout(() => downloadJson('minevis_geovolume_structures.json', buildMineVisVolumeStructure()), 120);
+                    setTimeout(() => downloadJson('minevis_geovolume_resource_block_model.json', buildMineVisVolumeAttributeModel()), 240);
+                }
+            }, 'exportLegacyJson').name('Export Legacy JSON Files');
+
+            const roadwayFolder = gui.addFolder('Generated Roadway');
+            roadwayFolder.add(roadwayParams, 'gradeCutoff', 0, 10).step(0.1).name('Au cutoff (0=auto)');
+            roadwayFolder.add(roadwayParams, 'levelCount', 2, 8).step(1).name('Level count');
+            roadwayFolder.add(roadwayParams, 'faultBuffer', 0, 250).step(5).name('Fault buffer');
+            roadwayFolder.add(roadwayParams, 'roadwayRadius', 3, 28).step(1).name('Roadway radius');
+            roadwayFolder.add(roadwayParams, 'includeRaises').name('Include raises');
+            roadwayFolder.add(roadwayParams, 'includeOreDrives').name('Include ore drives');
+            roadwayFolder.add(roadwayParams, 'showRoadway').name('Show roadway').onChange(v => { roadwayGroup.visible = v; });
+            roadwayFolder.add({
+                generateRoadway: () => generateHardRockRoadway()
+            }, 'generateRoadway').name('Generate Hard-rock Roadway');
+            roadwayFolder.add({
+                exportRoadway: () => {
+                    if (!roadwayData?.edges?.length) {
+                        alert('Generate hard-rock roadway first.');
+                        return;
+                    }
+                    downloadFiles(buildRoadwayFiles());
+                }
+            }, 'exportRoadway').name('Export Roadway Files');
+
+            // --- Geological Surfaces controls ---
+            const surfFolder = gui.addFolder('Geological Surfaces');
+            const surfParams = { allSurfaces: true, globalOpacity: 0.40 };
+
+            surfFolder.add(surfParams, 'allSurfaces')
+                .name('Show All Surfaces')
+                .onChange(v => {
+                    for (const [name, sm] of Object.entries(surfaceMeshes)) {
+                        sm.visible = v;
+                    }
+                });
+
+            surfFolder.add(surfParams, 'globalOpacity', 0.0, 1.0)
+                .name('Global Opacity')
+                .onChange(v => {
+                    for (const sm of Object.values(surfaceMeshes)) {
+                        sm.material.opacity = v;
+                    }
+                });
+
+            // Per-surface controls
+            for (const cfg of SURFACE_CONFIG) {
+                const name = cfg.name;
+                if (!surfaceMeshes[name]) continue;
+
+                const def = surfaceDefaults[name];
+                const surfCtrl = { visible: true, opacity: def.opacity, color: def.color };
+                const label = def.isFault ? `[Fault] ${name}` : `[Layer] ${name}`;
+
+                const sub = surfFolder.addFolder(label);
+                sub.add(surfCtrl, 'visible')
+                    .name('Visible')
+                    .onChange(v => { surfaceMeshes[name].visible = v; });
+                sub.add(surfCtrl, 'opacity', 0.0, 1.0)
+                    .name('Opacity')
+                    .onChange(v => { surfaceMeshes[name].material.opacity = v; });
+                sub.addColor(surfCtrl, 'color')
+                    .name('Color')
+                    .onChange(v => { surfaceMeshes[name].material.color.set(v); });
+            }
+            surfFolder.open();
+
+            // --- Render Mode ---
+            const modeFolder = gui.addFolder('Visualization Mode');
+            const modeParams = { mode: 'Volumetric', isoValue: 0.5 };
+            modeFolder.add(modeParams, 'mode', ['Volumetric', 'Isosurface'])
+                .name('Render Type')
+                .onChange(v => { material.uniforms.uRenderMode.value = (v === 'Isosurface' ? 1 : 0); });
+            modeFolder.add(modeParams, 'isoValue', 0.0, 1.0)
+                .name('Isosurface Value')
+                .onChange(v => { material.uniforms.uIsoThreshold.value = v; });
+
+            // --- Volume Filtering ---
+            const filterFolder = gui.addFolder('Volume Filtering');
+            const filterParams = { min: 0.0, max: 1.0 };
+            filterFolder.add(filterParams, 'min', 0.0, 1.0).name('Range Min')
+                .onChange(v => { material.uniforms.uFilterMin.value = v; });
+            filterFolder.add(filterParams, 'max', 0.0, 1.0).name('Range Max')
+                .onChange(v => { material.uniforms.uFilterMax.value = v; });
+
+            // --- Spatial Slicing ---
+            const clipFolder = gui.addFolder('Spatial Slicing');
+            const clip = { xMin:0, xMax:1, yMin:0, yMax:1, zMin:0, zMax:1 };
+            const updateClip = () => {
+                material.uniforms.uClipMin.value.set(clip.xMin, clip.yMin, clip.zMin);
+                material.uniforms.uClipMax.value.set(clip.xMax, clip.yMax, clip.zMax);
+            };
+            ['xMin','xMax','yMin','yMax','zMin','zMax'].forEach(k =>
+                clipFolder.add(clip, k, 0, 1).step(0.01).onChange(updateClip));
+
+            // --- Settings ---
+            const qualFolder = gui.addFolder('Settings');
+            qualFolder.add(material.uniforms.opacity, 'value', 0, 1).name('Opacity (Vol Only)');
+            qualFolder.add(material.uniforms.steps, 'value', 50, 500).name('Ray Steps');
+
+            dataFolder.open();
+            modeFolder.open();
+        }
+
+        function pickVoxel(clientX, clientY) {
+            if (!mesh || !meta) return;
+
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            const inverseMatrix = new THREE.Matrix4().copy(mesh.matrixWorld).invert();
+            const localOrigin = raycaster.ray.origin.clone().applyMatrix4(inverseMatrix);
+            const localDir = raycaster.ray.direction.clone().transformDirection(inverseMatrix).normalize();
+
+            const boxMin = new THREE.Vector3(-0.5, -0.5, -0.5);
+            const boxMax = new THREE.Vector3(0.5, 0.5, 0.5);
+            const invDir = new THREE.Vector3(1/localDir.x, 1/localDir.y, 1/localDir.z);
+            const tMinVec = boxMin.clone().sub(localOrigin).multiply(invDir);
+            const tMaxVec = boxMax.clone().sub(localOrigin).multiply(invDir);
+            const t1 = tMinVec.clone().min(tMaxVec);
+            const t2 = tMinVec.clone().max(tMaxVec);
+            const tNear = Math.max(Math.max(t1.x, t1.y), t1.z);
+            const tFar = Math.min(Math.min(t2.x, t2.y), t2.z);
+
+            let hit = null;
+            const stepSize = 0.5 / Math.max(meta.width, meta.height);
+
+            if (tNear <= tFar && tFar >= 0) {
+                let t = Math.max(tNear, 0);
+                for(let i=0; i<800; i++) {
+                    if(t > tFar) break;
+
+                    const p = localOrigin.clone().add(localDir.clone().multiplyScalar(t));
+                    const tex = p.clone().addScalar(0.5);
+
+                    const cMin = material.uniforms.uClipMin.value;
+                    const cMax = material.uniforms.uClipMax.value;
+                    if (tex.x < cMin.x || tex.y < cMin.y || tex.z < cMin.z ||
+                        tex.x > cMax.x || tex.y > cMax.y || tex.z > cMax.z) {
+                        t += stepSize; continue;
+                    }
+
+                    const ix = Math.floor(tex.x * meta.width);
+                    const iy = Math.floor(tex.y * meta.height);
+                    const iz = Math.floor(tex.z * meta.depth);
+
+                    if(ix>=0 && ix<meta.width && iy>=0 && iy<meta.height && iz>=0 && iz<meta.depth) {
+                        const idx = iz*(meta.width*meta.height) + iy*meta.width + ix;
+                        const attrMeta = meta.attributes.find(a => a.key === currentAttrKey);
+                        const rawVal = dataViews[currentAttrKey][idx];
+
+                        const range = attrMeta.max - attrMeta.min;
+                        let norm = (rawVal - attrMeta.min) / (range > 1e-5 ? range : 1.0);
+                        if(norm < 0) norm = 0; if(norm > 1) norm = 1;
+
+                        const renderMode = material.uniforms.uRenderMode.value;
+                        const isoThresh = material.uniforms.uIsoThreshold.value;
+                        const fMin = material.uniforms.uFilterMin.value;
+                        const fMax = material.uniforms.uFilterMax.value;
+
+                        let isVisible = false;
+                        if (renderMode === 1) {
+                            if (norm >= isoThresh) isVisible = true;
+                        } else {
+                            if (norm >= fMin && norm <= fMax) isVisible = true;
+                        }
+
+                        if (isVisible) {
+                            hit = {x: ix, y: iy, z: iz};
+                            break;
+                        }
+                    }
+                    t += stepSize;
+                }
+            }
+
+            if (hit) {
+                updateTooltip(hit, clientX, clientY);
+                material.uniforms.uPickedCoord.value.set(hit.x, hit.y, hit.z);
+            } else {
+                document.getElementById('tooltip').style.display = 'none';
+                material.uniforms.uPickedCoord.value.set(-1, -1, -1);
+            }
+        }
+
+        function updateTooltip(gridIndex, x, y) {
+            const idx = gridIndex.z*(meta.width*meta.height) + gridIndex.y*meta.width + gridIndex.x;
+
+            let html = `<div style="text-align:center; margin-bottom:6px; color:#4af; font-weight:bold; border-bottom:1px solid #444; padding-bottom:4px;">VOXEL [${gridIndex.x}, ${gridIndex.y}, ${gridIndex.z}]</div>`;
+
+            meta.attributes.forEach(attr => {
+                const val = dataViews[attr.key][idx];
+                const isCurrent = (attr.key === currentAttrKey);
+                let displayVal = val;
+                if (attr.dtype === 'float32') displayVal = val.toFixed(3);
+
+                const colorStyle = isCurrent ? 'color: #ffd700;' : '';
+                html += `
+                    <div class="tt-row">
+                        <span class="tt-key" style="${colorStyle}">${attr.name}</span>
+                        <span class="tt-val" style="${colorStyle}">${displayVal}</span>
+                    </div>
+                `;
+            });
+            const tt = document.getElementById('tooltip');
+            tt.innerHTML = html;
+            tt.style.display = 'block';
+            tt.style.left = (x + 20) + 'px';
+            tt.style.top = (y + 20) + 'px';
+        }
+
+        function onMouseDown(e) {
+            if (e.ctrlKey && e.button === 0) {
+                pickVoxel(e.clientX, e.clientY);
+            } else if (e.button === 0) {
+                document.getElementById('tooltip').style.display = 'none';
+                if(material) material.uniforms.uPickedCoord.value.set(-1,-1,-1);
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            if(material) material.uniforms.cameraPos.value.copy(camera.position);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,781 @@
+/* Compact application density: preserve canvas coordinates while reducing UI chrome. */
+#layout {
+  --ui-control-height: 26px;
+  --ui-gap: 6px;
+  --ui-panel-padding: 8px;
+  --ui-radius: 8px;
+  grid-template-rows: 44px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+}
+
+#layout header.editor-toolbar {
+  min-width: 0;
+  min-height: 44px;
+  height: 44px;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: var(--ui-radius);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+#layout header.editor-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.editor-toolbar-start,
+.editor-toolbar-actions,
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.editor-toolbar-start {
+  gap: 8px;
+}
+
+.editor-toolbar-actions {
+  flex: 0 0 auto;
+  gap: 7px;
+  margin-left: auto;
+}
+
+.toolbar-group {
+  gap: 6px;
+}
+
+.editor-brand {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #f2f6fc;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.editor-logo {
+  width: 50px;
+  height: 46px;
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.toolbar-divider {
+  flex: 0 0 1px;
+  width: 1px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.toolbar-select {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.toolbar-select select {
+  min-height: var(--ui-control-height);
+  height: var(--ui-control-height);
+  padding: 3px 24px 3px 7px;
+  font-size: 11px;
+}
+
+#add-data-node {
+  width: 150px;
+}
+
+#add-operator-node {
+  width: 180px;
+}
+
+#layout button,
+#layout select,
+#layout input,
+#layout textarea {
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+#layout button,
+#layout select,
+#layout input:not([type='checkbox']):not([type='range']) {
+  min-height: var(--ui-control-height);
+  padding: 4px 7px;
+}
+
+.toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--ui-control-height);
+  white-space: nowrap;
+}
+
+.toolbar-button svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  stroke-width: 1.8;
+}
+
+.toolbar-preview-button {
+  border-color: rgba(79, 158, 219, 0.34);
+  color: #dceeff;
+}
+
+.toolbar-preview-button:hover {
+  border-color: rgba(79, 158, 219, 0.62);
+  background: rgba(79, 158, 219, 0.12);
+}
+
+#layout main {
+  grid-template-columns: minmax(0, 1fr) clamp(280px, 22vw, 340px);
+  gap: 8px;
+  min-height: 0;
+  height: auto;
+}
+
+#layout .panel {
+  border-radius: var(--ui-radius);
+  padding: var(--ui-panel-padding);
+}
+
+#editor {
+  height: 100%;
+  padding: 0;
+}
+
+#inspector {
+  gap: 6px;
+  padding: 8px;
+}
+
+#inspector h3,
+#inspector h4 {
+  margin: 3px 0;
+  font-size: 12px;
+}
+
+#inspector label {
+  gap: 3px;
+  font-size: 11px;
+}
+
+#inspector .field-row {
+  gap: 4px;
+  padding: 4px 0;
+}
+
+#inspector .section {
+  gap: 6px;
+  padding: 7px;
+  border-radius: 7px;
+}
+
+#inspector .section + .section {
+  margin-top: 6px;
+}
+
+#inspector .section-title {
+  font-size: 11px;
+}
+
+#layout .field-control {
+  gap: 5px;
+}
+
+#layout input[type='checkbox'] {
+  width: 13px;
+  height: 13px;
+}
+
+.editor-canvas-tool {
+  position: absolute;
+  z-index: 12;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px !important;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-color: rgba(214, 224, 240, 0.18);
+  background: rgba(25, 30, 38, 0.72);
+  color: #e6edf8;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.26);
+  opacity: 0.38;
+  backdrop-filter: blur(8px);
+  transition: opacity 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.editor-canvas-tool:hover,
+.editor-canvas-tool:focus-visible,
+.editor-canvas-tool[aria-pressed='true'] {
+  opacity: 1;
+  border-color: rgba(214, 224, 240, 0.38);
+  background: rgba(37, 44, 55, 0.94);
+}
+
+.editor-canvas-tool:focus-visible {
+  outline: 2px solid rgba(79, 158, 219, 0.72);
+  outline-offset: 2px;
+}
+
+.editor-canvas-tool:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.editor-canvas-tool svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 1.8;
+}
+
+.editor-canvas-tool [hidden] {
+  display: none;
+}
+
+#layout .node {
+  --socket-offset: 22px;
+  width: 300px;
+}
+
+#layout .node-header {
+  gap: 6px;
+  padding: 6px 9px 6px 11px;
+  font-size: 12px;
+}
+
+#layout .node-title-input {
+  height: 22px;
+  min-height: 22px;
+  padding: 2px 5px;
+  font-size: 11px;
+}
+
+#layout .node-rename-toggle,
+#layout .node-collapse-toggle {
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+#layout .node-body {
+  gap: 5px;
+  padding: 6px 8px 8px;
+}
+
+#layout .ports,
+#layout .node-inline-controls {
+  gap: 5px;
+}
+
+#layout .node-inline-source,
+#layout .node-inline-field,
+#layout .node-inline-colormap {
+  gap: 4px;
+}
+
+#layout .node-inline-source input,
+#layout .node-inline-field input,
+#layout .node-inline-colormap select,
+#layout .node-inline-range input,
+#layout .node-inline-number-pair input,
+#layout .node-inline-auto-range button,
+#layout .node-inline-open-file {
+  min-height: 24px;
+  padding: 3px 6px;
+  font-size: 10px;
+}
+
+#layout .port {
+  grid-template-columns: 14px 1fr;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 7px;
+}
+
+#layout .port.out {
+  grid-template-columns: 1fr 14px;
+}
+
+#layout .port .dot {
+  width: 10px;
+  height: 10px;
+}
+
+#layout .port .label {
+  font-size: 11px;
+}
+
+.runtime-shell {
+  --runtime-control-height: 26px;
+  --runtime-gap: 6px;
+  --runtime-panel-padding: 8px;
+  --runtime-edge: 8px;
+  --runtime-radius: 8px;
+  font-size: 11px;
+}
+
+.runtime-shell button,
+.runtime-shell select,
+.runtime-shell input,
+.runtime-shell textarea {
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.runtime-shell button,
+.runtime-shell select,
+.runtime-shell input:not([type='checkbox']):not([type='range']) {
+  min-height: var(--runtime-control-height);
+  padding: 4px 7px;
+}
+
+.runtime-topbar {
+  top: var(--runtime-edge);
+  left: var(--runtime-edge);
+  right: var(--runtime-edge);
+  min-height: 44px;
+  height: 44px;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: var(--runtime-radius);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.runtime-brand {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.module-buttons {
+  gap: 5px;
+}
+
+.module-button,
+.function-button {
+  font-size: 11px;
+}
+
+.module-button {
+  min-height: var(--runtime-control-height);
+  padding: 4px 7px;
+}
+
+.function-sidebar {
+  top: 60px;
+  left: var(--runtime-edge);
+  width: 225px;
+  max-height: calc(100vh - 68px);
+  padding: var(--runtime-panel-padding);
+  border-radius: var(--runtime-radius);
+}
+
+.sidebar-head {
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.sidebar-title,
+.runtime-shell .panel-title {
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.function-list {
+  gap: 5px;
+}
+
+.function-button {
+  gap: 4px;
+  padding: 4px;
+  border-radius: 7px;
+}
+
+.function-main {
+  padding: 4px 6px;
+}
+
+.function-focus {
+  width: 24px;
+  height: 24px;
+}
+
+.function-focus svg {
+  width: 13px;
+  height: 13px;
+}
+
+.vc-manager {
+  top: 60px;
+  right: var(--runtime-edge);
+  width: 275px;
+  max-height: calc(100vh - 68px);
+  padding: var(--runtime-panel-padding);
+  border-radius: var(--runtime-radius);
+}
+
+.vc-manager.collapsed {
+  width: 225px;
+}
+
+.vc-panel-head {
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.system-panel-actions {
+  gap: 4px;
+}
+
+.vc-collapse,
+.vc-expand,
+.vc-pin,
+.system-panel-minimize,
+.vc-focus-owner {
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.system-panel-handle {
+  min-width: 30px;
+  min-height: 28px;
+  padding: 5px 9px;
+  font-size: 10px;
+}
+
+.vc-list {
+  gap: 5px;
+}
+
+.vc-group-title {
+  margin-top: 6px;
+}
+
+.vc-item {
+  padding: 5px 6px;
+  border-radius: 7px;
+  margin-left: calc(var(--vc-depth, 0) * 10px);
+}
+
+.vc-head {
+  gap: 5px;
+  min-height: 22px;
+}
+
+.vc-visible-label {
+  gap: 5px;
+  font-size: 11px;
+}
+
+.vc-actions {
+  gap: 3px;
+}
+
+.runtime-shell .control-panel {
+  left: 241px;
+  bottom: var(--runtime-edge);
+  width: 360px;
+  min-width: 280px;
+  min-height: 130px;
+  max-width: calc(100vw - 265px);
+  max-height: min(68vh, 560px);
+  padding: var(--runtime-panel-padding);
+  border-radius: var(--runtime-radius);
+}
+
+.runtime-shell .dependency-control-section + .root-control-section,
+.runtime-shell .dependency-control-section + .dependency-control-section {
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+.runtime-shell .floating,
+.runtime-shell .ventilation-panel {
+  padding: var(--runtime-panel-padding);
+  border-radius: var(--runtime-radius);
+}
+
+.runtime-shell .ventilation-panel:not(.panel-collapsed) {
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 68px);
+}
+
+.runtime-shell .ventilation-panel .panel-title {
+  gap: 7px;
+}
+
+.runtime-shell .control-section {
+  gap: 6px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.runtime-shell .control-grid {
+  gap: 5px;
+  margin: 6px 0;
+}
+
+.runtime-shell .control-grid label,
+.runtime-shell .field-row {
+  gap: 3px;
+  font-size: 11px;
+}
+
+.runtime-shell .field-row input,
+.runtime-shell .field-row select,
+.runtime-shell .control-grid input:not([type='checkbox']),
+.runtime-shell .control-grid select {
+  min-height: var(--runtime-control-height);
+}
+
+.runtime-shell .checkbox-row,
+.runtime-shell .control-grid label.checkbox-row,
+.runtime-shell label.checkbox-row {
+  min-height: 26px;
+  padding: 4px 8px;
+}
+
+.runtime-shell .checkbox-row input {
+  width: 30px;
+  height: 16px;
+}
+
+.runtime-shell .checkbox-row input::after {
+  width: 10px;
+  height: 10px;
+}
+
+.runtime-shell .checkbox-row input:checked::after {
+  transform: translateX(14px);
+}
+
+.runtime-shell .dataset-card {
+  gap: 4px;
+  padding: 7px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+.runtime-shell .dataset-card strong {
+  font-size: 12px;
+}
+
+.runtime-shell .geological-layer-panel {
+  min-width: 330px;
+  min-height: 300px;
+}
+
+.runtime-shell .geological-detail-panel,
+.runtime-shell .geological-attribute-panel {
+  min-width: 250px;
+}
+
+.runtime-shell .geology-controls,
+.runtime-shell .geology-control-stack,
+.runtime-shell .geology-volume-stack,
+.runtime-shell .geology-volume-controls,
+.runtime-shell .geology-analysis-form {
+  gap: 6px;
+}
+
+.runtime-shell .geology-slider-row,
+.runtime-shell .geology-range-pair {
+  grid-template-columns: minmax(82px, 0.8fr) minmax(110px, 1.5fr) 104px;
+  gap: 6px;
+  min-height: 26px;
+  padding: 3px 6px;
+}
+
+.runtime-shell .geology-range-values {
+  grid-template-columns: repeat(2, 49px);
+  gap: 5px;
+}
+
+.runtime-shell .geology-range-values .geology-value-input {
+  width: 49px;
+}
+
+.runtime-shell .geology-form-section {
+  gap: 6px;
+  padding: 7px;
+  border-radius: 7px;
+}
+
+.runtime-shell .geology-form-row,
+.runtime-shell .geology-toggle-row {
+  min-height: 26px;
+}
+
+.runtime-shell .geology-toggle-row {
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.runtime-shell .geology-form-actions {
+  gap: 5px;
+}
+
+.runtime-shell .geology-form-actions button,
+.runtime-shell .geology-quick-actions button {
+  min-height: 26px;
+  padding: 4px 7px;
+  border-radius: 6px;
+}
+
+.runtime-shell .relation-table {
+  gap: 4px;
+  max-height: 180px;
+}
+
+.runtime-shell .relation-row {
+  min-height: 27px;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.runtime-shell .geological-section-view-panel {
+  min-width: min(500px, calc(100vw - 16px));
+  min-height: 300px;
+}
+
+.runtime-shell .geological-section-control-panel {
+  min-width: 290px;
+}
+
+.safe-route-mode,
+.muted-note,
+.time-label,
+.empty-state {
+  font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+  .editor-toolbar-start > .toolbar-divider {
+    display: none;
+  }
+
+  .editor-brand span {
+    display: none;
+  }
+
+  .editor-brand {
+    gap: 0;
+  }
+
+  #add-data-node {
+    width: 140px;
+  }
+
+  #add-operator-node {
+    width: 165px;
+  }
+}
+
+@media (max-width: 900px) {
+  .runtime-brand {
+    display: none;
+  }
+
+  .runtime-shell .geological-section-view-panel {
+    min-width: min(460px, calc(100vw - 16px));
+  }
+}
+
+/* Compact node creation menu. It lives outside #layout, so its dimensions are explicit. */
+.node-context-menu {
+  width: 288px;
+  max-height: min(380px, calc(100vh - 12px));
+  gap: 4px;
+  padding: 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.node-search {
+  min-height: 26px;
+  height: 26px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.node-menu-content {
+  padding-right: 1px;
+  scrollbar-width: thin;
+}
+
+.node-menu-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.node-menu-section {
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.node-menu-section:last-child {
+  margin-bottom: 0;
+}
+
+.node-menu-title {
+  padding: 2px 2px 1px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.node-menu-category {
+  margin-top: 2px;
+  padding: 2px;
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.node-menu-item {
+  min-height: 26px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.node-menu-item.keyboard-active,
+.node-menu-item:focus-visible {
+  outline: 1px solid rgba(126, 183, 231, 0.72);
+  outline-offset: -1px;
+  border-color: rgba(126, 183, 231, 0.48);
+  background: rgba(79, 158, 219, 0.13);
+}
+
+.node-menu-empty {
+  padding: 8px 6px;
+  font-size: 11px;
+  line-height: 16px;
+}

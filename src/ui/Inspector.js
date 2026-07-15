@@ -1,8 +1,13 @@
 import { DefaultSourceAdaptorRegistry } from '../core/adaptors/SourceAdaptorRegistry.js';
 import { SemanticContractRegistry } from '../core/semantics/SemanticContractRegistry.js';
 import { normalizeDataNodeParams, semanticizeDataNode } from '../core/nodes/DataNodes.js';
-import { DatasetTaxonomy } from '../core/semantics/Taxonomies.js';
 import { generateCssGradient } from '../utils/colors.js';
+import {
+  createInspectorDeleteFooter,
+  createInspectorEmptyState,
+  createInspectorNodeSummary,
+  createInspectorSection
+} from './InspectorComponents.js';
 
 const SourceLabels = {
   topology: 'Topology Source',
@@ -91,16 +96,6 @@ const FriendlySummaryLabels = {
   elementCount: 'Spatial elements',
   attributeCount: 'Attributes'
 };
-
-function createSection(title) {
-  const wrap = document.createElement('div');
-  wrap.className = 'section';
-  const header = document.createElement('div');
-  header.className = 'section-title';
-  header.textContent = title;
-  wrap.appendChild(header);
-  return wrap;
-}
 
 function addTextRow(section, label, value) {
   const row = document.createElement('div');
@@ -263,7 +258,19 @@ export class Inspector {
     this.container = container;
     this.currentNode = null;
     this.semanticCache = new Map();
+    this.sectionState = new Map();
+    this.renderRevision = 0;
     this.onNodeChange = null;
+  }
+
+  createSection(node, sectionKey, title, options = {}) {
+    return createInspectorSection({
+      nodeId: node.id,
+      sectionKey,
+      title,
+      stateStore: this.sectionState,
+      ...options
+    });
   }
 
   notifyNodeChange(node, options = {}) {
@@ -273,34 +280,27 @@ export class Inspector {
   async showNode(node) {
     const slot = this.container.querySelector('.node-config');
     if (!slot) return;
+    const revision = ++this.renderRevision;
     slot.innerHTML = '';
     if (!node) {
       this.currentNode = null;
-      slot.textContent = 'Select a node';
+      slot.appendChild(createInspectorEmptyState());
       return;
     }
     this.currentNode = node;
-    const title = document.createElement('h4');
-    title.textContent = node.label;
-    slot.appendChild(title);
 
     if (node.kind === 'data') await this.renderDataNode(slot, node);
     else if (node.kind === 'operator') this.renderOperatorNode(slot, node);
     else if (node.kind === 'module') this.renderModuleNode(slot, node);
     else slot.appendChild(document.createTextNode('No editable params.'));
 
-    const deleteWrap = document.createElement('div');
-    deleteWrap.className = 'section';
-    const delBtn = document.createElement('button');
-    delBtn.textContent = 'Delete this node';
-    delBtn.addEventListener('click', () => {
+    if (revision !== this.renderRevision || this.currentNode?.id !== node.id) return;
+
+    slot.appendChild(createInspectorDeleteFooter(() => {
       window.minevisGraph?.removeNode(node.id);
       this.currentNode = null;
       this.showNode(null);
-      window.minevisEditor?.render();
-    });
-    deleteWrap.appendChild(delBtn);
-    slot.appendChild(deleteWrap);
+    }));
   }
 
   cacheKey(node) {
@@ -333,6 +333,7 @@ export class Inspector {
   async renderDataNode(slot, node) {
     normalizeDataNodeParams(node);
     const preview = await this.getSemanticPreview(node);
+    if (this.currentNode?.id !== node.id) return;
     const contract = SemanticContractRegistry.get(node.params.contractId);
     if (preview?.dataset?.validation) {
       node.params.semanticStatus = {
@@ -348,32 +349,40 @@ export class Inspector {
       this.notifyNodeChange(node, { source: 'semantic-preview', refreshInspector: false });
     }
 
-    this.renderDataMeaning(slot, node, contract);
+    this.renderDataSummary(slot, node, contract, preview);
     this.renderReadingSettings(slot, node);
     this.renderRepresentationSettings(slot, node);
     this.renderSources(slot, node, preview);
     this.renderRoleMapping(slot, node, contract, preview);
-    this.renderValidation(slot, preview?.dataset, preview?.error);
+    this.renderValidation(slot, node, preview?.dataset, preview?.error);
     this.renderDeveloperDetails(slot, node, contract, preview);
   }
 
-  renderDataMeaning(slot, node, contract) {
-    const section = createSection('Data Meaning');
-    const taxonomy = DatasetTaxonomy.find((item) => item.class === contract?.taxonomyClass);
-    const card = document.createElement('div');
-    card.className = 'dataset-card';
-    card.innerHTML = `
-      <strong>${node.label || contract?.label}</strong>
-      <span>${contract?.description || 'Project data organized as a reusable mining object.'}</span>
-      <small>${contract?.taxonomyClass || ''}${taxonomy ? ` - ${taxonomy.objectSystemFocus}` : ''}</small>
-    `;
-    section.appendChild(card);
-    slot.appendChild(section);
+  renderDataSummary(slot, node, contract, preview) {
+    const validation = preview?.dataset?.validation;
+    const errors = validation?.errors?.length || (preview?.error ? 1 : 0);
+    const warnings = validation?.warnings?.length || 0;
+    const status = errors
+      ? { label: `${errors} error${errors === 1 ? '' : 's'}`, tone: 'error' }
+      : warnings
+        ? { label: `${warnings} warning${warnings === 1 ? '' : 's'}`, tone: 'warning' }
+        : validation?.valid
+          ? { label: 'Ready', tone: 'success' }
+          : { label: 'Not ready', tone: 'neutral' };
+    slot.appendChild(createInspectorNodeSummary({
+      node,
+      category: 'Data node',
+      meta: [node.params.datasetType, contract?.class || node.params.semanticClass].filter(Boolean).join(' / '),
+      description: contract?.description || 'Project data organized as a reusable mining object.',
+      status
+    }));
   }
 
   renderReadingSettings(slot, node) {
     if (node.params.datasetType !== 'SensorReadings') return;
-    const section = createSection('Observation Settings');
+    const { root: section, body } = this.createSection(node, 'observation-settings', 'Observation Settings', {
+      defaultOpen: true
+    });
     const variableRow = document.createElement('label');
     variableRow.className = 'field-row';
     variableRow.innerHTML = '<span>Variable</span>';
@@ -384,7 +393,7 @@ export class Inspector {
       this.refreshNode(node);
     });
     variableRow.appendChild(variableInput);
-    section.appendChild(variableRow);
+    body.appendChild(variableRow);
 
     const unitRow = document.createElement('label');
     unitRow.className = 'field-row';
@@ -396,7 +405,7 @@ export class Inspector {
       this.refreshNode(node);
     });
     unitRow.appendChild(unitInput);
-    section.appendChild(unitRow);
+    body.appendChild(unitRow);
     slot.appendChild(section);
   }
 
@@ -409,7 +418,10 @@ export class Inspector {
           ? ['resource-block', 'coal-seam-attribute', 'risk-uncertainty', 'surface-attribute', 'generic']
           : null);
     if (!profileOptions?.length) return;
-    const section = createSection('Representation Profile');
+    const { root: section, body } = this.createSection(node, 'representation-profile', 'Representation Profile', {
+      defaultOpen: true,
+      summary: node.params.representationProfile || profileOptions[0]
+    });
     const row = document.createElement('label');
     row.className = 'field-row';
     row.innerHTML = '<span>Profile</span>';
@@ -426,32 +438,78 @@ export class Inspector {
       this.refreshNode(node);
     });
     row.appendChild(select);
-    section.appendChild(row);
+    body.appendChild(row);
     const hint = document.createElement('p');
     hint.className = 'small';
-    hint.textContent = 'Controls how the semantic dataset interprets geometry and field support; role mapping remains editable below.';
-    section.appendChild(hint);
+    hint.textContent = 'Controls how the dataset interprets geometry and field support.';
+    body.appendChild(hint);
     slot.appendChild(section);
   }
 
   renderSources(slot, node, preview) {
-    const section = createSection('Sources');
-    Object.entries(node.params.sources || {}).forEach(([sourceKey, source]) => {
-      const card = document.createElement('div');
-      card.className = 'source-card';
+    const sources = Object.entries(node.params.sources || {});
+    const sourceErrors = preview?.sourceErrors || [];
+    const requiredCount = sources.filter(([, source]) => source.required).length;
+    const isConfigured = (source) => Boolean(
+      source.path || source.name || source.text || source.arrayBuffer || source.data
+    );
+    const missingCount = sources.filter(([, source]) => source.required && !isConfigured(source)).length;
+    const failedCount = sourceErrors.length;
+    const sourceSummary = [
+      sources.length + ' sources',
+      requiredCount + ' required',
+      missingCount
+        ? missingCount + ' missing'
+        : failedCount
+          ? failedCount + ' failed'
+          : 'configured'
+    ].join(' / ');
+    const { root: section, body } = this.createSection(node, 'sources', 'Sources', {
+      defaultOpen: true,
+      forceOpen: missingCount > 0 || failedCount > 0,
+      summary: sourceSummary,
+      tone: missingCount || failedCount ? 'error' : 'neutral'
+    });
 
-      const header = document.createElement('div');
-      header.className = 'source-card-header';
+    sources.forEach(([sourceKey, source]) => {
+      const result = preview?.adaptorResults?.[sourceKey];
+      const configured = isConfigured(source);
+      const sourceError = sourceErrors.find((entry) => entry.sourceKey === sourceKey)?.error;
+      const failed = Boolean(result?.error || sourceError);
       const requiredLabel = source.required ? 'Required' : 'Optional';
-      const templateLabel = source.template ? `${source.template} - ${requiredLabel}` : requiredLabel;
-      header.innerHTML = `<strong>${source.label || sourceLabel(sourceKey)}</strong><small>${templateLabel}</small>`;
-      card.appendChild(header);
+      const statusLabel = failed
+        ? 'Error'
+        : source.required && !configured
+          ? 'Missing'
+          : result
+            ? 'Ready'
+            : configured
+              ? 'Configured'
+              : 'Optional';
+      const statusTone = failed || (source.required && !configured)
+        ? 'error'
+        : result
+          ? 'success'
+          : 'neutral';
+      const fullPath = source.name || source.path || 'No file';
+      const fileLabel = String(fullPath).split(/[\\/]/).pop();
+      const sourcePanel = this.createSection(node, 'source-' + sourceKey, source.label || sourceLabel(sourceKey), {
+        defaultOpen: false,
+        forceOpen: failed || (source.required && !configured),
+        summary: [requiredLabel, fileLabel, statusLabel].join(' / '),
+        className: 'source-card inspector-source-slot',
+        tone: statusTone
+      });
+      const card = sourcePanel.root;
+      const cardBody = sourcePanel.body;
+      if (sourceError) card.title = sourceError.message || String(sourceError);
 
       const controls = document.createElement('div');
       controls.className = 'source-path-row';
       const input = document.createElement('input');
       input.value = source.path || source.name || '';
       input.placeholder = '/data/example.csv';
+      input.setAttribute('aria-label', (source.label || sourceLabel(sourceKey)) + ' path');
       input.addEventListener('change', () => {
         setNested(node.params, sourcePathKey(sourceKey), input.value.trim());
         delete node.params.sources[sourceKey].text;
@@ -484,10 +542,11 @@ export class Inspector {
       const openButton = document.createElement('button');
       openButton.type = 'button';
       openButton.className = 'inline-button';
-      openButton.textContent = 'Open file';
+      openButton.textContent = 'Open';
+      openButton.title = 'Choose a local source file';
       openButton.addEventListener('click', () => fileInput.click());
       controls.appendChild(openButton);
-      card.appendChild(controls);
+      cardBody.appendChild(controls);
 
       const adaptorRow = document.createElement('label');
       adaptorRow.className = 'field-row';
@@ -507,63 +566,86 @@ export class Inspector {
         this.refreshNode(node);
       });
       adaptorRow.appendChild(adaptorSelect);
-      card.appendChild(adaptorRow);
+      cardBody.appendChild(adaptorRow);
 
       const details = document.createElement('details');
       details.className = 'source-details';
       const summary = document.createElement('summary');
       summary.textContent = 'File details';
       details.appendChild(summary);
-      appendFriendlyList(details, sourceSummaryRows(source, preview?.adaptorResults?.[sourceKey]));
-      card.appendChild(details);
-
-      section.appendChild(card);
+      appendFriendlyList(details, sourceSummaryRows(source, result));
+      cardBody.appendChild(details);
+      body.appendChild(card);
     });
     slot.appendChild(section);
   }
 
   renderRoleMapping(slot, node, contract, preview) {
-    const section = createSection('Field Meaning');
+    const roles = contract?.roles || [];
+    const resolvedMapping = {
+      ...(preview?.roleMapping || {}),
+      ...(node.params.roleMapping || {})
+    };
+    const mappedCount = roles.filter((role) => resolvedMapping[role.key] || role.defaultPath).length;
+    const missingRequired = roles.filter(
+      (role) => role.required && !(resolvedMapping[role.key] || role.defaultPath)
+    );
+    const mappingSummary = [
+      roles.length + ' roles',
+      mappedCount + ' mapped',
+      missingRequired.length ? missingRequired.length + ' required missing' : 'required complete'
+    ].join(' / ');
+    const { root: section, body } = this.createSection(node, 'field-meaning', 'Field Meaning', {
+      defaultOpen: false,
+      forceOpen: missingRequired.length > 0,
+      summary: mappingSummary,
+      tone: missingRequired.length ? 'error' : 'neutral'
+    });
     const intro = document.createElement('p');
     intro.className = 'small';
-    intro.textContent = 'Confirm which source field plays each mining-domain role. Defaults are inferred from the source and can be changed here.';
-    section.appendChild(intro);
+    intro.textContent = 'Map source fields to mining-domain roles. Inferred values remain editable.';
+    body.appendChild(intro);
 
     const candidates = new Set();
     Object.values(preview?.adaptorResults || {}).forEach((result) => {
       (result.paths || result.fields || []).forEach((field) => candidates.add(field));
     });
-    Object.values(preview?.roleMapping || node.params.roleMapping || {}).forEach((field) => {
+    Object.values(resolvedMapping).forEach((field) => {
       if (field) candidates.add(field);
     });
     const options = ['', ...[...candidates].sort()];
 
-    (contract?.roles || []).forEach((role) => {
+    roles.forEach((role) => {
       const row = document.createElement('label');
       row.className = 'role-row';
       const meta = document.createElement('div');
       meta.className = 'role-meta';
-      meta.innerHTML = `
-        <strong>${role.label}${role.required ? ' *' : ''}</strong>
-        <span>${role.description}</span>
-        <small>${role.required ? 'Required' : 'Optional'}</small>
-      `;
+      const roleTitle = document.createElement('strong');
+      roleTitle.textContent = role.label + (role.required ? ' *' : '');
+      roleTitle.title = role.description || role.label;
+      meta.appendChild(roleTitle);
+      const description = document.createElement('span');
+      description.textContent = role.description || '';
+      description.title = role.description || '';
+      meta.appendChild(description);
+      const requirement = document.createElement('small');
+      requirement.textContent = role.required ? 'Required' : 'Optional';
+      meta.appendChild(requirement);
       row.appendChild(meta);
+
       const input = document.createElement('input');
       const datalist = document.createElement('datalist');
-      const listId = `role-options-${node.id}-${role.key.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+      const listId = 'role-options-' + node.id + '-' + role.key.replace(/[^a-zA-Z0-9_-]/g, '-');
       datalist.id = listId;
-      options
-        .filter(Boolean)
-        .forEach((candidate) => {
+      options.filter(Boolean).forEach((candidate) => {
         const option = document.createElement('option');
         option.value = candidate;
-          option.textContent = candidate;
-          datalist.appendChild(option);
+        option.textContent = candidate;
+        datalist.appendChild(option);
       });
       input.setAttribute('list', listId);
       input.placeholder = role.defaultPath || '(not assigned)';
-      input.value = node.params.roleMapping?.[role.key] || role.defaultPath || '';
+      input.value = resolvedMapping[role.key] || role.defaultPath || '';
       input.addEventListener('change', () => {
         node.params.roleMapping = node.params.roleMapping || {};
         node.params.roleMapping[role.key] = input.value.trim();
@@ -571,96 +653,120 @@ export class Inspector {
       });
       row.appendChild(input);
       row.appendChild(datalist);
-      section.appendChild(row);
+      body.appendChild(row);
     });
     slot.appendChild(section);
   }
 
-  renderValidation(slot, dataset, error) {
-    const section = createSection('Data Check');
-    if (error) {
-      const row = document.createElement('div');
-      row.className = 'validation-error';
-      row.textContent = error.message || String(error);
-      section.appendChild(row);
-      slot.appendChild(section);
-      return;
-    }
+  renderValidation(slot, node, dataset, error) {
     const validation = dataset?.validation || { valid: false, warnings: [], errors: ['Not materialized.'], summary: {} };
+    const errors = error ? [error.message || String(error)] : (validation.errors || []);
+    const warnings = validation.warnings || [];
+    const summary = errors.length
+      ? errors.length + ' error' + (errors.length === 1 ? '' : 's')
+      : warnings.length
+        ? 'Ready / ' + warnings.length + ' warning' + (warnings.length === 1 ? '' : 's')
+        : validation.valid
+          ? 'Ready'
+          : 'Not ready';
+    const tone = errors.length ? 'error' : warnings.length ? 'warning' : validation.valid ? 'success' : 'neutral';
+    const { root: section, body } = this.createSection(node, 'data-check', 'Data Check', {
+      defaultOpen: false,
+      forceOpen: errors.length > 0,
+      summary,
+      tone
+    });
+
     const status = document.createElement('div');
-    status.className = validation.valid ? 'validation-ok' : 'validation-error';
-    status.textContent = validation.valid ? 'Ready to use' : 'Needs attention';
-    section.appendChild(status);
-    appendFriendlyList(section, validationSummaryRows(validation.summary || {}));
-    if (validation.errors?.length) {
+    status.className = errors.length
+      ? 'validation-error'
+      : warnings.length
+        ? 'validation-warning'
+        : 'validation-ok';
+    status.textContent = errors.length
+      ? 'Needs attention'
+      : warnings.length
+        ? 'Ready with warnings'
+        : validation.valid
+          ? 'Ready to use'
+          : 'Not ready';
+    body.appendChild(status);
+    appendFriendlyList(body, validationSummaryRows(validation.summary || {}));
+
+    if (errors.length) {
       const list = document.createElement('ul');
       list.className = 'semantic-list';
-      validation.errors.forEach((message) => {
+      errors.forEach((message) => {
         const item = document.createElement('li');
         item.textContent = message;
         list.appendChild(item);
       });
-      section.appendChild(list);
+      body.appendChild(list);
     }
-    if (validation.warnings?.length) {
+    if (warnings.length) {
       const list = document.createElement('ul');
       list.className = 'semantic-list';
-      validation.warnings.forEach((message) => {
+      warnings.forEach((message) => {
         const item = document.createElement('li');
-        item.textContent = `Warning: ${message}`;
+        item.textContent = 'Warning: ' + message;
         list.appendChild(item);
       });
-      section.appendChild(list);
+      body.appendChild(list);
     }
     slot.appendChild(section);
   }
 
   renderDeveloperDetails(slot, node, contract, preview) {
-    const details = document.createElement('details');
-    details.className = 'developer-details';
-    const summary = document.createElement('summary');
-    summary.textContent = 'Developer details';
-    details.appendChild(summary);
-
-    const body = document.createElement('div');
-    body.className = 'developer-details-body';
+    const { root: details, body } = this.createSection(node, 'developer-details', 'Developer details', {
+      defaultOpen: false,
+      summary: 'Adaptors / contract / templates',
+      className: 'developer-details'
+    });
+    body.classList.add('developer-details-body');
     this.renderDeveloperSourceAdaptors(body, node, preview);
-    this.renderSemanticContract(body, contract);
-    this.renderDataTemplates(body, preview?.dataset);
+    this.renderSemanticContract(body, node, contract);
+    this.renderDataTemplates(body, node, preview?.dataset);
     this.renderDatasetOutput(body, node);
-    details.appendChild(body);
     slot.appendChild(details);
   }
 
   renderDeveloperSourceAdaptors(slot, node, preview) {
-    const section = createSection('Resolved Source Adaptors');
+    const { root: section, body } = this.createSection(node, 'resolved-adaptors', 'Resolved Source Adaptors', {
+      defaultOpen: false,
+      summary: Object.keys(node.params.sources || {}).length + ' sources'
+    });
     Object.entries(node.params.sources || {}).forEach(([sourceKey, source]) => {
       const result = preview?.adaptorResults?.[sourceKey];
       const inferred = DefaultSourceAdaptorRegistry.infer(source);
       const row = document.createElement('div');
       row.className = 'template-card';
-      row.innerHTML = `
-        <strong>${sourceLabel(sourceKey)}</strong>
-        <span>${result?.adaptorLabel || inferred?.label || 'Not resolved'}</span>
-        <small>${result?.adaptorId || inferred?.id || '-'}</small>
-      `;
-      section.appendChild(row);
+      const title = document.createElement('strong');
+      title.textContent = sourceLabel(sourceKey);
+      const label = document.createElement('span');
+      label.textContent = result?.adaptorLabel || inferred?.label || 'Not resolved';
+      const id = document.createElement('small');
+      id.textContent = result?.adaptorId || inferred?.id || '-';
+      row.append(title, label, id);
+      body.appendChild(row);
     });
     slot.appendChild(section);
   }
 
-  renderSemanticContract(slot, contract) {
-    const section = createSection('Semantic Contract');
-    addTextRow(section, 'Class', contract?.class);
-    addTextRow(section, 'Taxonomy', contract?.taxonomyClass);
+  renderSemanticContract(slot, node, contract) {
+    const { root: section, body } = this.createSection(node, 'semantic-contract', 'Semantic Contract', {
+      defaultOpen: false,
+      summary: contract?.class || 'Not resolved'
+    });
+    addTextRow(body, 'Class', contract?.class);
+    addTextRow(body, 'Taxonomy', contract?.taxonomyClass);
     const templates = document.createElement('div');
     templates.className = 'semantic-line';
-    templates.innerHTML = `<span>Required templates</span><div>${renderBadges(contract?.requiredTemplates || [])}</div>`;
-    section.appendChild(templates);
+    templates.innerHTML = '<span>Required templates</span><div>' + renderBadges(contract?.requiredTemplates || []) + '</div>';
+    body.appendChild(templates);
     const roles = document.createElement('div');
     roles.className = 'semantic-line';
-    roles.innerHTML = `<span>Roles</span><div>${renderBadges((contract?.roles || []).map((role) => role.key))}</div>`;
-    section.appendChild(roles);
+    roles.innerHTML = '<span>Roles</span><div>' + renderBadges((contract?.roles || []).map((role) => role.key)) + '</div>';
+    body.appendChild(roles);
     const constraints = document.createElement('ul');
     constraints.className = 'semantic-list';
     (contract?.constraints || []).forEach((constraint) => {
@@ -668,94 +774,117 @@ export class Inspector {
       item.textContent = constraint;
       constraints.appendChild(item);
     });
-    section.appendChild(constraints);
+    body.appendChild(constraints);
     slot.appendChild(section);
   }
 
-  renderDataTemplates(slot, dataset) {
-    const section = createSection('Data Templates');
+  renderDataTemplates(slot, node, dataset) {
     const templates = Object.values(dataset?.templates || {});
+    const { root: section, body } = this.createSection(node, 'data-templates', 'Data Templates', {
+      defaultOpen: false,
+      summary: templates.length + ' materialized'
+    });
     if (!templates.length) {
-      section.appendChild(document.createTextNode('No templates materialized.'));
+      const empty = document.createElement('p');
+      empty.className = 'small';
+      empty.textContent = 'No templates materialized.';
+      body.appendChild(empty);
     }
     templates.forEach((template) => {
       const card = document.createElement('div');
       card.className = 'template-card';
-      card.innerHTML = `
-        <strong>${template.label}</strong>
-        <span>${template.type} / ${template.role}</span>
-        <pre>${JSON.stringify(template.summary(), null, 2)}</pre>
-      `;
-      section.appendChild(card);
+      const title = document.createElement('strong');
+      title.textContent = template.label;
+      const meta = document.createElement('span');
+      meta.textContent = template.type + ' / ' + template.role;
+      const preview = document.createElement('pre');
+      preview.textContent = JSON.stringify(template.summary(), null, 2);
+      card.append(title, meta, preview);
+      body.appendChild(card);
     });
     slot.appendChild(section);
   }
 
   renderDatasetOutput(slot, node) {
-    const outputSection = createSection('Dataset Output');
+    const outputs = node.ports.filter((port) => port.direction === 'out');
+    const { root: outputSection, body } = this.createSection(node, 'dataset-output', 'Dataset Output', {
+      defaultOpen: false,
+      summary: outputs.length + ' port' + (outputs.length === 1 ? '' : 's')
+    });
     const outputList = document.createElement('div');
     outputList.className = 'output-list';
-    node.ports
-      .filter((port) => port.direction === 'out')
-      .forEach((port) => {
-        const row = document.createElement('div');
-        row.className = 'output-row';
-        row.textContent = `${port.name}: ${port.type}`;
-        outputList.appendChild(row);
-      });
-    outputSection.appendChild(outputList);
+    outputs.forEach((port) => {
+      const row = document.createElement('div');
+      row.className = 'output-row';
+      row.textContent = port.name + ': ' + port.type;
+      outputList.appendChild(row);
+    });
+    body.appendChild(outputList);
     slot.appendChild(outputSection);
   }
-
   renderOperatorNode(slot, node) {
     const definition = window.minevisGraph?.definitionRegistry?.get(node.typeId);
-    const info = createSection('Capability');
-    const card = document.createElement('div');
-    card.className = 'dataset-card';
-    card.innerHTML = `
-      <strong>${node.label}</strong>
-      <span>Consumes semantic datasets, module context, and parameters to create visual contributions.</span>
-      <small>Primary class: ${definition?.taxonomy?.primaryClass || 'Operator'}${
-        definition?.taxonomy?.auxiliaryTags?.length ? ` / tags: ${definition.taxonomy.auxiliaryTags.join(', ')}` : ''
-      }</small>
-    `;
-    info.appendChild(card);
-    if (definition?.inputRequirements) {
-      Object.entries(definition.inputRequirements).forEach(([inputName, requirement]) => {
+    const requirements = Object.entries(definition?.inputRequirements || {});
+    const schema = definition?.paramSchema || [];
+    const primaryClass = definition?.taxonomy?.primaryClass || 'Operator';
+    slot.appendChild(createInspectorNodeSummary({
+      node,
+      category: 'Operator',
+      meta: primaryClass + ' / ' + requirements.length + ' inputs',
+      description: 'Consumes semantic datasets and creates visual contributions.'
+    }));
+
+    if (requirements.length) {
+      const { root: requirementsSection, body: requirementsBody } = this.createSection(
+        node,
+        'input-requirements',
+        'Input Requirements',
+        {
+          defaultOpen: false,
+          summary: requirements.length + ' input' + (requirements.length === 1 ? '' : 's')
+        }
+      );
+      requirements.forEach(([inputName, requirement]) => {
         const row = document.createElement('div');
         row.className = 'template-card';
-        row.innerHTML = `
-          <strong>${inputName}</strong>
-          <span>${requirement.class}</span>
-          <div>${renderBadges(requirement.requiredTemplates || [])}</div>
-          <small>${(requirement.requiredRoles || []).join(', ')}</small>
-        `;
-        info.appendChild(row);
+        const title = document.createElement('strong');
+        title.textContent = inputName;
+        const semanticClass = document.createElement('span');
+        semanticClass.textContent = requirement.class;
+        const badges = document.createElement('div');
+        badges.innerHTML = renderBadges(requirement.requiredTemplates || []);
+        const roles = document.createElement('small');
+        roles.textContent = (requirement.requiredRoles || []).join(', ');
+        row.append(title, semanticClass, badges, roles);
+        requirementsBody.appendChild(row);
       });
+      slot.appendChild(requirementsSection);
     }
-    slot.appendChild(info);
 
-    const schema = definition?.paramSchema || [];
     if (!schema.length) return;
-    const section = createSection('Parameters');
+    const { root: section, body } = this.createSection(node, 'parameters', 'Parameters', {
+      defaultOpen: true,
+      summary: schema.length + ' parameter' + (schema.length === 1 ? '' : 's')
+    });
     const notifyParameterChange = () => this.notifyNodeChange(node, { source: 'inspector', refreshInspector: false });
     schema.forEach((field) => {
       if (field.type === 'select') {
-        addField(section, node, field.label || field.key, field.key, {
+        addField(body, node, field.label || field.key, field.key, {
           options: field.options,
           onChange: notifyParameterChange
         });
+      } else {
+        addField(body, node, field.label || field.key, field.key, {
+          type: field.type === 'boolean' ? 'checkbox' : field.type || 'text',
+          onChange: notifyParameterChange
+        });
       }
-      else addField(section, node, field.label || field.key, field.key, {
-        type: field.type === 'boolean' ? 'checkbox' : field.type || 'text',
-        onChange: notifyParameterChange
-      });
       if (field.key === 'colormap') {
         const preview = document.createElement('div');
         preview.className = 'inspector-colormap-preview';
         preview.style.background = generateCssGradient(node.params?.colormap || 'rainbow');
-        section.appendChild(preview);
-        const select = section.querySelector('label:last-of-type select');
+        body.appendChild(preview);
+        const select = body.querySelector('label:last-of-type select');
         select?.addEventListener('change', () => {
           preview.style.background = generateCssGradient(select.value);
         });
@@ -763,14 +892,24 @@ export class Inspector {
     });
     slot.appendChild(section);
   }
-
   renderModuleNode(slot, node) {
     node.runtime?.syncFunctionSlots?.(node, {
       edges: window.minevisGraph?.edges || [],
       nodes: window.minevisGraph?.nodes || []
     });
 
-    const section = createSection('Workspace');
+    const functions = (node.params?.functions || []).filter((fn) => !fn.placeholder);
+    slot.appendChild(createInspectorNodeSummary({
+      node,
+      category: 'Module',
+      meta: 'Workspace / ' + functions.length + ' functions',
+      description: 'Composes connected operators into an interactive analysis workspace.'
+    }));
+
+    const { root: section, body } = this.createSection(node, 'workspace', 'Workspace', {
+      defaultOpen: true,
+      summary: node.params?.workspaceName || node.label || 'Workspace'
+    });
     const row = document.createElement('label');
     row.className = 'field-row';
     const label = document.createElement('span');
@@ -783,30 +922,35 @@ export class Inspector {
       node.params = node.params || {};
       node.params.workspaceName = value;
       node.label = value || 'Workspace';
-      const title = this.container.querySelector('.node-config h4');
-      if (title) title.textContent = node.label;
+      const title = this.container.querySelector('.inspector-node-title');
+      if (title) {
+        title.textContent = node.label;
+        title.title = node.label;
+      }
       this.notifyNodeChange(node, { source: 'inspector', refreshInspector: false });
     });
     row.appendChild(input);
-    section.appendChild(row);
+    body.appendChild(row);
     const description = document.createElement('p');
     description.className = 'small';
     description.textContent =
-      'Each connected operator becomes one function in this workspace. Function order here is the runtime sidebar order.';
-    section.appendChild(description);
+      'Connected operators become functions in this workspace; the list order controls the runtime sidebar.';
+    body.appendChild(description);
     slot.appendChild(section);
 
     this.renderModuleFunctions(slot, node);
   }
-
   renderModuleFunctions(slot, node) {
-    const section = createSection('Functions');
     const functions = (node.params?.functions || []).filter((fn) => !fn.placeholder);
+    const { root: section, body } = this.createSection(node, 'functions', 'Functions', {
+      defaultOpen: true,
+      summary: functions.length + ' function' + (functions.length === 1 ? '' : 's')
+    });
     if (!functions.length) {
       const empty = document.createElement('p');
       empty.className = 'small';
       empty.textContent = 'Connect an operator to the Add Function port on this workspace.';
-      section.appendChild(empty);
+      body.appendChild(empty);
       slot.appendChild(section);
       return;
     }
@@ -867,7 +1011,7 @@ export class Inspector {
 
       list.appendChild(item);
     });
-    section.appendChild(list);
+    body.appendChild(list);
     slot.appendChild(section);
   }
 

@@ -4,12 +4,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "check:english": "node scripts/check-no-chinese.mjs",
+    "prebuild": "npm run check:english",
     "build": "vite build",
     "preview": "vite preview",
     "test:operators": "node scripts/smoke-operators.mjs"
   },
   "dependencies": {
     "echarts": "^5.5.0",
+    "lucide": "^1.24.0",
     "papaparse": "^5.4.1",
     "three": "^0.161.0",
     "uuid": "^9.0.1"

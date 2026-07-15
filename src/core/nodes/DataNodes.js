@@ -337,7 +337,7 @@ export async function semanticizeDataNode(nodeModel, { updateNode = true } = {})
       nodeModel.params.detectedRange = dataset.validation.summary.valueRange;
     }
   }
-  return { dataset, contract, adaptorResults, roleMapping };
+  return { dataset, contract, adaptorResults, roleMapping, sourceErrors };
 }
 
 const roadwayDefaults = {

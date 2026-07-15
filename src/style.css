@@ -410,13 +410,27 @@ button:hover {
   position: absolute;
   inset: 0;
   z-index: 2;
+  pointer-events: none;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 .node-svg {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1;
   pointer-events: auto;
+}
+
+.edge-world-layer {
+  transform-origin: 0 0;
+}
+
+.node-edge {
+  vector-effect: non-scaling-stroke;
+  pointer-events: stroke;
 }
 
 #node-canvas {
@@ -443,6 +457,8 @@ button:hover {
   display: flex;
   flex-direction: column;
   overflow: visible;
+  pointer-events: auto;
+  contain: layout style;
 }
 
 .node.selected {
@@ -4161,4 +4177,64 @@ button:hover {
 
 .runtime-shell .geological-section-tooltip span {
   color: var(--muted);
+}
+
+#editor[data-node-lod='compact'] .node-inline-controls,
+#editor[data-node-lod='overview'] .node-inline-controls {
+  display: none;
+}
+
+#editor[data-node-lod='overview'] .node {
+  width: 240px;
+}
+
+#editor[data-node-lod='overview'] .node-header {
+  padding-block: 5px;
+}
+
+#editor[data-node-lod='overview'] .node-header button,
+#editor[data-node-lod='overview'] .port .label {
+  display: none;
+}
+
+#editor[data-node-lod='overview'] .node-body {
+  padding: 4px 8px 6px;
+}
+
+#editor[data-node-lod='overview'] .ports {
+  gap: 2px;
+}
+
+#editor[data-node-lod='overview'] .port,
+#editor[data-node-lod='overview'] .port.out {
+  min-height: 20px;
+  padding-block: 2px;
+  gap: 0;
+}
+
+#editor[data-node-lod='overview'] .port.in {
+  justify-items: start;
+}
+
+#editor[data-node-lod='overview'] .port.out {
+  justify-items: end;
+}
+
+#editor.is-interacting .node,
+#editor.is-interacting .node.selected,
+#editor.is-interacting .node.function-related {
+  box-shadow: none;
+  transition: none;
+}
+
+#editor.is-interacting .node.function-dimmed .node-header {
+  filter: none;
+}
+
+#editor.is-interacting .port {
+  transition: none;
+}
+
+#editor.is-interacting .node.selected {
+  will-change: transform;
 }

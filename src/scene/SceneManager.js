@@ -404,10 +404,10 @@ export class SceneManager {
   }
 
   /**
-   * 加载 OBJ 模型 (支持 URL 或 纯文本)
-   * @param {string|null} url - 文件路径 (若有)
-   * @param {string|null} text - 文件内容 (若为 inline)
-   * @param {Array} mapping - 部件映射表
+   * Loads an OBJ model from either a URL or inline text.
+   * @param {string|null} url - Source path, when available.
+   * @param {string|null} text - Inline OBJ content, when available.
+   * @param {Array} mapping - Mesh-part mapping records.
    */
   async loadRoadwayModel(url, text, mapping, topo) {
     const signature = this.roadwayModelSignature(url, text, mapping, topo, 'obj');

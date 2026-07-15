@@ -1,4 +1,17 @@
 /node_modules/
-/DataGenerator/
+/DataGenerator/*
+!/DataGenerator/js/
+/DataGenerator/js/*
+!/DataGenerator/js/utils.js
+!/DataGenerator/misc/
+/DataGenerator/misc/*
+!/DataGenerator/misc/GeoMesh/
+!/DataGenerator/misc/GeoVolume/
+/DataGenerator/misc/GeoMesh/*
+!/DataGenerator/misc/GeoMesh/GeoCoal.html
+!/DataGenerator/misc/GeoMesh/GeoCoal copy.html
+/DataGenerator/misc/GeoVolume/*
+!/DataGenerator/misc/GeoVolume/viewer_multi_attri.html
+!/DataGenerator/misc/GeoVolume/viewer_multi_attri_with_fault.html
 /dist/
 /.vscode/
