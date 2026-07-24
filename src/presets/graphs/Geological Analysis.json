@@ -1,0 +1,1939 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "15da533b-1f5c-4aca-90db-a4c3add03873",
+      "typeId": "GeologicalModelOverviewOperator",
+      "kind": "operator",
+      "label": "Geological Model Overview",
+      "position": {
+        "x": 1610.0828262808227,
+        "y": 902.0908678967817
+      },
+      "params": {
+        "showGeologicalBody": true,
+        "showRoadway": true,
+        "showBoreholes": true,
+        "showStructures": true,
+        "showAttributeModel": false,
+        "geologicalBodyOpacity": 0.55,
+        "roadwayOpacity": 0.25,
+        "boreholeOpacity": 1,
+        "structureOpacity": 0.7,
+        "attributeModelOpacity": 0.65,
+        "colorMode": "geological-unit",
+        "activeAttribute": null,
+        "blockRenderMode": "volume",
+        "volumeIsoValue": 0.5,
+        "volumeFilterMin": 0,
+        "volumeFilterMax": 1,
+        "volumeClipXMin": 0,
+        "volumeClipXMax": 1,
+        "volumeClipYMin": 0,
+        "volumeClipYMax": 1,
+        "volumeClipZMin": 0,
+        "volumeClipZMax": 1,
+        "volumeOpacity": 0.5,
+        "volumeRaySteps": 200,
+        "volumePointSize": 7,
+        "showLabels": false,
+        "showSelectedLabel": true,
+        "autoFocusOnSelection": true,
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "geologicalBody",
+          "name": "Geological Body",
+          "direction": "in",
+          "type": "GeologicalBodyDataset"
+        },
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset",
+          "optional": true
+        },
+        {
+          "id": "borehole",
+          "name": "Borehole",
+          "direction": "in",
+          "type": "BoreholeDataset",
+          "optional": true
+        },
+        {
+          "id": "geologicalStructure",
+          "name": "Geological Structure",
+          "direction": "in",
+          "type": "GeologicalStructureDataset",
+          "optional": true
+        },
+        {
+          "id": "attributeModel",
+          "name": "Geological Attribute Model",
+          "direction": "in",
+          "type": "GeologicalAttributeModelDataset",
+          "optional": true
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "64cee79d-cc8a-409c-a421-407d1dc91aa9",
+      "typeId": "ModuleNode",
+      "kind": "module",
+      "label": "Geological Analysis",
+      "position": {
+        "x": 2085.134271486963,
+        "y": 1088.5361662207783
+      },
+      "params": {
+        "workspaceName": "Geological Analysis",
+        "functions": [
+          {
+            "id": "function-1",
+            "label": "Geological Model Overview",
+            "operatorNodeId": "15da533b-1f5c-4aca-90db-a4c3add03873",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-2",
+            "label": "Geological Attribute Distribution Analysis",
+            "operatorNodeId": "31422a0b-1084-4a24-ad9f-e604d2420911",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-3",
+            "label": "Roadway-Geology Relationship Analysis",
+            "operatorNodeId": "baeb66de-21d3-41e0-870c-15ca460b0df7",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-4",
+            "label": "Geological Section Analysis",
+            "operatorNodeId": "596e3a8e-37f7-43cf-9b29-223ca3545046",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-5",
+            "label": "(Add Function)",
+            "placeholder": true
+          }
+        ],
+        "context": {
+          "time": true,
+          "selection": true
+        },
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "function-1",
+          "name": "Geological Model Overview",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-2",
+          "name": "Geological Attribute Distribution Analysis",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-3",
+          "name": "Roadway-Geology Relationship Analysis",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-4",
+          "name": "Geological Section Analysis",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-5",
+          "name": "(Add Function)",
+          "direction": "in",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "9612a90c-b4f5-429b-9e60-31b0e12fd8b2",
+      "typeId": "VolumetricGeologicalBodyDataNode",
+      "kind": "data",
+      "label": "Volumetric / Block Geological Body",
+      "position": {
+        "x": 1303.2270748380306,
+        "y": 1344.794614801623
+      },
+      "params": {
+        "datasetType": "GeologicalBody",
+        "semanticClass": "GeologicalBody",
+        "contractId": "GeologicalBodyContract",
+        "representationProfile": "volumetric-block",
+        "descriptorPath": "",
+        "metadata": {
+          "taxonomyGroup": "Geology & Resource",
+          "preset": "Volumetric / Block Geological Body"
+        },
+        "profileOptions": [
+          "layered-surface",
+          "volumetric-block",
+          "hybrid",
+          "generic"
+        ],
+        "sources": {
+          "descriptor": {
+            "label": "Dataset Descriptor",
+            "template": "Descriptor",
+            "path": "",
+            "adaptor": "JSONGraphAdaptor",
+            "acceptedFormats": [
+              "json"
+            ],
+            "required": false
+          },
+          "geometry": {
+            "label": "Boundary Geometry",
+            "template": "Geometry",
+            "path": "/data/geological/geovolume_geological_bodies.obj",
+            "adaptor": "SurfaceMeshGeologyAdaptor",
+            "acceptedFormats": [
+              "obj",
+              "gltf",
+              "glb"
+            ],
+            "required": false
+          },
+          "units": {
+            "label": "Geological Units Table",
+            "template": "Registry",
+            "path": "/data/geological/geovolume_bodies.csv",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": true
+          },
+          "surfaces": {
+            "label": "Domain Mapping Table",
+            "template": "Geometry / Relation",
+            "path": "/data/geological/geovolume_surfaces.csv",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": false
+          },
+          "relations": {
+            "label": "Relations Source",
+            "template": "Relation",
+            "path": "",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv",
+              "json"
+            ],
+            "required": false
+          },
+          "blocks": {
+            "label": "Block Table CSV",
+            "template": "Field",
+            "path": "",
+            "adaptor": "BlockModelCsvAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": false
+          },
+          "body": {
+            "label": "Legacy Single JSON",
+            "template": "Legacy",
+            "path": "",
+            "adaptor": "VolumetricBlockModelJsonAdaptor",
+            "acceptedFormats": [
+              "json"
+            ],
+            "required": false
+          }
+        },
+        "roleMapping": {
+          "bodyId": "bodies.bodyId",
+          "bodyName": "bodies.bodyName",
+          "geologicalUnitId": "units.id",
+          "geologicalUnitName": "units.name",
+          "geologicalUnitType": "units.type",
+          "geometrySupport": "surfaces.geometry",
+          "attributeField": "attributes.attributeName",
+          "spatialReference": "metadata.spatialReference",
+          "relationToRoadway": "relations.roadwayEdgeId",
+          "relationToBorehole": "relations.boreholeId",
+          "confidence": "attributes.confidence",
+          "uncertainty": "attributes.uncertainty",
+          "surfaceId": "surfaces.surfaceId",
+          "surfaceType": "surfaces.surfaceType",
+          "layerOrder": "surfaces.layerOrder",
+          "roofSurface": "bodies.roofSurface",
+          "floorSurface": "bodies.floorSurface",
+          "meshPartId": "surfaces.meshPartId",
+          "horizonElevation": "surfaces.elevation",
+          "thickness": "attributes.thickness",
+          "blockId": "blocks.blockId",
+          "centroidX": "blocks.x",
+          "centroidY": "blocks.y",
+          "centroidZ": "blocks.z",
+          "blockSizeX": "blocks.dx",
+          "blockSizeY": "blocks.dy",
+          "blockSizeZ": "blocks.dz",
+          "orebodyId": "blocks.orebodyId",
+          "lithology": "blocks.lithology",
+          "grade": "blocks.grade",
+          "density": "blocks.density"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 4,
+          "summary": {
+            "representationProfile": "volumetric-block",
+            "unitCount": 4,
+            "bodyCount": 4,
+            "surfaceCount": 8,
+            "blockCount": 0,
+            "attributeCount": 0,
+            "templates": [
+              {
+                "id": "registry",
+                "type": "Registry",
+                "kind": "Registry",
+                "label": "Geological body registry",
+                "role": "geologicalIdentity",
+                "form": "EntityRegistry",
+                "schemaVersion": 1,
+                "entityCount": 0
+              },
+              {
+                "id": "geometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Geological body geometry",
+                "role": "geologicalSpatialSupport",
+                "form": "BlockModel",
+                "schemaVersion": 1,
+                "meshPartCount": 8,
+                "modelPath": "/data/geological/geovolume_geological_bodies.obj"
+              },
+              {
+                "id": "field",
+                "type": "Field",
+                "kind": "Field",
+                "label": "Geological body attributes",
+                "role": "geologicalAttributeField",
+                "form": "ScalarField",
+                "schemaVersion": 1,
+                "support": "blocks",
+                "rowCount": 0
+              },
+              {
+                "id": "relation",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Geological body relations",
+                "role": "geologicalObjectRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "relation": "geological objects can reference roadway, borehole, surface, and body objects"
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "warning",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "warning",
+            "templates": "warning",
+            "contract": "ready"
+          }
+        },
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Geological Body",
+          "direction": "out",
+          "type": "GeologicalBodyDataset"
+        }
+      ]
+    },
+    {
+      "id": "1c1bd44e-85a7-4ea0-b207-04722065201d",
+      "typeId": "ResourceBlockModelDataNode",
+      "kind": "data",
+      "label": "Resource Block Model",
+      "position": {
+        "x": 1305.3826126902513,
+        "y": 1482.3536861264208
+      },
+      "params": {
+        "datasetType": "GeologicalAttributeModel",
+        "semanticClass": "GeologicalAttributeModel",
+        "contractId": "GeologicalAttributeModelContract",
+        "representationProfile": "resource-block",
+        "descriptorPath": "",
+        "metadata": {
+          "taxonomyGroup": "Geology & Resource",
+          "preset": "Resource Block Model"
+        },
+        "profileOptions": [
+          "resource-block",
+          "coal-seam-attribute",
+          "risk-uncertainty",
+          "surface-attribute",
+          "generic"
+        ],
+        "sources": {
+          "descriptor": {
+            "label": "Dataset Descriptor",
+            "template": "Descriptor",
+            "path": "",
+            "adaptor": "JSONGraphAdaptor",
+            "acceptedFormats": [
+              "json"
+            ],
+            "required": false
+          },
+          "grid": {
+            "label": "Resource Block Grid Metadata",
+            "template": "Geometry",
+            "path": "/data/geological/resource_block_grid.json",
+            "adaptor": "ResourceBlockGridJsonAdaptor",
+            "acceptedFormats": [
+              "json"
+            ],
+            "required": true
+          },
+          "binary": {
+            "label": "Attribute Binary Array",
+            "template": "Field",
+            "path": "/data/geological/resource_block_attributes.bin",
+            "adaptor": "ResourceBlockAttributeBinaryAdaptor",
+            "acceptedFormats": [
+              "bin",
+              "raw"
+            ],
+            "required": true
+          },
+          "schema": {
+            "label": "Attribute Schema Table",
+            "template": "Field",
+            "path": "/data/geological/resource_block_attribute_schema.csv",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": true
+          },
+          "blocks": {
+            "label": "Blocks Table",
+            "template": "Geometry / Field",
+            "path": "",
+            "adaptor": "BlockModelCsvAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": false
+          },
+          "relations": {
+            "label": "Relations Source",
+            "template": "Relation",
+            "path": "",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv",
+              "json"
+            ],
+            "required": false
+          },
+          "geometry": {
+            "label": "Boundary Geometry",
+            "template": "Geometry",
+            "path": "",
+            "adaptor": "SurfaceMeshGeologyAdaptor",
+            "acceptedFormats": [
+              "obj",
+              "gltf",
+              "glb"
+            ],
+            "required": false
+          },
+          "preview": {
+            "label": "Preview / Sample Table",
+            "template": "Preview",
+            "path": "",
+            "adaptor": "GeologicalAttributeTableAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": false
+          },
+          "model": {
+            "label": "Legacy Single JSON or CSV",
+            "template": "Legacy",
+            "path": "",
+            "adaptor": "GeologicalAttributeTableAdaptor",
+            "acceptedFormats": [
+              "json",
+              "csv"
+            ],
+            "required": false
+          }
+        },
+        "roleMapping": {
+          "modelId": "modelId",
+          "attributeName": "attributeName",
+          "attributeValue": "attributeValue",
+          "valueType": "valueType",
+          "unit": "unit",
+          "spatialSupport": "spatialSupport",
+          "supportElementId": "supportElementId",
+          "spatialReference": "spatialReference",
+          "geologicalUnitId": "geologicalUnitId",
+          "uncertainty": "uncertainty",
+          "classification": "classification",
+          "blockId": "blockId",
+          "centroidX": "x",
+          "centroidY": "y",
+          "centroidZ": "z",
+          "blockSizeX": "dx",
+          "blockSizeY": "dy",
+          "blockSizeZ": "dz",
+          "grade": "grade",
+          "density": "density",
+          "tonnage": "tonnage",
+          "oreType": "oreType",
+          "resourceCategory": "resourceCategory",
+          "orebodyId": "orebodyId",
+          "domainId": "domainId",
+          "seamId": "seamId",
+          "surfaceId": "surfaceId",
+          "gridX": "gridX",
+          "gridY": "gridY",
+          "elevation": "elevation",
+          "thickness": "thickness",
+          "ash": "ash",
+          "sulfur": "sulfur",
+          "calorificValue": "calorificValue",
+          "gasContent": "gasContent",
+          "waterContent": "waterContent",
+          "riskValue": "riskValue",
+          "riskType": "riskType",
+          "probability": "probability",
+          "threshold": "threshold",
+          "category": "category"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 5,
+          "summary": {
+            "representationProfile": "resource-block",
+            "elementCount": 0,
+            "blockCount": 0,
+            "gridSize": "50 x 50 x 50",
+            "attributeCount": 4,
+            "attributes": [
+              "lithology_id",
+              "density_(g/cm3)",
+              "au_grade_(g/t)",
+              "rmr_(engineering)"
+            ],
+            "templates": [
+              {
+                "id": "geometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Geological attribute geometry support",
+                "role": "attributeSpatialSupport",
+                "form": "BlockModel",
+                "schemaVersion": 1
+              },
+              {
+                "id": "field",
+                "type": "Field",
+                "kind": "Field",
+                "label": "Geological attribute field",
+                "role": "spatialGeologicalField",
+                "form": "ScalarField",
+                "schemaVersion": 1,
+                "support": "geological geometry support",
+                "rowCount": 0
+              },
+              {
+                "id": "registry",
+                "type": "Registry",
+                "kind": "Registry",
+                "label": "Geological attribute element registry",
+                "role": "attributeElementIdentity",
+                "form": "EntityRegistry",
+                "schemaVersion": 1,
+                "entityCount": 0,
+                "keyRole": "supportElementId / blockId"
+              },
+              {
+                "id": "relation",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Geological attribute relations",
+                "role": "attributeModelRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "relation": "attribute model elements can reference bodies, domains, surfaces, roadway, or boreholes"
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "warning",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        },
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Geological Attribute Model",
+          "direction": "out",
+          "type": "GeologicalAttributeModelDataset"
+        }
+      ]
+    },
+    {
+      "id": "71b6653b-475c-4c46-91e1-3e1c0048a741",
+      "typeId": "BoreholeDataNode",
+      "kind": "data",
+      "label": "Borehole",
+      "position": {
+        "x": 1214.054578163214,
+        "y": 975.4702859824531
+      },
+      "params": {
+        "datasetType": "Borehole",
+        "semanticClass": "Borehole",
+        "contractId": "BoreholeContract",
+        "descriptorPath": "",
+        "metadata": {
+          "taxonomyGroup": "Geology & Resource",
+          "preset": "Borehole"
+        },
+        "sources": {
+          "descriptor": {
+            "label": "Dataset Descriptor",
+            "template": "Descriptor",
+            "path": "",
+            "adaptor": "JSONGraphAdaptor",
+            "acceptedFormats": [
+              "json"
+            ],
+            "required": false
+          },
+          "boreholes": {
+            "label": "Borehole Registry Table",
+            "template": "Registry",
+            "path": "/data/geological/boreholes.csv",
+            "adaptor": "BoreholeCsvAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": true
+          },
+          "trajectories": {
+            "label": "Trajectory Table",
+            "template": "Geometry",
+            "path": "/data/geological/borehole_trajectories.json",
+            "adaptor": "BoreholeTrajectoryJsonAdaptor",
+            "acceptedFormats": [
+              "json",
+              "csv"
+            ],
+            "required": false
+          },
+          "intervals": {
+            "label": "Intervals Table",
+            "template": "Field",
+            "path": "/data/geological/borehole_intervals.csv",
+            "adaptor": "BoreholeCsvAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": false
+          },
+          "assays": {
+            "label": "Assay Table",
+            "template": "Field",
+            "path": "",
+            "adaptor": "BoreholeCsvAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": false
+          },
+          "relations": {
+            "label": "Relations Source",
+            "template": "Relation",
+            "path": "",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv",
+              "json"
+            ],
+            "required": false
+          },
+          "legacy": {
+            "label": "Legacy Single JSON",
+            "template": "Legacy",
+            "path": "",
+            "adaptor": "BoreholeJsonAdaptor",
+            "acceptedFormats": [
+              "json"
+            ],
+            "required": false
+          }
+        },
+        "roleMapping": {
+          "boreholeId": "boreholes.boreholeId",
+          "boreholeName": "boreholes.name",
+          "collarX": "boreholes.collar.x",
+          "collarY": "boreholes.collar.y",
+          "collarZ": "boreholes.collar.z",
+          "trajectory": "boreholes.trajectory",
+          "depthFrom": "intervals.depthFrom",
+          "depthTo": "intervals.depthTo",
+          "sampleId": "intervals.sampleId",
+          "lithology": "intervals.lithology",
+          "grade": "intervals.grade",
+          "attributeValue": "intervals.value",
+          "surveyDate": "intervals.surveyDate"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 3,
+          "summary": {
+            "boreholeCount": 50,
+            "intervalCount": 1180,
+            "sampleCount": 1180,
+            "templates": [
+              {
+                "id": "registry",
+                "type": "Registry",
+                "kind": "Registry",
+                "label": "Borehole registry",
+                "role": "boreholeIdentity",
+                "form": "EntityRegistry",
+                "schemaVersion": 1,
+                "entityCount": 0,
+                "keyRole": "boreholeId"
+              },
+              {
+                "id": "trajectoryGeometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Borehole trajectory geometry",
+                "role": "boreholeSpatialSupport",
+                "form": "Point / Polyline / LinearInterval",
+                "schemaVersion": 1
+              },
+              {
+                "id": "logField",
+                "type": "Field",
+                "kind": "Field",
+                "label": "Borehole log field",
+                "role": "depthIndexedLog",
+                "form": "ScalarField",
+                "schemaVersion": 1,
+                "support": "borehole intervals",
+                "rowCount": 1180
+              },
+              {
+                "id": "relation",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Borehole sample relation",
+                "role": "sampleBoreholeRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "relation": "samples and intervals are located along boreholes",
+                "relationCount": 1180
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "warning",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        },
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Borehole",
+          "direction": "out",
+          "type": "BoreholeDataset"
+        }
+      ]
+    },
+    {
+      "id": "21797a73-4e44-424c-8e56-381c1e88236d",
+      "typeId": "LayeredGeologicalBodyDataNode",
+      "kind": "data",
+      "label": "Layered Geological Body",
+      "position": {
+        "x": 542.7300522412946,
+        "y": 1074.958099223718
+      },
+      "params": {
+        "datasetType": "GeologicalBody",
+        "semanticClass": "GeologicalBody",
+        "contractId": "GeologicalBodyContract",
+        "representationProfile": "layered-surface",
+        "descriptorPath": "",
+        "metadata": {
+          "taxonomyGroup": "Geology & Resource",
+          "preset": "Layered Geological Body"
+        },
+        "profileOptions": [
+          "layered-surface",
+          "volumetric-block",
+          "hybrid",
+          "generic"
+        ],
+        "sources": {
+          "descriptor": {
+            "label": "Dataset Descriptor",
+            "template": "Descriptor",
+            "path": "",
+            "adaptor": "JSONGraphAdaptor",
+            "acceptedFormats": [
+              "json"
+            ],
+            "required": false
+          },
+          "geometry": {
+            "label": "Surface Geometry Source",
+            "template": "Geometry",
+            "path": "/data/geological/layered_geological_surfaces.obj",
+            "adaptor": "SurfaceMeshGeologyAdaptor",
+            "acceptedFormats": [
+              "obj",
+              "gltf",
+              "glb"
+            ],
+            "required": true
+          },
+          "units": {
+            "label": "Geological Units Table",
+            "template": "Registry",
+            "path": "/data/geological/layered_geological_units.csv",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": true
+          },
+          "surfaces": {
+            "label": "Surface Mapping Table",
+            "template": "Geometry / Relation",
+            "path": "/data/geological/layered_geological_surfaces.csv",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": true
+          },
+          "attributes": {
+            "label": "Attribute Field Table",
+            "template": "Field",
+            "path": "",
+            "adaptor": "GeologicalAttributeTableAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": false
+          },
+          "relations": {
+            "label": "Relations Source",
+            "template": "Relation",
+            "path": "/data/geological/layered_geological_relations.csv",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv",
+              "json"
+            ],
+            "required": false
+          },
+          "body": {
+            "label": "Legacy Single JSON",
+            "template": "Legacy",
+            "path": "",
+            "adaptor": "LayeredGeologyJsonAdaptor",
+            "acceptedFormats": [
+              "json"
+            ],
+            "required": false
+          }
+        },
+        "roleMapping": {
+          "bodyId": "bodies.bodyId",
+          "bodyName": "bodies.bodyName",
+          "geologicalUnitId": "units.id",
+          "geologicalUnitName": "units.name",
+          "geologicalUnitType": "units.type",
+          "geometrySupport": "surfaces.geometry",
+          "attributeField": "attributes.attributeName",
+          "spatialReference": "metadata.spatialReference",
+          "relationToRoadway": "relations.roadwayEdgeId",
+          "relationToBorehole": "relations.boreholeId",
+          "confidence": "attributes.confidence",
+          "uncertainty": "attributes.uncertainty",
+          "surfaceId": "surfaces.surfaceId",
+          "surfaceType": "surfaces.surfaceType",
+          "layerOrder": "surfaces.layerOrder",
+          "roofSurface": "bodies.roofSurface",
+          "floorSurface": "bodies.floorSurface",
+          "meshPartId": "surfaces.meshPartId",
+          "horizonElevation": "surfaces.elevation",
+          "thickness": "attributes.thickness",
+          "blockId": "blocks.blockId",
+          "centroidX": "blocks.x",
+          "centroidY": "blocks.y",
+          "centroidZ": "blocks.z",
+          "blockSizeX": "blocks.dx",
+          "blockSizeY": "blocks.dy",
+          "blockSizeZ": "blocks.dz",
+          "orebodyId": "blocks.orebodyId",
+          "lithology": "blocks.lithology",
+          "grade": "blocks.grade",
+          "density": "blocks.density"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 3,
+          "summary": {
+            "representationProfile": "layered-surface",
+            "unitCount": 25,
+            "bodyCount": 25,
+            "surfaceCount": 100,
+            "blockCount": 0,
+            "attributeCount": 0,
+            "templates": [
+              {
+                "id": "registry",
+                "type": "Registry",
+                "kind": "Registry",
+                "label": "Geological body registry",
+                "role": "geologicalIdentity",
+                "form": "EntityRegistry",
+                "schemaVersion": 1,
+                "entityCount": 0
+              },
+              {
+                "id": "geometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Geological body geometry",
+                "role": "geologicalSpatialSupport",
+                "form": "SurfaceMesh / LayerInterface",
+                "schemaVersion": 1,
+                "meshPartCount": 200,
+                "modelPath": "/data/geological/layered_geological_surfaces.obj"
+              },
+              {
+                "id": "field",
+                "type": "Field",
+                "kind": "Field",
+                "label": "Geological body attributes",
+                "role": "geologicalAttributeField",
+                "form": "ScalarField",
+                "schemaVersion": 1,
+                "support": "surfaces / units",
+                "rowCount": 0
+              },
+              {
+                "id": "relation",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Geological body relations",
+                "role": "geologicalObjectRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "relation": "geological objects can reference roadway, borehole, surface, and body objects",
+                "relationCount": 75
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "warning",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "warning",
+            "templates": "warning",
+            "contract": "ready"
+          }
+        },
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Geological Body",
+          "direction": "out",
+          "type": "GeologicalBodyDataset"
+        }
+      ]
+    },
+    {
+      "id": "6c62e708-34a0-4c28-a4bb-922286c37ed6",
+      "typeId": "CoalSeamAttributeModelDataNode",
+      "kind": "data",
+      "label": "Coal Seam Attribute Model",
+      "position": {
+        "x": 558.790623585951,
+        "y": 1230.3996549903288
+      },
+      "params": {
+        "datasetType": "GeologicalAttributeModel",
+        "semanticClass": "GeologicalAttributeModel",
+        "contractId": "GeologicalAttributeModelContract",
+        "representationProfile": "coal-seam-attribute",
+        "descriptorPath": "",
+        "metadata": {
+          "taxonomyGroup": "Geology & Resource",
+          "preset": "Coal Seam Attribute Model"
+        },
+        "profileOptions": [
+          "resource-block",
+          "coal-seam-attribute",
+          "risk-uncertainty",
+          "surface-attribute",
+          "generic"
+        ],
+        "sources": {
+          "descriptor": {
+            "label": "Dataset Descriptor",
+            "template": "Descriptor",
+            "path": "",
+            "adaptor": "JSONGraphAdaptor",
+            "acceptedFormats": [
+              "json"
+            ],
+            "required": false
+          },
+          "elements": {
+            "label": "Attribute Samples Table",
+            "template": "Field",
+            "path": "/data/geological/coal_seam_attribute_grid.csv",
+            "adaptor": "GeologicalAttributeTableAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": true
+          },
+          "schema": {
+            "label": "Attribute Schema Table",
+            "template": "Field",
+            "path": "",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": false
+          },
+          "relations": {
+            "label": "Relations Source",
+            "template": "Relation",
+            "path": "",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv",
+              "json"
+            ],
+            "required": false
+          },
+          "geometry": {
+            "label": "Support Geometry",
+            "template": "Geometry",
+            "path": "",
+            "adaptor": "SurfaceMeshGeologyAdaptor",
+            "acceptedFormats": [
+              "obj",
+              "gltf",
+              "glb"
+            ],
+            "required": false
+          },
+          "model": {
+            "label": "Legacy Single JSON",
+            "template": "Legacy",
+            "path": "",
+            "adaptor": "GeologicalAttributeTableAdaptor",
+            "acceptedFormats": [
+              "json"
+            ],
+            "required": false
+          }
+        },
+        "roleMapping": {
+          "modelId": "modelId",
+          "attributeName": "attributeName",
+          "attributeValue": "attributeValue",
+          "valueType": "valueType",
+          "unit": "unit",
+          "spatialSupport": "spatialSupport",
+          "supportElementId": "supportElementId",
+          "spatialReference": "spatialReference",
+          "geologicalUnitId": "geologicalUnitId",
+          "uncertainty": "uncertainty",
+          "classification": "classification",
+          "blockId": "blockId",
+          "centroidX": "x",
+          "centroidY": "y",
+          "centroidZ": "z",
+          "blockSizeX": "dx",
+          "blockSizeY": "dy",
+          "blockSizeZ": "dz",
+          "grade": "grade",
+          "density": "density",
+          "tonnage": "tonnage",
+          "oreType": "oreType",
+          "resourceCategory": "resourceCategory",
+          "orebodyId": "orebodyId",
+          "domainId": "domainId",
+          "seamId": "seamId",
+          "surfaceId": "surfaceId",
+          "gridX": "gridX",
+          "gridY": "gridY",
+          "elevation": "elevation",
+          "thickness": "thickness",
+          "ash": "ash",
+          "sulfur": "sulfur",
+          "calorificValue": "calorificValue",
+          "gasContent": "gasContent",
+          "waterContent": "waterContent",
+          "riskValue": "riskValue",
+          "riskType": "riskType",
+          "probability": "probability",
+          "threshold": "threshold",
+          "category": "category"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 4,
+          "summary": {
+            "representationProfile": "coal-seam-attribute",
+            "elementCount": 65025,
+            "blockCount": 0,
+            "gridSize": null,
+            "attributeCount": 29,
+            "attributes": [
+              "thickness",
+              "uncertainty",
+              "elevation",
+              "confidence",
+              "fault_influence",
+              "risk_value",
+              "strength_index",
+              "weathering_index",
+              "loose_layer_water_risk",
+              "waterContent",
+              "water_content",
+              "roof_stability_index",
+              "clay_content",
+              "softening_index",
+              "floor_heave_risk",
+              "ash",
+              "sulfur",
+              "calorificValue",
+              "gasContent",
+              "calorific_value",
+              "gas_content",
+              "coal_quality_index",
+              "porosity",
+              "permeability",
+              "water_bearing_index",
+              "grain_size_index",
+              "carbonate_purity",
+              "karst_water_risk",
+              "fracture_index"
+            ],
+            "templates": [
+              {
+                "id": "geometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Geological attribute geometry support",
+                "role": "attributeSpatialSupport",
+                "form": "SurfaceGrid",
+                "schemaVersion": 1
+              },
+              {
+                "id": "field",
+                "type": "Field",
+                "kind": "Field",
+                "label": "Geological attribute field",
+                "role": "spatialGeologicalField",
+                "form": "ScalarField",
+                "schemaVersion": 1,
+                "support": "geological geometry support",
+                "rowCount": 0
+              },
+              {
+                "id": "registry",
+                "type": "Registry",
+                "kind": "Registry",
+                "label": "Geological attribute element registry",
+                "role": "attributeElementIdentity",
+                "form": "EntityRegistry",
+                "schemaVersion": 1,
+                "entityCount": 0,
+                "keyRole": "supportElementId / blockId"
+              },
+              {
+                "id": "relation",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Geological attribute relations",
+                "role": "attributeModelRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "relation": "attribute model elements can reference bodies, domains, surfaces, roadway, or boreholes"
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "warning",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        },
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Geological Attribute Model",
+          "direction": "out",
+          "type": "GeologicalAttributeModelDataset"
+        }
+      ]
+    },
+    {
+      "id": "31422a0b-1084-4a24-ad9f-e604d2420911",
+      "typeId": "GeologicalAttributeDistributionAnalysisOperator",
+      "kind": "operator",
+      "label": "Geological Attribute Distribution Analysis",
+      "position": {
+        "x": 1236.7062075738313,
+        "y": 1068.4621850320775
+      },
+      "params": {
+        "activeAttribute": null,
+        "colorMode": "continuous",
+        "colormap": "viridis",
+        "valueRangeMode": "auto",
+        "minValue": null,
+        "maxValue": null,
+        "filterMode": "highlight",
+        "renderMode": "volume",
+        "blockRenderMode": "volume",
+        "maxRenderedElements": 8000,
+        "showHistogram": true,
+        "showTargetZone": true,
+        "showContextElements": true,
+        "selectedOpacity": 0.95,
+        "contextOpacity": 0.12,
+        "attributeLayerOpacity": 0.75,
+        "showRoadwayContext": true,
+        "showGeologicalBodyContext": true,
+        "showStructureContext": true
+      },
+      "ports": [
+        {
+          "id": "attributeModel",
+          "name": "Geological Attribute Model",
+          "direction": "in",
+          "type": "GeologicalAttributeModelDataset"
+        },
+        {
+          "id": "geologicalBody",
+          "name": "Geological Body",
+          "direction": "in",
+          "type": "GeologicalBodyDataset",
+          "optional": true
+        },
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset",
+          "optional": true
+        },
+        {
+          "id": "borehole",
+          "name": "Borehole",
+          "direction": "in",
+          "type": "BoreholeDataset",
+          "optional": true
+        },
+        {
+          "id": "geologicalStructure",
+          "name": "Geological Structure",
+          "direction": "in",
+          "type": "GeologicalStructureDataset",
+          "optional": true
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "baeb66de-21d3-41e0-870c-15ca460b0df7",
+      "typeId": "RoadwayGeologyRelationshipAnalysisOperator",
+      "kind": "operator",
+      "label": "Roadway-Geology Relationship Analysis",
+      "position": {
+        "x": 968.8542692649035,
+        "y": 1346.292567767606
+      },
+      "params": {
+        "analysisMode": "risk-level",
+        "showRoadwayOverlay": true,
+        "showGeologicalBodyContext": true,
+        "showStructures": true,
+        "showBoreholes": false,
+        "showProfile": true,
+        "activeAttribute": null,
+        "structureWarningDistance": 50,
+        "structureCriticalDistance": 20,
+        "attributeThreshold": null,
+        "attributeRiskDirection": "high",
+        "colorMode": "risk-level",
+        "sampleInterval": 10,
+        "maxSamplesPerEdge": 20,
+        "filterRiskLevel": "all",
+        "filterGeologicalUnit": "all",
+        "filterStructureProximity": "all",
+        "roadwayOverlayOpacity": 0.9,
+        "contextOpacity": 0.2,
+        "autoCreateSectionFromSelectedRoadway": false
+      },
+      "ports": [
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset"
+        },
+        {
+          "id": "geologicalBody",
+          "name": "Geological Body",
+          "direction": "in",
+          "type": "GeologicalBodyDataset",
+          "optional": true
+        },
+        {
+          "id": "geologicalStructure",
+          "name": "Geological Structure",
+          "direction": "in",
+          "type": "GeologicalStructureDataset",
+          "optional": true
+        },
+        {
+          "id": "attributeModel",
+          "name": "Geological Attribute Model",
+          "direction": "in",
+          "type": "GeologicalAttributeModelDataset",
+          "optional": true
+        },
+        {
+          "id": "borehole",
+          "name": "Borehole",
+          "direction": "in",
+          "type": "BoreholeDataset",
+          "optional": true
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "596e3a8e-37f7-43cf-9b29-223ca3545046",
+      "typeId": "GeologicalSectionAnalysisOperator",
+      "kind": "operator",
+      "label": "Geological Section Analysis",
+      "position": {
+        "x": 1662.183715217822,
+        "y": 1316.4165531493825
+      },
+      "params": {
+        "sectionMode": "axis-aligned",
+        "axis": "X",
+        "position": 0,
+        "thickness": 5,
+        "showCutaway": true,
+        "clippingSide": "positive",
+        "showSectionPlane": true,
+        "showGeologicalBody": true,
+        "showRoadway": true,
+        "showBoreholes": true,
+        "showStructures": true,
+        "showAttributeModel": true,
+        "activeAttribute": null,
+        "colorMode": "geological-unit",
+        "autoUpdate": true,
+        "maxRenderedBlocksInSection": 5000
+      },
+      "ports": [
+        {
+          "id": "geologicalBody",
+          "name": "Geological Body",
+          "direction": "in",
+          "type": "GeologicalBodyDataset"
+        },
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset",
+          "optional": true
+        },
+        {
+          "id": "borehole",
+          "name": "Borehole",
+          "direction": "in",
+          "type": "BoreholeDataset",
+          "optional": true
+        },
+        {
+          "id": "geologicalStructure",
+          "name": "Geological Structure",
+          "direction": "in",
+          "type": "GeologicalStructureDataset",
+          "optional": true
+        },
+        {
+          "id": "attributeModel",
+          "name": "Geological Attribute Model",
+          "direction": "in",
+          "type": "GeologicalAttributeModelDataset",
+          "optional": true
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "f5f67895-ccf1-4313-bc84-462bdfc65fd9",
+      "typeId": "RoadwayDataNode",
+      "kind": "data",
+      "label": "Roadway",
+      "position": {
+        "x": 558.6652764637028,
+        "y": 1485.413027978367
+      },
+      "params": {
+        "datasetType": "Roadway",
+        "contractId": "RoadwayContract",
+        "sources": {
+          "topology": {
+            "label": "Topology JSON",
+            "path": "/data/geological/roadway_topo.json",
+            "adaptor": "JSONGraphAdaptor",
+            "name": "roadway_topo.json"
+          },
+          "geometry": {
+            "label": "Roadway OBJ",
+            "path": "/data/geological/roadway_model.obj",
+            "adaptor": "OBJGeometryAdaptor",
+            "name": "roadway_model.obj"
+          }
+        },
+        "roleMapping": {
+          "graph.nodeId": "nodes.id",
+          "graph.nodePosition": "nodes.position",
+          "graph.edgeId": "edges.id",
+          "graph.fromNode": "edges.source",
+          "graph.toNode": "edges.target",
+          "graph.path": "edges.path",
+          "geometry.meshPartId": "meshParts.name",
+          "relation.geometryTarget": "meshParts.name"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "nodeCount": 38,
+            "edgeCount": 50,
+            "meshPartCount": 88,
+            "templates": [
+              {
+                "id": "graph",
+                "type": "Graph",
+                "kind": "Graph",
+                "label": "Roadway graph",
+                "role": "networkStructure",
+                "form": "DirectedGraph",
+                "schemaVersion": 1,
+                "nodeCount": 38,
+                "edgeCount": 50
+              },
+              {
+                "id": "geometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Roadway geometry",
+                "role": "spatialSupport",
+                "form": "MeshSurface",
+                "schemaVersion": 1,
+                "meshPartCount": 88,
+                "modelPath": "roadway_model.obj"
+              },
+              {
+                "id": "geometryToGraph",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Geometry to roadway graph",
+                "role": "constitutiveCorrespondence",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "geometry.meshPartId",
+                "target": "graph.edgeId / graph.nodeId",
+                "relation": "geometry parts are attached to roadway graph entities by id/name correspondence",
+                "relationCount": 88
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        },
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Roadway",
+          "direction": "out",
+          "type": "RoadwayDataset"
+        }
+      ]
+    },
+    {
+      "id": "5cdac483-93db-4697-bcd1-42c4097bb518",
+      "typeId": "GeologicalStructureDataNode",
+      "kind": "data",
+      "label": "Geological Structure",
+      "position": {
+        "x": 550.0003415291987,
+        "y": 1347.4460119043915
+      },
+      "params": {
+        "datasetType": "GeologicalStructure",
+        "semanticClass": "GeologicalStructure",
+        "contractId": "GeologicalStructureContract",
+        "descriptorPath": "",
+        "metadata": {
+          "taxonomyGroup": "Geology & Resource",
+          "preset": "Geological Structure"
+        },
+        "sources": {
+          "descriptor": {
+            "label": "Dataset Descriptor",
+            "template": "Descriptor",
+            "path": "",
+            "adaptor": "JSONGraphAdaptor",
+            "acceptedFormats": [
+              "json"
+            ],
+            "required": false
+          },
+          "geometry": {
+            "label": "Structure Surface Geometry",
+            "template": "Geometry",
+            "path": "/data/geological/geological_structures.obj",
+            "adaptor": "SurfaceMeshGeologyAdaptor",
+            "acceptedFormats": [
+              "obj",
+              "gltf",
+              "glb"
+            ],
+            "required": false
+          },
+          "structures": {
+            "label": "Structure Registry Table",
+            "template": "Registry",
+            "path": "/data/geological/geological_structures.csv",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": true
+          },
+          "traces": {
+            "label": "Trace Table",
+            "template": "Geometry",
+            "path": "",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv"
+            ],
+            "required": false
+          },
+          "relations": {
+            "label": "Relations Source",
+            "template": "Relation",
+            "path": "/data/geological/geological_structure_relations.csv",
+            "adaptor": "CSVTableAdaptor",
+            "acceptedFormats": [
+              "csv",
+              "json"
+            ],
+            "required": false
+          },
+          "legacy": {
+            "label": "Legacy Single JSON",
+            "template": "Legacy",
+            "path": "",
+            "adaptor": "GeologicalStructureJsonAdaptor",
+            "acceptedFormats": [
+              "json"
+            ],
+            "required": false
+          }
+        },
+        "roleMapping": {
+          "structureId": "structures.structureId",
+          "structureName": "structures.name",
+          "structureType": "structures.structureType",
+          "geometrySupport": "structures.geometry",
+          "strike": "structures.strike",
+          "dip": "structures.dip",
+          "throw": "structures.throw",
+          "width": "structures.width",
+          "confidence": "structures.confidence",
+          "waterConductivity": "structures.waterConductivity",
+          "activity": "structures.activity",
+          "riskLevel": "structures.riskLevel"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 3,
+          "summary": {
+            "structureCount": 1,
+            "structureTypes": [
+              "fault"
+            ],
+            "relationCount": 25,
+            "templates": [
+              {
+                "id": "registry",
+                "type": "Registry",
+                "kind": "Registry",
+                "label": "Geological structure registry",
+                "role": "structureIdentity",
+                "form": "EntityRegistry",
+                "schemaVersion": 1,
+                "entityCount": 1,
+                "keyRole": "structureId"
+              },
+              {
+                "id": "geometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Geological structure geometry",
+                "role": "structureSpatialSupport",
+                "form": "Trace / Surface / Zone",
+                "schemaVersion": 1,
+                "meshPartCount": 1,
+                "modelPath": "/data/geological/geological_structures.obj"
+              },
+              {
+                "id": "field",
+                "type": "Field",
+                "kind": "Field",
+                "label": "Geological structure attributes",
+                "role": "structureAttributeField",
+                "form": "ScalarField",
+                "schemaVersion": 1,
+                "rowCount": 1
+              },
+              {
+                "id": "relation",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Geological structure relation",
+                "role": "structureObjectRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "relation": "structures may cut bodies, intersect roadway, or be observed by boreholes",
+                "relationCount": 25
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "warning",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "warning",
+            "templates": "warning",
+            "contract": "ready"
+          }
+        },
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Geological Structure",
+          "direction": "out",
+          "type": "GeologicalStructureDataset"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "2161dbde-1ea3-4e4d-a271-d86730dc7130",
+      "from": {
+        "nodeId": "15da533b-1f5c-4aca-90db-a4c3add03873",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "64cee79d-cc8a-409c-a421-407d1dc91aa9",
+        "portId": "function-1"
+      }
+    },
+    {
+      "id": "a2a12615-caf9-4c56-a63f-1c50a187574b",
+      "from": {
+        "nodeId": "71b6653b-475c-4c46-91e1-3e1c0048a741",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "15da533b-1f5c-4aca-90db-a4c3add03873",
+        "portId": "borehole"
+      }
+    },
+    {
+      "id": "701726f9-0d96-4892-b376-ab0e08e7d2d3",
+      "from": {
+        "nodeId": "21797a73-4e44-424c-8e56-381c1e88236d",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "15da533b-1f5c-4aca-90db-a4c3add03873",
+        "portId": "geologicalBody"
+      }
+    },
+    {
+      "id": "9fa77a51-8d7d-4786-8d94-54d9756ca826",
+      "from": {
+        "nodeId": "6c62e708-34a0-4c28-a4bb-922286c37ed6",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "15da533b-1f5c-4aca-90db-a4c3add03873",
+        "portId": "attributeModel"
+      }
+    },
+    {
+      "id": "7f2f6fb0-70fa-4a8b-bdd3-e5986cebdd4d",
+      "from": {
+        "nodeId": "6c62e708-34a0-4c28-a4bb-922286c37ed6",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "31422a0b-1084-4a24-ad9f-e604d2420911",
+        "portId": "attributeModel"
+      }
+    },
+    {
+      "id": "cbc17f4a-6fef-4e56-852c-a04cbbdfecb7",
+      "from": {
+        "nodeId": "21797a73-4e44-424c-8e56-381c1e88236d",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "31422a0b-1084-4a24-ad9f-e604d2420911",
+        "portId": "geologicalBody"
+      }
+    },
+    {
+      "id": "a956677b-3ca1-4325-a9da-f03871224926",
+      "from": {
+        "nodeId": "31422a0b-1084-4a24-ad9f-e604d2420911",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "64cee79d-cc8a-409c-a421-407d1dc91aa9",
+        "portId": "function-2"
+      }
+    },
+    {
+      "id": "69d30c04-b479-4ef6-8c33-5538e5bc67f8",
+      "from": {
+        "nodeId": "f5f67895-ccf1-4313-bc84-462bdfc65fd9",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "baeb66de-21d3-41e0-870c-15ca460b0df7",
+        "portId": "roadway"
+      }
+    },
+    {
+      "id": "07c34aae-4f78-4118-aed2-68c94e201ffc",
+      "from": {
+        "nodeId": "21797a73-4e44-424c-8e56-381c1e88236d",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "baeb66de-21d3-41e0-870c-15ca460b0df7",
+        "portId": "geologicalBody"
+      }
+    },
+    {
+      "id": "3d5aafe1-81b6-4acc-80d1-b40fe0844a7e",
+      "from": {
+        "nodeId": "5cdac483-93db-4697-bcd1-42c4097bb518",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "31422a0b-1084-4a24-ad9f-e604d2420911",
+        "portId": "geologicalStructure"
+      }
+    },
+    {
+      "id": "3477f58c-7391-4dcc-b619-6a8ac4160762",
+      "from": {
+        "nodeId": "5cdac483-93db-4697-bcd1-42c4097bb518",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "baeb66de-21d3-41e0-870c-15ca460b0df7",
+        "portId": "geologicalStructure"
+      }
+    },
+    {
+      "id": "67271461-bfa9-4469-a120-fa7c020f5190",
+      "from": {
+        "nodeId": "6c62e708-34a0-4c28-a4bb-922286c37ed6",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "baeb66de-21d3-41e0-870c-15ca460b0df7",
+        "portId": "attributeModel"
+      }
+    },
+    {
+      "id": "f627431f-970f-481f-b37d-8cf50b64efaa",
+      "from": {
+        "nodeId": "baeb66de-21d3-41e0-870c-15ca460b0df7",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "64cee79d-cc8a-409c-a421-407d1dc91aa9",
+        "portId": "function-3"
+      }
+    },
+    {
+      "id": "804297e5-8d75-4772-b25b-1eef6d080e2e",
+      "from": {
+        "nodeId": "9612a90c-b4f5-429b-9e60-31b0e12fd8b2",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "596e3a8e-37f7-43cf-9b29-223ca3545046",
+        "portId": "geologicalBody"
+      }
+    },
+    {
+      "id": "eadc410a-bdff-42ff-8791-f1e91671e41e",
+      "from": {
+        "nodeId": "1c1bd44e-85a7-4ea0-b207-04722065201d",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "596e3a8e-37f7-43cf-9b29-223ca3545046",
+        "portId": "attributeModel"
+      }
+    },
+    {
+      "id": "46555a97-53f4-46ab-b61c-7445518a0312",
+      "from": {
+        "nodeId": "596e3a8e-37f7-43cf-9b29-223ca3545046",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "64cee79d-cc8a-409c-a421-407d1dc91aa9",
+        "portId": "function-4"
+      }
+    }
+  ],
+  "view": {
+    "panX": -255.2944203509054,
+    "panY": -313.210944085175,
+    "zoom": 0.5524972383738587
+  }
+}

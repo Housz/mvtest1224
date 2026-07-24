@@ -1,3 +1,5 @@
+import { BaseSemanticDataset } from '../semantics/BaseSemanticDataset.js';
+
 const toTimestamp = (value) => {
   if (value instanceof Date) return value.getTime();
   const numeric = Number(value);
@@ -39,7 +41,7 @@ function nearestRow(series, target, tolerance = Infinity) {
   return best && bestDistance <= tolerance ? best : null;
 }
 
-export class RoadwayHazardStateDataset {
+export class RoadwayHazardStateDataset extends BaseSemanticDataset {
   constructor({
     rows = [],
     source = null,
@@ -51,16 +53,19 @@ export class RoadwayHazardStateDataset {
     validation = null,
     adaptorResults = null
   } = {}) {
-    this.type = 'RoadwayHazardStateDataset';
-    this.contract = contract;
-    this.semanticClass = contract?.class ?? 'RoadwayHazardState';
-    this.templates = templates ?? {};
-    this.roleMapping = roleMapping;
-    this.validation = validation ?? { valid: true, warnings: [], errors: [], summary: {} };
-    this.adaptorResults = adaptorResults;
-    this.source = source ?? { statePath };
+    super({
+      type: 'RoadwayHazardStateDataset',
+      semanticClass: contract?.class ?? 'RoadwayHazardState',
+      taxonomyId: 'safety-emergency',
+      contract,
+      templates,
+      roleMapping,
+      validation,
+      adaptorResults,
+      source: source ?? { statePath },
+      metadata
+    });
     this.statePath = statePath;
-    this.metadata = metadata;
     this.rows = rows.map(normalizeRow).filter((row) => row.roadwayEdgeId || row.roadwayNodeId);
     this.edgeSeries = new Map();
     this.nodeSeries = new Map();
@@ -201,26 +206,5 @@ export class RoadwayHazardStateDataset {
           .join(',')
       )
     ].join('\n');
-  }
-
-  downloadJSON(filename = 'roadway_hazard_state.json') {
-    const blob = new Blob([JSON.stringify(this.toJSON(), null, 2)], { type: 'application/json' });
-    this.downloadBlob(blob, filename);
-  }
-
-  downloadCSV(filename = 'roadway_hazard_state.csv') {
-    const blob = new Blob([this.toCSV()], { type: 'text/csv;charset=utf-8' });
-    this.downloadBlob(blob, filename);
-  }
-
-  downloadBlob(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
   }
 }

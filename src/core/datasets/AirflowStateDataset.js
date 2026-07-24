@@ -1,3 +1,5 @@
+import { BaseSemanticDataset } from '../semantics/BaseSemanticDataset.js';
+
 const toTimestamp = (value) => {
   if (value instanceof Date) return value.getTime();
   const numeric = Number(value);
@@ -75,7 +77,7 @@ function interpolateState(left, right, target) {
   };
 }
 
-export class AirflowStateDataset {
+export class AirflowStateDataset extends BaseSemanticDataset {
   constructor({
     rows = [],
     source = null,
@@ -86,14 +88,17 @@ export class AirflowStateDataset {
     validation = null,
     adaptorResults = null
   } = {}) {
-    this.type = 'AirflowStateDataset';
-    this.contract = contract;
-    this.semanticClass = contract?.class ?? 'AirflowState';
-    this.templates = templates ?? {};
-    this.roleMapping = roleMapping;
-    this.validation = validation ?? { valid: true, warnings: [], errors: [], summary: {} };
-    this.adaptorResults = adaptorResults;
-    this.source = source ?? { statePath };
+    super({
+      type: 'AirflowStateDataset',
+      semanticClass: contract?.class ?? 'AirflowState',
+      taxonomyId: 'ventilation',
+      contract,
+      templates,
+      roleMapping,
+      validation,
+      adaptorResults,
+      source: source ?? { statePath }
+    });
     this.statePath = statePath;
     this.rows = rows.map(normalizeRow).filter((row) => row.branchId);
     this.seriesMap = new Map();

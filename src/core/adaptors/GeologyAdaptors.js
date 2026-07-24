@@ -1,4 +1,4 @@
-import Papa from 'papaparse';
+import { parseCsv } from './CsvParser.js';
 import { collectObjectPaths, extensionOf, fetchText, pickSuggestedRoleMapping } from './adaptorUtils.js';
 import { appPath } from '../../utils/appPath.js';
 
@@ -25,7 +25,7 @@ async function readArrayBufferSource(source) {
 async function readCsvSource(source) {
   if (!source?.text && !source?.path) return { rows: [], fields: [] };
   const text = source.text ?? (await fetchText(source.path));
-  const parsed = Papa.parse(text, { header: true, dynamicTyping: true, skipEmptyLines: true });
+  const parsed = await parseCsv(text, { header: true, dynamicTyping: true, skipEmptyLines: true });
   const rows = parsed.data.filter((row) => Object.keys(row || {}).length > 0);
   return { rows, fields: parsed.meta.fields || Object.keys(rows[0] || {}) };
 }

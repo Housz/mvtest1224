@@ -4,17 +4,27 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "check:english": "node scripts/check-no-chinese.mjs",
+    "prebuild": "npm run check:architecture",
     "build": "vite build",
     "preview": "vite preview",
-    "test:operators": "node scripts/smoke-operators.mjs"
+    "test:operators": "node scripts/smoke-operators.mjs",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "test:unit": "vitest run --pool=threads --poolOptions.threads.singleThread=true",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
+    "dockview": "^7.0.2",
     "echarts": "^5.5.0",
+    "lucide": "^1.24.0",
     "papaparse": "^5.4.1",
     "three": "^0.161.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "vite": "^5.4.0"
+    "@playwright/test": "^1.50.1",
+    "jsdom": "^25.0.1",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.9"
   }
 }

@@ -5,339 +5,23 @@ import { DataNodeDefinitions } from './core/nodes/DataNodes.js';
 import { OperatorNodeDefinitions } from './core/operators/OperatorNodes.js';
 import { ModuleNodeDefinitions } from './core/modules/ModuleNodes.js';
 import { SceneManager } from './scene/SceneManager.js';
-
-class ContextStore {
-  constructor(initial = {}) {
-    this.state = new Map(Object.entries(initial));
-    this.listeners = new Map();
-  }
-
-  get(key) {
-    return this.state.get(key);
-  }
-
-  set(key, value) {
-    this.state.set(key, value);
-    (this.listeners.get(key) || []).forEach((listener) => listener(value));
-  }
-
-  subscribe(key, listener) {
-    if (!this.listeners.has(key)) this.listeners.set(key, new Set());
-    this.listeners.get(key).add(listener);
-    return () => this.listeners.get(key)?.delete(listener);
-  }
-}
-
-function textKey(value = '') {
-  return String(value).toLowerCase();
-}
-
-function inferHost(type = '', label = '') {
-  const key = textKey(`${type} ${label}`);
-  if (key.includes('scene') || key.includes('3d') || key.includes('roadway')) return 'main-3d-scene';
-  if (key.includes('topology') || key.includes('drawing') || key.includes('network state')) return 'topology-view';
-  if (key.includes('legend')) return 'legend';
-  if (key.includes('control')) return 'control';
-  if (key.includes('timeline')) return 'timeline';
-  if (key.includes('chart')) return 'bottom-panel';
-  return 'right-panel';
-}
-
-function inferContributionKind(type = '') {
-  if (type === 'scene-layer') return 'layer';
-  if (type === 'topology-view') return 'panel';
-  if (type === 'legend') return 'legend';
-  if (type === 'control') return 'control';
-  if (type === 'chart') return 'chart';
-  return type || 'panel';
-}
-
-function inferSemanticRole(type = '', label = '') {
-  const key = textKey(`${type} ${label}`);
-  if (key.includes('roadway 3d model') || key.includes('base')) return 'base';
-  if (key.includes('anomaly') || key.includes('diagnostic')) return 'diagnostic';
-  if (key.includes('airflow') || key.includes('temperature') || key.includes('overlay') || key.includes('state')) return 'state';
-  if (key.includes('ventilation network') || key.includes('structure') || key.includes('topology') || key.includes('drawing')) return 'structure';
-  if (key.includes('legend')) return 'legend';
-  if (key.includes('control') || key.includes('filter') || key.includes('selector')) return 'control';
-  if (key.includes('chart') || key.includes('detail') || key.includes('summary') || key.includes('statistics')) return 'detail';
-  if (type === 'scene-layer') return 'state';
-  if (type === 'chart' || type === 'panel') return 'detail';
-  return 'detail';
-}
-
-function inferObjectSystem(label = '') {
-  const key = textKey(label);
-  if (key.includes('sensor')) return 'sensor';
-  if (key.includes('airflow') || key.includes('ventilation') || key.includes('branch') || key.includes('anomaly')) return 'ventilationBranch';
-  if (key.includes('roadway')) return 'roadway';
-  return 'workspace';
-}
-
-function inferVisualChannels(label = '', semanticRole = '') {
-  const key = textKey(label);
-  if (key.includes('airflow')) return { color: 'activeAirflowVariable', width: 'airQuantity', arrow: 'direction' };
-  if (key.includes('anomaly')) return { halo: 'anomalyType' };
-  if (key.includes('temperature')) return { color: 'temperature' };
-  if (semanticRole === 'structure') return { color: 'type', arrow: 'direction' };
-  return {};
-}
-
-function inferMergePolicy(type, label, host, semanticRole) {
-  const key = textKey(label);
-  if (key.includes('roadway 3d model') || key.includes('ventilation network overlay')) return 'reuse';
-  if (host === 'legend') return 'replace';
-  if (semanticRole === 'diagnostic' || type === 'scene-layer') return 'compose';
-  return 'compose';
-}
-
-function inferFocusBehavior(type, label, host, semanticRole) {
-  const key = textKey(label);
-  if (semanticRole === 'base') return 'context';
-  if (semanticRole === 'diagnostic') return 'annotation';
-  if (semanticRole === 'structure') return 'context';
-  if (host === 'legend' || semanticRole === 'legend') return 'primary-when-focused';
-  if (['control', 'detail'].includes(semanticRole) || ['chart', 'panel', 'control'].includes(type)) return 'panel-only';
-  if (semanticRole === 'state') return 'primary-when-focused';
-  return 'context';
-}
-
-function inferDefaultOpacity(type, semanticRole) {
-  if (semanticRole === 'base') return 0.5;
-  if (semanticRole === 'structure') return 0.45;
-  if (semanticRole === 'diagnostic') return 0.9;
-  if (type === 'scene-layer') return 0.85;
-  return 1;
-}
-
-function inferPriority(semanticRole, type) {
-  const order = { base: 10, structure: 30, state: 60, diagnostic: 70, selection: 90, legend: 50, control: 50, detail: 40 };
-  return order[semanticRole] ?? (type === 'scene-layer' ? 50 : 30);
-}
-
-function inferSharedKey(label, host, semanticRole, objectSystem) {
-  const key = textKey(label);
-  if (key.includes('roadway 3d model')) return 'roadway-base-layer';
-  if (key.includes('3d ventilation network overlay')) return 'ventilation-structure-layer';
-  return `${host}:${semanticRole}:${objectSystem}:${key}`;
-}
-
-class VisualContributionRegistry {
-  constructor(onChange) {
-    this.items = new Map();
-    this.onChange = onChange;
-    this.focusedFunctionId = null;
-    this.functionLabels = new Map();
-  }
-
-  register(contribution) {
-    const item = this.normalizeContribution(contribution);
-    this.items.set(item.id, item);
-    this.applyComposition();
-    this.notify();
-    return item;
-  }
-
-  normalizeContribution(contribution) {
-    const type = contribution.type || contribution.contributionKind || 'panel';
-    const label = contribution.label || contribution.id || 'Visual Contribution';
-    const host = contribution.host || inferHost(type, label);
-    const contributionKind = contribution.contributionKind || inferContributionKind(type);
-    const semanticRole = contribution.semanticRole || inferSemanticRole(type, label);
-    const objectSystem = contribution.objectSystem || inferObjectSystem(label);
-    const ownerFunctionId = contribution.ownerFunctionId || contribution.functionId || contribution.ownerId;
-    const composition = {
-      mergePolicy: inferMergePolicy(type, label, host, semanticRole),
-      focusBehavior: inferFocusBehavior(type, label, host, semanticRole),
-      canPin: true,
-      defaultVisibility: true,
-      defaultOpacity: contribution.opacity ?? inferDefaultOpacity(type, semanticRole),
-      ...(contribution.composition || {})
-    };
-    const visualChannels = contribution.visualChannels || inferVisualChannels(label, semanticRole);
-    return {
-      visible: contribution.state?.visible ?? contribution.visible ?? composition.defaultVisibility,
-      pinned: contribution.state?.pinned ?? contribution.pinned ?? false,
-      opacity: contribution.state?.opacity ?? contribution.opacity ?? composition.defaultOpacity,
-      host,
-      contributionKind,
-      semanticRole,
-      objectSystem,
-      visualChannels,
-      priority: contribution.priority ?? inferPriority(semanticRole, type),
-      composition,
-      ownerFunctionId,
-      ownerOperatorId: contribution.ownerOperatorId || contribution.ownerId,
-      sharedKey: contribution.sharedKey || inferSharedKey(label, host, semanticRole, objectSystem),
-      effectiveVisible: true,
-      muted: false,
-      ...contribution
-    };
-  }
-
-  get(id) {
-    return this.items.get(id);
-  }
-
-  list() {
-    return [...this.items.values()];
-  }
-
-  childrenOf(parentId) {
-    return this.list().filter((item) => item.parentId === parentId);
-  }
-
-  setVisible(id, visible) {
-    const item = this.items.get(id);
-    if (!item) return;
-    item.visible = visible;
-    if (item.collection) {
-      this.childrenOf(id).forEach((child) => {
-        child.visible = visible;
-      });
-    }
-    this.applyComposition();
-    this.notify();
-  }
-
-  setOpacity(id, opacity) {
-    const item = this.items.get(id);
-    if (!item) return;
-    item.opacity = Number(opacity);
-    this.applyComposition();
-    this.notify();
-  }
-
-  togglePinned(id) {
-    const item = this.items.get(id);
-    if (!item) return;
-    item.pinned = !item.pinned;
-    this.applyComposition();
-    this.notify();
-  }
-
-  setFunctionLabels(functions = []) {
-    this.functionLabels = new Map(functions.map((fn) => [fn.id, fn.label]));
-    this.notify();
-  }
-
-  setFocusedFunction(functionId) {
-    this.focusedFunctionId = functionId || null;
-    this.applyComposition();
-    this.notify();
-  }
-
-  ownerLabel(item) {
-    return this.functionLabels.get(item.ownerFunctionId) || this.functionLabels.get(item.functionId) || item.ownerLabel || '';
-  }
-
-  focusOwner(functionId) {
-    if (!functionId) return;
-    this.onFocusFunction?.(functionId);
-  }
-
-  applyComposition() {
-    const items = this.list();
-    const focusedId = this.focusedFunctionId;
-    const focusedLegends = new Set();
-    items.forEach((item) => {
-      item.focused = Boolean(focusedId && item.ownerFunctionId === focusedId);
-      item.muted = false;
-      let effectiveVisible = Boolean(item.visible);
-      let opacityFactor = 1;
-      if (!item.pinned && focusedId && item.ownerFunctionId && item.ownerFunctionId !== focusedId) {
-        const behavior = item.composition?.focusBehavior || 'context';
-        if (item.host === 'legend' || item.semanticRole === 'legend' || behavior === 'primary-when-focused') {
-          effectiveVisible = false;
-        } else if (['panel-only', 'control'].includes(behavior) || ['panel', 'control', 'chart', 'timeline', 'topology-view'].includes(item.contributionKind)) {
-          effectiveVisible = false;
-        } else if (item.semanticRole === 'diagnostic' || behavior === 'annotation') {
-          opacityFactor = 0.68;
-          item.muted = true;
-        } else if (item.semanticRole === 'structure' || behavior === 'context') {
-          opacityFactor = 0.42;
-          item.muted = true;
-        } else if (item.semanticRole === 'state') {
-          opacityFactor = 0.32;
-          item.muted = true;
-        }
-      }
-      if (item.host === 'legend' && item.focused) focusedLegends.add(item.id);
-      item.effectiveVisible = effectiveVisible;
-      item.effectiveOpacity = Math.max(0, Math.min(1, Number(item.opacity ?? 1) * opacityFactor));
-      this.applyContributionState(item);
-    });
-    if (focusedLegends.size > 1) {
-      let kept = false;
-      items
-        .filter((item) => focusedLegends.has(item.id))
-        .sort((a, b) => (b.priority || 0) - (a.priority || 0))
-        .forEach((item) => {
-          if (!kept) {
-            kept = true;
-            return;
-          }
-          if (!item.pinned) {
-            item.effectiveVisible = false;
-            this.applyContributionState(item);
-          }
-        });
-    }
-  }
-
-  applyContributionState(item) {
-    const nextVisible = Boolean(item.effectiveVisible);
-    const nextOpacity = Math.max(0, Math.min(1, Number(item.effectiveOpacity ?? item.opacity ?? 1)));
-    const nextFocused = Boolean(item.focused);
-    const nextMuted = Boolean(item.muted);
-
-    if (item._appliedVisible !== nextVisible) {
-      if (nextVisible) item.show?.();
-      else item.hide?.();
-      item._appliedVisible = nextVisible;
-    }
-
-    if (
-      nextVisible &&
-      item.setOpacity &&
-      (item._appliedOpacity == null || Math.abs(Number(item._appliedOpacity) - nextOpacity) > 0.001)
-    ) {
-      item.setOpacity(nextOpacity);
-      item._appliedOpacity = nextOpacity;
-    }
-
-    item._appliedFocused = nextFocused;
-
-    if (item._appliedMuted !== nextMuted) {
-      if (nextMuted) item.mute?.();
-      else item.unmute?.();
-      item._appliedMuted = nextMuted;
-    }
-  }
-
-  unregisterOwner(ownerId, { keepPinned = true } = {}) {
-    const hasPinnedDescendant = (itemId) =>
-      this.list().some((item) => item.parentId === itemId && (item.pinned || hasPinnedDescendant(item.id)));
-    const ownerHasPinnedItem = this.list().some((item) => item.ownerId === ownerId && item.pinned);
-    for (const [id, item] of this.items) {
-      if (item.ownerId !== ownerId) continue;
-      if (keepPinned && (item.pinned || hasPinnedDescendant(id) || (item.keepWithPinnedOwner && ownerHasPinnedItem))) continue;
-      item.cleanup?.();
-      this.items.delete(id);
-    }
-    this.items.forEach((item) => {
-      item._appliedVisible = undefined;
-      item._appliedOpacity = undefined;
-      item._appliedMuted = undefined;
-    });
-    this.applyComposition();
-    this.notify();
-  }
-
-  notify() {
-    this.onChange?.(this.list());
-  }
-}
+import { WorkspaceCompiler } from './core/modules/WorkspaceCompiler.js';
+import { WorkspaceRuntime } from './core/modules/WorkspaceRuntime.js';
+import { VisualContributionManager } from './core/modules/VisualContributionManager.js';
+import { WorkspaceHostRegistry } from './core/modules/WorkspaceHostRegistry.js';
+import { WorkspaceLayoutService } from './core/modules/WorkspaceLayoutServiceV6.js';
+import { LayoutStateStore, graphLayoutIdentity, previewViewportClass } from './core/modules/LayoutStateStore.js';
+import { SceneViewportInsets } from './core/modules/SceneViewportInsets.js';
+import { mapWithConcurrency, nowMs, yieldToMainThread } from './core/runtime/CooperativeTaskScheduler.js';
+import { SystemChromeService } from './core/modules/SystemChromeService.js';
+import { renderLucideIcons } from './ui/LucideIcons.js';
+import 'dockview/dist/styles/dockview.css';
+import './ui/preview-tokens.css';
+import './ui/preview-shell.css';
+import './ui/preview-workspace.css';
+import './ui/preview-components.css';
+import './ui/preview-operators.css';
+import './ui/preview-chart-presentations.css';
 
 function buildDefinitionRegistry() {
   const registry = new NodeDefinitionRegistry();
@@ -378,107 +62,24 @@ function loadGraph(definitionRegistry) {
   return createSeedGraph(definitionRegistry);
 }
 
-async function executeDataNodes(graph) {
+async function executeDataNodes(graph, { onProgress = null, concurrency = 3 } = {}) {
   const dataRegistry = new DataRegistry();
   const outputs = new Map();
-  for (const node of graph.nodes.filter((item) => item.kind === 'data')) {
+  const dataNodes = graph.nodes.filter((item) => item.kind === 'data');
+  await mapWithConcurrency(dataNodes, async (node) => {
     const result = await node.runtime.execute(dataRegistry, node);
     outputs.set(node.id, result);
     dataRegistry.register(node.id, result.dataset);
-  }
-  return { dataRegistry, outputs };
-}
-
-function buildOperatorInstances(graph, nodeOutputs) {
-  const operators = new Map();
-  const creating = new Set();
-  const makeOperatorDatasetOutput = (operator, port) => ({
-    __operatorDatasetOutput: true,
-    portId: port.id,
-    type: port.type,
-    operator,
-    getDataset: () => operator.getOutputDataset?.(port.id) ?? operator.outputs?.[port.id] ?? null,
-    subscribe: (callback) => operator.subscribeOutput?.(port.id, callback) ?? (() => {})
+    return result;
+  }, {
+    concurrency,
+    onProgress: (progress) => onProgress?.({
+      ...progress,
+      nodeId: progress.item?.id,
+      label: progress.item?.label || progress.item?.definition?.label || 'Data Node'
+    })
   });
-  const ensureOperator = (node) => {
-    if (operators.has(node.id)) return operators.get(node.id);
-    if (creating.has(node.id)) throw new Error(`Operator cycle detected at ${node.label || node.id}`);
-    creating.add(node.id);
-    const inputs = {};
-    const inbound = graph.edges.filter((edge) => edge.to.nodeId === node.id);
-    inbound.forEach((edge) => {
-      const fromNode = graph.nodes.find((item) => item.id === edge.from.nodeId);
-      if (fromNode?.kind === 'operator') ensureOperator(fromNode);
-      const upstream = nodeOutputs.get(edge.from.nodeId);
-      if (upstream) inputs[edge.to.portId] = upstream[edge.from.portId];
-    });
-    const operator = node.runtime.createOperator(node, inputs);
-    operators.set(node.id, operator);
-    const outputs = { operator };
-    (node.ports || [])
-      .filter((port) => port.direction === 'out' && port.id !== 'operator')
-      .forEach((port) => {
-        outputs[port.id] = makeOperatorDatasetOutput(operator, port);
-      });
-    nodeOutputs.set(node.id, outputs);
-    creating.delete(node.id);
-    return operator;
-  };
-  for (const node of graph.nodes.filter((item) => item.kind === 'operator')) {
-    ensureOperator(node);
-  }
-  return operators;
-}
-
-function buildWorkspaces(graph, operators) {
-  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
-  const collectDependencies = (rootOperatorId) => {
-    const visited = new Set();
-    const dependencies = [];
-    const visit = (nodeId) => {
-      graph.edges
-        .filter((edge) => edge.to.nodeId === nodeId)
-        .forEach((edge) => {
-          const fromNode = nodeById.get(edge.from.nodeId);
-          if (fromNode?.kind !== 'operator' || visited.has(fromNode.id)) return;
-          visited.add(fromNode.id);
-          visit(fromNode.id);
-          const dependency = operators.get(fromNode.id);
-          if (dependency) dependencies.push(dependency);
-        });
-    };
-    visit(rootOperatorId);
-    return dependencies;
-  };
-  return graph.nodes
-    .filter((node) => node.kind === 'module')
-    .map((moduleNode) => {
-      const inbound = graph.edges.filter((edge) => edge.to.nodeId === moduleNode.id);
-      const inboundByPort = new Map(inbound.map((edge) => [edge.to.portId, edge]));
-      const functionSlots = (moduleNode.params?.functions || [])
-        .filter((slot) => !slot.placeholder)
-        .map((slot) => {
-          const edge = inboundByPort.get(slot.id);
-          const operator = edge ? operators.get(edge.from.nodeId) : null;
-          return operator ? { slot, operator } : null;
-        })
-        .filter(Boolean);
-      const rootOperators = functionSlots.map((item) => item.operator);
-      const workspace = moduleNode.runtime.createWorkspace(moduleNode, rootOperators);
-      workspace.context = new ContextStore();
-      workspace.functions = functionSlots.map(({ slot, operator }) => ({
-        id: `${moduleNode.id}:${slot.id}:${operator.id}`,
-        slotId: slot.id,
-        label: slot.label || operator.label,
-        operator,
-        dependencies: collectDependencies(operator.id),
-        enabled: false,
-        rememberedEnabled: false,
-        session: null
-      }));
-      workspace.focusedFunctionId = null;
-      return workspace;
-    });
+  return { dataRegistry, outputs };
 }
 
 function pinIconSvg() {
@@ -497,6 +98,20 @@ function focusIconSvg() {
       <circle cx="12" cy="12" r="1.7" />
     </svg>
   `;
+}
+
+function createIconButton(id, title, iconName, className = 'runtime-icon-button') {
+  const button = document.createElement('button');
+  button.id = id;
+  button.type = 'button';
+  button.className = className;
+  button.title = title;
+  button.setAttribute('aria-label', title);
+  const icon = document.createElement('i');
+  icon.dataset.lucide = iconName;
+  icon.setAttribute('aria-hidden', 'true');
+  button.appendChild(icon);
+  return button;
 }
 
 function attrText(value = '') {
@@ -568,15 +183,16 @@ function visualContributionGroup(item) {
 
 function renderVisualContributionManager(container, registry) {
   const items = registry.list();
+  const layoutService = container._layoutService || null;
   if (!container._expandedVCIds) container._expandedVCIds = new Set();
   const collapsed = container.dataset.collapsed === 'true';
   container.classList.toggle('collapsed', collapsed);
   container.innerHTML = `
     <div class="vc-panel-head">
       <div class="panel-title">Visual Contributions</div>
+      <span class="system-panel-badge">System</span>
       <div class="system-panel-actions">
         <button class="vc-collapse" title="${collapsed ? 'Expand list' : 'Collapse list'}">${collapsed ? '+' : '-'}</button>
-        <button class="system-panel-minimize" data-target="contributions" title="Hide Visual Contributions">›</button>
       </div>
     </div>
     <div class="vc-list"></div>
@@ -601,7 +217,9 @@ function renderVisualContributionManager(container, registry) {
     const children = childrenByParent.get(item.id) || [];
     const expanded = container._expandedVCIds.has(item.id);
     const row = document.createElement('div');
-    row.className = `vc-item ${depth ? 'vc-child' : ''} ${children.length ? 'has-children' : ''} ${item.focused ? 'focused' : ''} ${item.muted ? 'muted' : ''} ${item.effectiveVisible === false ? 'composition-hidden' : ''}`;
+    const managedPanel = layoutService?.isPanelRegistered?.(item.id) === true;
+    const panelOpen = !managedPanel || layoutService?.isPanelOpen?.(item.id) === true;
+    row.className = `vc-item ${depth ? 'vc-child' : ''} ${children.length ? 'has-children' : ''} ${item.focused ? 'focused' : ''} ${item.muted ? 'muted' : ''} ${item.effectiveVisible === false ? 'composition-hidden' : ''} ${panelOpen ? '' : 'layout-closed'}`;
     row.style.setProperty('--vc-depth', depth);
     const owner = registry.ownerLabel(item);
     const opacityText = item.setOpacity ? `${Math.round((item.effectiveOpacity ?? item.opacity ?? 1) * 100)}%` : '';
@@ -622,6 +240,7 @@ function renderVisualContributionManager(container, registry) {
           <span>${item.label}</span>
         </label>
         <div class="vc-actions">
+          ${managedPanel && !panelOpen ? '<button class="vc-open-panel" title="Open panel" aria-label="Open panel">Open</button>' : ''}
           ${
             children.length
               ? `<button class="vc-expand" title="${expanded ? 'Collapse children' : 'Expand children'}">${expanded ? '-' : '+'}</button>`
@@ -635,16 +254,20 @@ function renderVisualContributionManager(container, registry) {
     row.addEventListener('contextmenu', (event) => showContributionMenu(event, item, registry));
     row.addEventListener('click', (event) => {
       if (event.target.closest('button,input')) return;
-      item.activate?.();
+      if (managedPanel) layoutService.activatePanel(item.id);
+      else item.activate?.();
     });
     row.addEventListener('dblclick', (event) => {
       if (event.target.closest('button,input')) return;
-      item.activate?.();
+      if (managedPanel) layoutService.activatePanel(item.id);
+      else item.activate?.();
       item.focus?.();
     });
     row.querySelector('.vc-visible').addEventListener('change', (event) => {
       registry.setVisible(item.id, event.target.checked);
+      if (event.target.checked && managedPanel) layoutService.activatePanel(item.id);
     });
+    row.querySelector('.vc-open-panel')?.addEventListener('click', () => layoutService.activatePanel(item.id));
     row.querySelector('.vc-focus-owner')?.addEventListener('click', () => registry.focusOwner(item.ownerFunctionId));
     row.querySelector('.vc-pin').addEventListener('click', () => registry.togglePinned(item.id));
     row.querySelector('.vc-expand')?.addEventListener('click', () => {
@@ -692,7 +315,7 @@ function renderFunctionBar(container, workspace, toggleFunction, setActiveFuncti
   container.innerHTML = `
     <div class="sidebar-head">
       <div class="sidebar-title">Functions</div>
-      <button class="system-panel-minimize" data-target="functions" title="Hide functions">‹</button>
+      <span class="system-panel-badge">System</span>
     </div>
     <div class="function-list"></div>
   `;
@@ -702,161 +325,268 @@ function renderFunctionBar(container, workspace, toggleFunction, setActiveFuncti
     return;
   }
   workspace.functions.forEach((fn) => {
+    const loading = Boolean(fn.loading);
+    const status = loading ? 'Loading' : fn.error ? 'Error' : fn.enabled ? 'Enabled' : 'Disabled';
     const row = document.createElement('div');
-    row.className = `function-button ${fn.enabled ? 'enabled' : ''} ${workspace.focusedFunctionId === fn.id ? 'focused' : ''}`;
-    row.title = `${fn.label}\n${fn.enabled ? 'Enabled' : 'Disabled'}${workspace.focusedFunctionId === fn.id ? '\nFocused' : ''}`;
+    row.className = `function-button ${fn.enabled ? 'enabled' : ''} ${loading ? 'loading' : ''} ${fn.error ? 'error' : ''} ${workspace.focusedFunctionId === fn.id ? 'focused' : ''}`;
+    row.title = `${fn.label}\n${status}${fn.error ? `: ${fn.error}` : ''}${workspace.focusedFunctionId === fn.id ? '\nFocused' : ''}`;
     row.innerHTML = `
-      <button class="function-main" title="${fn.enabled ? 'Disable' : 'Enable'} ${attrText(fn.label)}">
+      <button class="function-main" ${loading ? 'disabled' : ''} title="${loading ? 'Loading' : fn.enabled ? 'Disable' : 'Enable'} ${attrText(fn.label)}">
         <span>${fn.label}</span>
+        ${loading ? '<span class="function-busy" aria-label="Loading"></span>' : ''}
       </button>
-      <button class="function-focus" title="Focus ${attrText(fn.label)}">${focusIconSvg()}</button>
+      <button class="function-focus" ${loading || !fn.enabled ? 'disabled' : ''} title="Focus ${attrText(fn.label)}">${focusIconSvg()}</button>
     `;
     row.querySelector('.function-main').addEventListener('click', async (event) => {
       event.stopPropagation();
       await toggleFunction(workspace, fn);
-      if (fn.enabled) setActiveFunction(workspace, fn);
     });
-    const focus = () => setActiveFunction(workspace, fn);
+    const focus = () => {
+      if (fn.enabled && !fn.loading) setActiveFunction(workspace, fn);
+    };
     row.querySelector('.function-focus').addEventListener('click', focus);
     row.addEventListener('dblclick', async () => {
+      if (fn.loading) return;
       if (!fn.enabled) await toggleFunction(workspace, fn);
-      setActiveFunction(workspace, fn);
+      if (fn.enabled) setActiveFunction(workspace, fn);
     });
     list.appendChild(row);
   });
 }
 
-function installSystemPanelToggles(shell) {
-  const classByTarget = {
-    workspace: 'workspace-panel-hidden',
-    functions: 'functions-panel-hidden',
-    contributions: 'contributions-panel-hidden'
-  };
-  const setHidden = (target, hidden) => {
-    const cls = classByTarget[target];
-    if (!cls) return;
-    shell.classList.toggle(cls, hidden);
-  };
-  shell.addEventListener('click', (event) => {
-    const minimize = event.target.closest('.system-panel-minimize');
-    if (minimize) {
-      event.preventDefault();
-      event.stopPropagation();
-      setHidden(minimize.dataset.target, true);
-      return;
-    }
-    const handle = event.target.closest('.system-panel-handle');
-    if (handle) {
-      event.preventDefault();
-      event.stopPropagation();
-      setHidden(handle.dataset.target, false);
-    }
-  });
-}
-
-function makeFloatingPanelDraggable(panel, handleSelector = '.panel-title') {
-  let drag = null;
-  panel.addEventListener('pointerdown', (event) => {
-    const handle = event.target.closest(handleSelector);
-    if (!handle || !panel.contains(handle) || event.button !== 0) return;
-    event.preventDefault();
-    const rect = panel.getBoundingClientRect();
-    drag = {
-      pointerId: event.pointerId,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top
-    };
-    panel.setPointerCapture(event.pointerId);
-    panel.classList.add('dragging');
-  });
-  panel.addEventListener('pointermove', (event) => {
-    if (!drag || event.pointerId !== drag.pointerId) return;
-    const maxLeft = window.innerWidth - panel.offsetWidth - 8;
-    const maxTop = window.innerHeight - panel.offsetHeight - 8;
-    const left = Math.max(8, Math.min(maxLeft, event.clientX - drag.offsetX));
-    const top = Math.max(72, Math.min(maxTop, event.clientY - drag.offsetY));
-    panel.style.left = `${left}px`;
-    panel.style.top = `${top}px`;
-    panel.style.right = 'auto';
-    panel.style.bottom = 'auto';
-  });
-  const endDrag = (event) => {
-    if (!drag || event.pointerId !== drag.pointerId) return;
-    panel.releasePointerCapture(event.pointerId);
-    drag = null;
-    panel.classList.remove('dragging');
-  };
-  panel.addEventListener('pointerup', endDrag);
-  panel.addEventListener('pointercancel', endDrag);
-}
-
 async function bootstrap() {
+  const loadingMetrics = {
+    startedAt: nowMs(),
+    dataNodes: [],
+    sourceStarts: new Map(),
+    ready: false
+  };
+  window.minevisPreviewLoading = loadingMetrics;
   const root = document.getElementById('preview-root');
   root.innerHTML = `
-    <div class="runtime-shell">
-      <header class="runtime-topbar">
-        <div class="runtime-brand">Workspace</div>
-        <nav class="module-buttons"></nav>
-        <button class="system-panel-minimize" data-target="workspace" title="Hide workspace bar">⌃</button>
+    <div class="runtime-shell" tabindex="-1">
+      <header class="runtime-topbar" aria-label="Workspace toolbar">
+        <nav class="module-buttons" aria-label="Workspaces"></nav>
       </header>
-      <button class="system-panel-handle workspace-handle" data-target="workspace" title="Show workspace bar">Workspace</button>
-      <main class="runtime-scene" id="scene-container"></main>
-      <aside class="function-sidebar"></aside>
-      <button class="system-panel-handle functions-handle" data-target="functions" title="Show functions">Functions</button>
-      <aside class="vc-manager"></aside>
-      <button class="system-panel-handle contributions-handle" data-target="contributions" title="Show Visual Contributions">Visual Contributions</button>
-      <section class="control-panel glass-panel"></section>
+      <div class="runtime-dock-overlay" aria-label="Dockable visual analysis workspace"></div>
+      <aside id="system-functions-panel" class="function-sidebar system-chrome-panel" aria-label="Functions"></aside>
+      <aside id="system-contributions-panel" class="vc-manager system-chrome-panel" aria-label="Visual Contributions"></aside>
+      <div class="workspace-panel-staging" aria-hidden="true">
+        <main class="runtime-scene" id="scene-container" aria-label="Main Scene"></main>
+        <section class="control-panel glass-panel"></section>
+      </div>
+      <div class="preview-loading-overlay" role="status" aria-live="polite">
+        <div class="preview-loading-card">
+          <div class="preview-loading-title">Preparing MineVis workspace</div>
+          <div class="preview-loading-message">Discovering data sources...</div>
+          <div class="preview-loading-track"><span></span></div>
+        </div>
+      </div>
     </div>
   `;
 
   const definitionRegistry = buildDefinitionRegistry();
   const graph = loadGraph(definitionRegistry);
-  const { outputs } = await executeDataNodes(graph);
-  const operators = buildOperatorInstances(graph, outputs);
-  const workspaces = buildWorkspaces(graph, operators);
-  const sceneManager = new SceneManager(document.getElementById('scene-container'));
-  sceneManager.addLights();
-
+  const loadingOverlay = root.querySelector('.preview-loading-overlay');
+  const loadingMessage = loadingOverlay.querySelector('.preview-loading-message');
+  const loadingProgress = loadingOverlay.querySelector('.preview-loading-track span');
+  const updateLoading = (message, fraction = null) => {
+    loadingMessage.textContent = message;
+    if (Number.isFinite(fraction)) loadingProgress.style.width = `${Math.max(0, Math.min(1, fraction)) * 100}%`;
+  };
+  await yieldToMainThread();
+  const { outputs } = await executeDataNodes(graph, {
+    concurrency: 3,
+    onProgress: ({ phase, completed, total, label, nodeId, durationMs }) => {
+      if (phase === 'start') {
+        loadingMetrics.sourceStarts.set(nodeId, nowMs());
+        updateLoading(`Loading ${label}...`, total ? completed / total : 0);
+      }
+      if (phase === 'complete') {
+        const completedAt = nowMs();
+        const startedAt = loadingMetrics.sourceStarts.get(nodeId) ?? completedAt - (Number(durationMs) || 0);
+        loadingMetrics.dataNodes.push({ nodeId, label, durationMs, startedAt, completedAt });
+        updateLoading(`Loaded ${label}`, total ? completed / total : 1);
+      }
+    }
+  });
+  loadingMetrics.dataReadyAt = nowMs();
+  loadingMetrics.dataDurationMs = loadingMetrics.dataReadyAt - loadingMetrics.startedAt;
+  updateLoading('Compiling workspace...', 1);
+  await yieldToMainThread();
+  const compiler = new WorkspaceCompiler({ graph, definitionRegistry });
+  const { workspaces, diagnostics: compilerDiagnostics } = compiler.compile(outputs);
+  loadingMetrics.compiledAt = nowMs();
+  loadingMetrics.compileDurationMs = loadingMetrics.compiledAt - loadingMetrics.dataReadyAt;
+  if (compilerDiagnostics.some((item) => item.severity === 'error')) {
+    console.warn('[MineVis workspace compiler]', compilerDiagnostics);
+  }
   const moduleButtons = root.querySelector('.module-buttons');
   const functionSidebar = root.querySelector('.function-sidebar');
   const contributionPanel = root.querySelector('.vc-manager');
   const controlPanel = root.querySelector('.control-panel');
-  const contributionRegistry = new VisualContributionRegistry(() =>
+  const sceneContainer = root.querySelector('#scene-container');
+  const shell = root.querySelector('.runtime-shell');
+  const topbar = root.querySelector('.runtime-topbar');
+  const dockOverlay = root.querySelector('.runtime-dock-overlay');
+  const stagingElement = root.querySelector('.workspace-panel-staging');
+  stagingElement.inert = true;
+
+  const functionsToggle = createIconButton(
+    'workspace-functions-toggle',
+    'Hide Functions',
+    'panel-left',
+    'runtime-icon-button system-panel-toggle system-panel-toggle-functions'
+  );
+  functionsToggle.dataset.systemPanelToggle = 'functions';
+  functionsToggle.setAttribute('aria-controls', 'system-functions-panel');
+  topbar.prepend(functionsToggle);
+
+  const toolbarActions = document.createElement('div');
+  toolbarActions.className = 'runtime-workspace-actions';
+  const resetLayoutButton = createIconButton('workspace-reset-layout', 'Reset Layout', 'rotate-ccw');
+  const contributionsToggle = createIconButton(
+    'workspace-contributions-toggle',
+    'Show Visual Contributions',
+    'panel-right',
+    'runtime-icon-button system-panel-toggle system-panel-toggle-contributions'
+  );
+  contributionsToggle.dataset.systemPanelToggle = 'contributions';
+  contributionsToggle.setAttribute('aria-controls', 'system-contributions-panel');
+  toolbarActions.append(resetLayoutButton, contributionsToggle);
+  topbar.appendChild(toolbarActions);
+  renderLucideIcons(shell);
+
+  let activeWorkspace = workspaces[0];
+  let activeFunction = null;
+  const contributionRegistry = new VisualContributionManager(() =>
     renderVisualContributionManager(contributionPanel, contributionRegistry)
   );
+  loadingMetrics.servicesStartedAt = nowMs();
+  const sceneManager = new SceneManager(sceneContainer);
+  sceneManager.addLights();
+  loadingMetrics.sceneManagerReadyAt = nowMs();
+  const layoutService = new WorkspaceLayoutService({
+    container: dockOverlay,
+    stagingElement,
+    contributionManager: contributionRegistry,
+    stateStore: new LayoutStateStore('minevis.preview.layout.v6'),
+    scope: {
+      graphId: graphLayoutIdentity(graph),
+      workspaceId: activeWorkspace?.id || 'workspace',
+      viewportClass: previewViewportClass()
+    }
+  });
+  contributionPanel._layoutService = layoutService;
+  loadingMetrics.layoutServiceReadyAt = nowMs();
+  const layoutUiDispose = layoutService.subscribeLayout(() => {
+    renderVisualContributionManager(contributionPanel, contributionRegistry);
+  });
+  contributionRegistry.register({
+    id: 'minevis:main-scene',
+    label: 'Main Scene',
+    type: 'panel',
+    contributionKind: 'panel',
+    semanticRole: 'detail',
+    host: 'workspace',
+    element: sceneContainer,
+    resize: (size) => sceneManager.onResize(size),
+    layout: {
+      role: 'primary-view',
+      preferredRegion: 'center',
+      preferredSize: { width: 760, height: 520 },
+      minSize: { width: 180, height: 120 },
+      tabGroup: 'main-views',
+      content: { profile: 'scene', padding: 'none', overflow: 'hidden' }
+    }
+  });
+  layoutService.flushContributionSync();
+
+  let fallbackControlsContributionId = null;
+  const systemChrome = new SystemChromeService({
+    shell,
+    toolbar: topbar,
+    panels: {
+      functions: functionSidebar,
+      contributions: contributionPanel
+    },
+    toggles: {
+      functions: functionsToggle,
+      contributions: contributionsToggle
+    },
+    scope: {
+      graphId: graphLayoutIdentity(graph),
+      workspaceId: activeWorkspace?.id || 'workspace',
+      viewportClass: previewViewportClass()
+    }
+  });
+  layoutService.setSystemChromeService(systemChrome);
+  const sceneInsets = new SceneViewportInsets({
+    workspaceElement: sceneContainer,
+    sceneManager,
+    layoutService,
+    systemChromeService: systemChrome,
+    toolbarElement: null
+  });
+  const hostRegistry = new WorkspaceHostRegistry().registerDefaults({
+    scene: sceneManager,
+    rightPanel: controlPanel
+  });
   contributionRegistry.onFocusFunction = (functionId) => {
     const fn = activeWorkspace?.functions?.find((item) => item.id === functionId);
     if (fn) setActiveFunction(activeWorkspace, fn);
   };
-  installSystemPanelToggles(root.querySelector('.runtime-shell'));
-  makeFloatingPanelDraggable(controlPanel);
+  const updateWorkspaceChrome = () => {};
+  resetLayoutButton.addEventListener('click', () => {
+    layoutService.resetLayout();
+    systemChrome.reset();
+    updateWorkspaceChrome();
+  });
+  updateWorkspaceChrome();
+  let currentViewportClass = previewViewportClass();
+  let viewportClassFrame = 0;
+  const handleViewportClassChange = () => {
+    if (viewportClassFrame) return;
+    viewportClassFrame = requestAnimationFrame(() => {
+      viewportClassFrame = 0;
+      const nextViewportClass = previewViewportClass();
+      if (nextViewportClass === currentViewportClass) return;
+      currentViewportClass = nextViewportClass;
+      layoutService.setScope({
+        graphId: graphLayoutIdentity(graph),
+        workspaceId: activeWorkspace?.id || 'workspace',
+        viewportClass: currentViewportClass
+      });
+      systemChrome.setScope({
+        graphId: graphLayoutIdentity(graph),
+        workspaceId: activeWorkspace?.id || 'workspace',
+        viewportClass: currentViewportClass
+      });
+      layoutService.restoreSavedLayout();
+      updateWorkspaceChrome();
+    });
+  };
+  window.addEventListener('resize', handleViewportClassChange);
+  const workspaceRuntimes = new Map(
+    workspaces.map((workspace) => [workspace.id, new WorkspaceRuntime({
+      workspace,
+      sceneManager,
+      contributionManager: contributionRegistry,
+      hostRegistry,
+      onFunctionStateChange: () => {
+        if (workspace === activeWorkspace) {
+          renderFunctionBar(functionSidebar, workspace, toggleFunction, setActiveFunction);
+        }
+      }
+    })])
+  );
 
-  let activeWorkspace = workspaces[0];
-  let activeFunction = null;
-  const dependencyRefCounts = new Map();
-  const rootOperatorSessions = new Map();
+  function runtimeFor(workspace) {
+    return workspace ? workspaceRuntimes.get(workspace.id) : null;
+  }
 
   function clearWorkspaceSelection(workspace = activeWorkspace) {
-    if (!workspace?.context) return;
-    [
-      'selection',
-      'selectedBranch',
-      'selectedFacility',
-      'selectedPerson',
-      'selectedRoute',
-      'selectedResource',
-      'selectedHazardSegment',
-      'selectedRoadwaySegment',
-      'selectedGeologicalUnit',
-      'selectedGeologicalBody',
-      'selectedSurface',
-      'selectedBorehole',
-      'selectedStructure',
-      'selectedBlock',
-      'selectedAttributeElement',
-      'selectedSectionElement',
-      'selectedGeologicalRegion'
-    ].forEach((key) => workspace.context.set(key, null));
+    runtimeFor(workspace)?.clearSelection();
     sceneManager.highlightRoadwayEdges?.([]);
     sceneManager.highlightVentilationBranch?.(null);
     sceneManager.highlightVentilationFacility?.(null);
@@ -866,151 +596,78 @@ async function bootstrap() {
 
   sceneManager.onBlankPick = () => clearWorkspaceSelection(activeWorkspace);
 
-  function isInteractiveGenerativeDependency(operator) {
-    return ['WaterInrushSimulationOperator', 'FireAndSmokeSimulationOperator'].includes(operator?.nodeModel?.typeId);
-  }
-
-  async function attachDependency(workspace, fn, operator) {
-    const rootAttachment = rootOperatorSessions.get(operator.id);
-    if (rootAttachment) {
-      const record = dependencyRefCounts.get(operator.id) || {
-        session: rootAttachment.session,
-        refs: new Set(),
-        externalRoot: true
-      };
-      record.refs.add(fn.id);
-      dependencyRefCounts.set(operator.id, record);
-      return rootAttachment.session;
-    }
-    const existing = dependencyRefCounts.get(operator.id);
-    if (existing) {
-      existing.refs.add(fn.id);
-      return existing.session;
-    }
-    const session = await operator.attach({
-      sceneManager,
-      context: workspace.context,
-      contributionRegistry,
-      functionId: fn.id,
-      mode: 'dependency',
-      exposure: isInteractiveGenerativeDependency(operator) ? 'simulation-context' : 'none'
-    });
-    dependencyRefCounts.set(operator.id, { session, refs: new Set([fn.id]) });
-    return session;
-  }
-
-  function releaseDependency(fn, operator, { keepPinned = true } = {}) {
-    const record = dependencyRefCounts.get(operator.id);
-    if (!record) return;
-    record.refs.delete(fn.id);
-    if (record.refs.size) return;
-    if (record.externalRoot && rootOperatorSessions.has(operator.id)) {
-      const rootAttachment = rootOperatorSessions.get(operator.id);
-      if (rootAttachment?.rootClosed) {
-        contributionRegistry.unregisterOwner(operator.id, { keepPinned });
-        rootAttachment.session?.cleanup?.();
-        rootOperatorSessions.delete(operator.id);
-      }
-      dependencyRefCounts.delete(operator.id);
-      return;
-    }
-    contributionRegistry.unregisterOwner(operator.id, { keepPinned });
-    record.session?.cleanup?.();
-    dependencyRefCounts.delete(operator.id);
-  }
-
-  function renderFunctionControls(workspace, fn) {
-    controlPanel.innerHTML = '';
-    if (!fn?.enabled) {
-      controlPanel.style.display = 'none';
-      return;
-    }
-    const exposedDependencies = (fn.dependencies || []).filter(isInteractiveGenerativeDependency);
-    exposedDependencies.forEach((operator) => {
-      const section = document.createElement('section');
-      section.className = 'dependency-control-section';
-      section.dataset.dependencyOperator = operator.id;
-      operator.renderControls?.(section);
-      controlPanel.appendChild(section);
-    });
-    const rootSection = document.createElement('section');
-    rootSection.className = 'root-control-section';
-    if (typeof fn.operator.renderControls === 'function') {
-      fn.operator.renderControls(rootSection);
-    } else {
-      rootSection.innerHTML = `<div class="panel-title">${fn.label || fn.operator?.label || 'Function'}</div><div class="muted-note">This function does not expose workspace controls.</div>`;
-    }
-    controlPanel.appendChild(rootSection);
-    controlPanel.style.display = 'block';
-  }
-
-  async function attachFunction(workspace, fn) {
-    if (fn.enabled) return;
-    fn.dependencySessions = [];
-    for (const dependency of fn.dependencies || []) {
-      const session = await attachDependency(workspace, fn, dependency);
-      fn.dependencySessions.push({ operator: dependency, session });
-    }
-    fn.session = await fn.operator.attach({
-      sceneManager,
-      context: workspace.context,
-      contributionRegistry,
-      functionId: fn.id,
-      mode: 'root',
-      exposure: 'full'
-    });
-    (fn.dependencies || []).forEach((dependency) => dependency.updateViews?.());
-    fn.operator.recomputeRoutes?.();
-    rootOperatorSessions.set(fn.operator.id, { session: fn.session, functionId: fn.id });
-    fn.enabled = true;
-    contributionRegistry.setFunctionLabels(workspace.functions);
-  }
-
-  function closeFunction(fn, { keepPinned = true, remember = true } = {}) {
-    if (remember) fn.rememberedEnabled = fn.enabled;
-    if (!fn.enabled) return;
-    const dependencyRecord = dependencyRefCounts.get(fn.operator.id);
-    const heldByDependency = dependencyRecord?.refs?.size > 0;
-    if (!heldByDependency) {
-      contributionRegistry.unregisterOwner(fn.operator.id, { keepPinned });
-      fn.session?.cleanup?.();
-      rootOperatorSessions.delete(fn.operator.id);
-    } else {
-      const rootAttachment = rootOperatorSessions.get(fn.operator.id);
-      if (rootAttachment) rootAttachment.rootClosed = true;
-    }
-    (fn.dependencies || []).forEach((dependency) => releaseDependency(fn, dependency, { keepPinned }));
-    fn.dependencySessions = [];
-    fn.session = null;
-    fn.enabled = false;
-    if (activeWorkspace?.focusedFunctionId === fn.id) {
-      const fallback = activeWorkspace.functions.find((item) => item.enabled && item.id !== fn.id) || null;
-      if (fallback) setActiveFunction(activeWorkspace, fallback);
-      else hideActiveControls();
-    }
+  function unregisterFallbackControls() {
+    if (!fallbackControlsContributionId) return;
+    contributionRegistry.unregister(fallbackControlsContributionId, { cleanup: false });
+    fallbackControlsContributionId = null;
+    layoutService.flushContributionSync();
   }
 
   function hideActiveControls() {
     activeFunction = null;
-    if (activeWorkspace) activeWorkspace.focusedFunctionId = null;
-    contributionRegistry.setFocusedFunction(null);
+    runtimeFor(activeWorkspace)?.focusFunction(null);
+    unregisterFallbackControls();
     controlPanel.innerHTML = '';
-    controlPanel.style.display = 'none';
+  }
+
+  function renderFunctionControls(workspace, fn) {
+    layoutService.flushContributionSync();
+    if (layoutService.hasExplicitControl(fn?.id)) {
+      unregisterFallbackControls();
+      controlPanel.innerHTML = '';
+      return;
+    }
+    const contributionId = `workspace:${workspace?.id || 'workspace'}:function-controls:${fn?.id || 'function'}`;
+    if (fallbackControlsContributionId && fallbackControlsContributionId !== contributionId) {
+      unregisterFallbackControls();
+    }
+    runtimeFor(workspace)?.renderControls(fn, controlPanel);
+    controlPanel.classList.add('workspace-fallback-controls-content');
+    contributionRegistry.register({
+      id: contributionId,
+      label: (fn?.label || 'Function') + ' Controls',
+      type: 'control',
+      contributionKind: 'control',
+      semanticRole: 'control',
+      host: 'right-panel',
+      ownerId: fn?.id,
+      ownerFunctionId: fn?.id,
+      element: controlPanel,
+      visible: true,
+      layout: {
+        role: 'control',
+        preferredRegion: 'right',
+        tabGroup: 'right-tools',
+        priority: 90
+      }
+    });
+    fallbackControlsContributionId = contributionId;
+    layoutService.flushContributionSync();
+    layoutService.activatePanel(contributionId);
+  }
+
+  async function attachFunction(workspace, fn) {
+    await runtimeFor(workspace)?.attachFunction(fn);
+    layoutService.flushContributionSync();
+  }
+
+  function closeFunction(workspace, fn, options = {}) {
+    runtimeFor(workspace)?.closeFunction(fn, options);
+    if (activeFunction?.id === fn.id) {
+      const fallback = workspace.functions.find((item) => item.enabled && item.id !== fn.id) || null;
+      if (fallback) setActiveFunction(workspace, fallback);
+      else hideActiveControls();
+    }
   }
 
   function suspendWorkspace(workspace) {
-    if (!workspace) return;
-    workspace.functions.forEach((fn) => closeFunction(fn, { keepPinned: false, remember: true }));
+    runtimeFor(workspace)?.suspend();
     hideActiveControls();
   }
 
   async function restoreWorkspace(workspace) {
-    if (!workspace) return;
-    for (const fn of workspace.functions) {
-      if (fn.rememberedEnabled) await attachFunction(workspace, fn);
-    }
-    const restoredActive = workspace.functions.find((fn) => fn.enabled) || null;
-    if (restoredActive) setActiveFunction(workspace, restoredActive);
+    const restored = await runtimeFor(workspace)?.restore();
+    if (restored) setActiveFunction(workspace, restored);
     else hideActiveControls();
   }
 
@@ -1019,7 +676,18 @@ async function bootstrap() {
     if (nextWorkspace?.id !== activeWorkspace?.id) {
       suspendWorkspace(activeWorkspace);
       activeWorkspace = nextWorkspace;
+      layoutService.setScope({
+        graphId: graphLayoutIdentity(graph),
+        workspaceId: activeWorkspace?.id || 'workspace',
+        viewportClass: previewViewportClass()
+      });
+      systemChrome.setScope({
+        graphId: graphLayoutIdentity(graph),
+        workspaceId: activeWorkspace?.id || 'workspace',
+        viewportClass: previewViewportClass()
+      });
       await restoreWorkspace(activeWorkspace);
+      layoutService.restoreSavedLayout();
     } else {
       activeWorkspace = nextWorkspace;
     }
@@ -1030,31 +698,104 @@ async function bootstrap() {
   };
 
   const setActiveFunction = (workspace, fn) => {
+    if (!fn) {
+      hideActiveControls();
+      return;
+    }
     activeFunction = fn;
-    if (workspace) workspace.focusedFunctionId = fn?.id || null;
-    contributionRegistry.setFocusedFunction(fn?.id || null);
+    runtimeFor(workspace)?.focusFunction(fn);
     renderFunctionControls(workspace, fn);
+    layoutService.focusFunction(fn.id);
     renderFunctionBar(functionSidebar, workspace, toggleFunction, setActiveFunction);
   };
 
   async function toggleFunction(workspace, fn) {
-    if (!fn.enabled) {
-      await attachFunction(workspace, fn);
-      fn.rememberedEnabled = true;
-    } else {
-      closeFunction(fn, { keepPinned: true, remember: false });
-      fn.rememberedEnabled = false;
+    if (fn.loading) return fn.enabled;
+    const runtime = runtimeFor(workspace);
+    try {
+      await runtime?.toggleFunction(fn);
+      contributionRegistry.setFunctionLabels(workspace.functions);
+      if (fn.enabled) setActiveFunction(workspace, fn);
+      else if (activeFunction?.id === fn.id) {
+        const fallback = workspace.functions.find((item) => item.enabled) || null;
+        if (fallback) setActiveFunction(workspace, fallback);
+        else hideActiveControls();
+      }
+    } catch (error) {
+      console.error(`[MineVis] Failed to ${fn.enabled ? 'disable' : 'enable'} ${fn.label}:`, error);
+      fn.error = error?.message || String(error);
+    } finally {
+      if (workspace === activeWorkspace) {
+        renderFunctionBar(functionSidebar, workspace, toggleFunction, setActiveFunction);
+      }
     }
-    contributionRegistry.setFunctionLabels(workspace.functions);
-    if (workspace === activeWorkspace) renderFunctionBar(functionSidebar, workspace, toggleFunction, setActiveFunction);
+    return fn.enabled;
   }
 
   renderVisualContributionManager(contributionPanel, contributionRegistry);
   await setActiveWorkspace(activeWorkspace?.id);
   if (activeWorkspace?.functions?.[0]) {
+    updateLoading(`Starting ${activeWorkspace.functions[0].label}...`, 1);
+    loadingMetrics.initialFunctionStartedAt = nowMs();
     await toggleFunction(activeWorkspace, activeWorkspace.functions[0]);
-    setActiveFunction(activeWorkspace, activeWorkspace.functions[0]);
+    loadingMetrics.initialFunctionReadyAt = nowMs();
+    loadingMetrics.initialFunctionDurationMs = loadingMetrics.initialFunctionReadyAt - loadingMetrics.initialFunctionStartedAt;
   }
+  loadingMetrics.readyAt = nowMs();
+  loadingMetrics.totalDurationMs = loadingMetrics.readyAt - loadingMetrics.startedAt;
+  loadingMetrics.ready = true;
+  loadingMetrics.sourceStarts.clear();
+  layoutService.restoreSavedLayout();
+  updateWorkspaceChrome();
+  loadingOverlay.remove();
+
+  if (import.meta.env.DEV) {
+    window.minevisPreviewDebug = {
+      graph,
+      dataOutputs: outputs,
+      sceneManager,
+      contributionRegistry,
+      layoutService,
+      systemChrome,
+      loadingMetrics,
+      get activeWorkspace() {
+        return activeWorkspace;
+      },
+      get activeFunction() {
+        return activeFunction;
+      },
+      async toggleFunction(functionId) {
+        const fn = activeWorkspace?.functions?.find((item) => item.id === functionId);
+        if (!fn) return false;
+        await toggleFunction(activeWorkspace, fn);
+        return fn.enabled;
+      },
+      focusFunction(functionId) {
+        const fn = activeWorkspace?.functions?.find((item) => item.id === functionId);
+        if (!fn) return false;
+        setActiveFunction(activeWorkspace, fn);
+        return true;
+      },
+      diagnostics() {
+        return {
+          contributions: contributionRegistry.getDiagnostics(),
+          layout: layoutService.getDiagnostics()
+        };
+      }
+    };
+  }
+
+  window.addEventListener('beforeunload', () => {
+    window.removeEventListener('resize', handleViewportClassChange);
+    if (viewportClassFrame) cancelAnimationFrame(viewportClassFrame);
+    sceneInsets.dispose();
+    layoutUiDispose();
+    systemChrome.dispose();
+    sceneManager.dispose();
+    layoutService.dispose();
+    delete window.minevisPreviewDebug;
+    delete window.minevisPreviewLoading;
+  }, { once: true });
 }
 
 bootstrap().catch((error) => {

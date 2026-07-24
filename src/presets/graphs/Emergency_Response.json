@@ -1,0 +1,944 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "3abfa60a-b8e7-4e33-9dbc-247bd53aaf78",
+      "typeId": "RoadwayDataNode",
+      "kind": "data",
+      "label": "Roadway",
+      "position": {
+        "x": -58.41152299920799,
+        "y": 715.5476133488011
+      },
+      "params": {
+        "datasetType": "Roadway",
+        "contractId": "RoadwayContract",
+        "sources": {
+          "topology": {
+            "label": "Topology JSON",
+            "path": "/data/roadway_topo.json",
+            "adaptor": "JSONGraphAdaptor"
+          },
+          "geometry": {
+            "label": "Roadway OBJ",
+            "path": "/data/roadway_model.obj",
+            "adaptor": "OBJGeometryAdaptor"
+          }
+        },
+        "roleMapping": {
+          "graph.nodeId": "nodes.id",
+          "graph.nodePosition": "nodes.position",
+          "graph.edgeId": "edges.id",
+          "graph.fromNode": "edges.source",
+          "graph.toNode": "edges.target",
+          "graph.path": "edges.path",
+          "geometry.meshPartId": "meshParts.name",
+          "relation.geometryTarget": "meshParts.name"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "nodeCount": 63,
+            "edgeCount": 81,
+            "meshPartCount": 144,
+            "templates": [
+              {
+                "id": "graph",
+                "type": "Graph",
+                "kind": "Graph",
+                "label": "Roadway graph",
+                "role": "networkStructure",
+                "form": "DirectedGraph",
+                "schemaVersion": 1,
+                "nodeCount": 63,
+                "edgeCount": 81
+              },
+              {
+                "id": "geometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Roadway geometry",
+                "role": "spatialSupport",
+                "form": "MeshSurface",
+                "schemaVersion": 1,
+                "meshPartCount": 144,
+                "modelPath": "/data/roadway_model.obj"
+              },
+              {
+                "id": "geometryToGraph",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Geometry to roadway graph",
+                "role": "constitutiveCorrespondence",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "geometry.meshPartId",
+                "target": "graph.edgeId / graph.nodeId",
+                "relation": "geometry parts are attached to roadway graph entities by id/name correspondence",
+                "relationCount": 144
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        },
+        "uiCollapsed": false
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Roadway",
+          "direction": "out",
+          "type": "RoadwayDataset"
+        }
+      ]
+    },
+    {
+      "id": "d2da96a5-d0e5-4d3d-b9d5-090921c5c6c1",
+      "typeId": "PersonnelEmergencyAnalysisOperator",
+      "kind": "operator",
+      "label": "Personnel Emergency Analysis",
+      "position": {
+        "x": 706.1149104363944,
+        "y": 716.886661348382
+      },
+      "params": {
+        "routeMode": "nearest-safe",
+        "destinationMode": "nearest-resource",
+        "resourceTypes": [
+          "refuge",
+          "exit"
+        ],
+        "avoidRiskySegments": true,
+        "riskWeight": 5,
+        "riskPenalty": 5,
+        "blockedCost": null,
+        "showAllRoutes": true,
+        "showOnlyAtRiskPeople": false,
+        "enableQuickHazardSketch": true,
+        "autoRecompute": true,
+        "travelSpeed": 1.2,
+        "walkingSpeed": 1.2,
+        "capacityAware": false,
+        "manualMode": false,
+        "manualMarkMode": "blocked",
+        "uiCollapsed": false
+      },
+      "ports": [
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset"
+        },
+        {
+          "id": "people",
+          "name": "People",
+          "direction": "in",
+          "type": "PeopleDataset"
+        },
+        {
+          "id": "emergencyResources",
+          "name": "Emergency Resources",
+          "direction": "in",
+          "type": "EmergencyResourcesDataset"
+        },
+        {
+          "id": "hazardState",
+          "name": "Hazard State",
+          "direction": "in",
+          "type": "RoadwayHazardStateDataset"
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "fc277250-2357-47e9-866c-50bfb79084af",
+      "typeId": "WaterInrushSimulationOperator",
+      "kind": "operator",
+      "label": "Water Inrush Simulation",
+      "position": {
+        "x": 321.5672681318012,
+        "y": 1025.2666433152556
+      },
+      "params": {
+        "sourceMode": "pick",
+        "sourceEdgeId": null,
+        "sourceNodeId": null,
+        "sourceRatio": 0.5,
+        "startTime": 0,
+        "duration": 20,
+        "inflowMode": "continuous",
+        "timeSteps": 30,
+        "timeInterval": 1,
+        "intensity": 1,
+        "inflowRate": 8,
+        "propagationSpeed": 1,
+        "depthGrowthRate": 1,
+        "decay": 0.15,
+        "cellLength": 10,
+        "roadwayWidth": 4,
+        "roadwayHeight": 3,
+        "conductanceScale": 1.2,
+        "leakageRate": 0,
+        "riskyDepthThreshold": 0.3,
+        "blockedDepthThreshold": 0.8,
+        "fullFlowRatio": 0.95,
+        "scenarioId": "water_inrush_demo",
+        "autoRun": true,
+        "uiCollapsed": false
+      },
+      "ports": [
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset"
+        },
+        {
+          "id": "hazardState",
+          "name": "Roadway Hazard State",
+          "direction": "out",
+          "type": "RoadwayHazardStateDataset"
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "0f7f96be-14e5-48bc-ad5b-b413f6237a50",
+      "typeId": "PeopleDataNode",
+      "kind": "data",
+      "label": "People",
+      "position": {
+        "x": 318.9765281367321,
+        "y": 583.564911625801
+      },
+      "params": {
+        "datasetType": "People",
+        "contractId": "PeopleContract",
+        "sources": {
+          "people": {
+            "label": "People Source",
+            "path": "/data/people.json",
+            "adaptor": "PeopleJsonAdaptor"
+          }
+        },
+        "roleMapping": {
+          "personId": "people.personId",
+          "label": "people.label",
+          "personType": "people.personType",
+          "team": "people.team",
+          "status": "people.status",
+          "timestamp": "people.timestamp",
+          "position": "people.position",
+          "positionX": "people.position.x",
+          "positionY": "people.position.y",
+          "positionZ": "people.position.z",
+          "roadwayEdgeId": "people.roadwayAnchor.edgeId",
+          "roadwayNodeId": "people.roadwayAnchor.nodeId",
+          "ratio": "people.roadwayAnchor.ratio"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "personCount": 30,
+            "anchoredPersonCount": 30,
+            "statusCounts": {
+              "normal": 30
+            },
+            "templates": [
+              {
+                "id": "registry",
+                "type": "Registry",
+                "kind": "Registry",
+                "label": "People registry",
+                "role": "personIdentity",
+                "form": "EntityRegistry",
+                "schemaVersion": 1,
+                "entityCount": 30,
+                "keyRole": "personId"
+              },
+              {
+                "id": "pointGeometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "People point geometry",
+                "role": "personPosition",
+                "form": "PointSet",
+                "schemaVersion": 1,
+                "pointCount": 30
+              },
+              {
+                "id": "currentState",
+                "type": "State",
+                "kind": "State",
+                "label": "People current state",
+                "role": "personCurrentState",
+                "form": "Snapshot",
+                "schemaVersion": 1,
+                "rowCount": 30,
+                "subjectRole": "personId",
+                "timeRole": "timestamp",
+                "valueRole": "status"
+              },
+              {
+                "id": "roadwayRelation",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "People roadway location",
+                "role": "personRoadwayAnchor",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "registry.personId",
+                "target": "Roadway.graph.edgeId / nodeId",
+                "relation": "people are located on roadway edges or nodes",
+                "relationCount": 30
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        },
+        "uiCollapsed": false
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "People",
+          "direction": "out",
+          "type": "PeopleDataset"
+        }
+      ]
+    },
+    {
+      "id": "f8ef9e9e-6fad-4cf1-9d8d-832926ea574e",
+      "typeId": "EmergencyResourcesDataNode",
+      "kind": "data",
+      "label": "Emergency Resources",
+      "position": {
+        "x": 319.17470816886913,
+        "y": 681.084505811202
+      },
+      "params": {
+        "datasetType": "EmergencyResources",
+        "contractId": "EmergencyResourcesContract",
+        "sources": {
+          "resources": {
+            "label": "Resources Source",
+            "path": "/data/emergency_resources.json",
+            "adaptor": "EmergencyResourcesJsonAdaptor"
+          }
+        },
+        "roleMapping": {
+          "resourceId": "resources.resourceId",
+          "label": "resources.label",
+          "resourceType": "resources.resourceType",
+          "status": "resources.status",
+          "capacity": "resources.capacity",
+          "position": "resources.position",
+          "positionX": "resources.position.x",
+          "positionY": "resources.position.y",
+          "positionZ": "resources.position.z",
+          "roadwayEdgeId": "resources.roadwayAnchor.edgeId",
+          "roadwayNodeId": "resources.roadwayAnchor.nodeId",
+          "ratio": "resources.roadwayAnchor.ratio"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "resourceCount": 1,
+            "exitCount": 1,
+            "availableCount": 1,
+            "templates": [
+              {
+                "id": "registry",
+                "type": "Registry",
+                "kind": "Registry",
+                "label": "Emergency resource registry",
+                "role": "resourceIdentity",
+                "form": "EntityRegistry",
+                "schemaVersion": 1,
+                "entityCount": 1,
+                "keyRole": "resourceId"
+              },
+              {
+                "id": "pointGeometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Emergency resource point geometry",
+                "role": "resourcePosition",
+                "form": "PointSet",
+                "schemaVersion": 1,
+                "pointCount": 1
+              },
+              {
+                "id": "roadwayRelation",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Emergency resource roadway location",
+                "role": "resourceRoadwayAnchor",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "registry.resourceId",
+                "target": "Roadway.graph.edgeId / nodeId",
+                "relation": "emergency resources are located on roadway edges or nodes",
+                "relationCount": 1
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        },
+        "uiCollapsed": false
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Emergency Resources",
+          "direction": "out",
+          "type": "EmergencyResourcesDataset"
+        }
+      ]
+    },
+    {
+      "id": "5bb841e4-fca8-438f-a0dd-71d6fcc4c587",
+      "typeId": "ModuleNode",
+      "kind": "module",
+      "label": "Emergency Response",
+      "position": {
+        "x": 1056.3088895593878,
+        "y": 888.1161313724102
+      },
+      "params": {
+        "workspaceName": "Emergency Response",
+        "functions": [
+          {
+            "id": "function-2",
+            "label": "Personnel Emergency Analysis",
+            "operatorNodeId": "d2da96a5-d0e5-4d3d-b9d5-090921c5c6c1",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-3",
+            "label": "Fire and Smoke Simulation",
+            "operatorNodeId": "1945ea54-26bd-4604-bc57-1938e3816990",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-1",
+            "label": "Water Inrush Simulation",
+            "operatorNodeId": "fc277250-2357-47e9-866c-50bfb79084af",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-4",
+            "label": "(Add Function)",
+            "placeholder": true
+          }
+        ],
+        "context": {
+          "time": true,
+          "selection": true
+        },
+        "uiCollapsed": false
+      },
+      "ports": [
+        {
+          "id": "function-2",
+          "name": "Personnel Emergency Analysis",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-3",
+          "name": "Fire and Smoke Simulation",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-1",
+          "name": "Water Inrush Simulation",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-4",
+          "name": "(Add Function)",
+          "direction": "in",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "1945ea54-26bd-4604-bc57-1938e3816990",
+      "typeId": "FireAndSmokeSimulationOperator",
+      "kind": "operator",
+      "label": "Fire and Smoke Simulation",
+      "position": {
+        "x": 319.377444783537,
+        "y": 787.823636752304
+      },
+      "params": {
+        "sourceEdgeId": null,
+        "sourceRatio": 0.5,
+        "ignitionTime": 0,
+        "simulationDuration": 1800,
+        "timeSteps": 60,
+        "timeInterval": 30,
+        "cellLength": 10,
+        "roadwayWidth": 4,
+        "roadwayHeight": 3,
+        "initialHeatRelease": 1,
+        "burnRate": 0.03,
+        "fuelLoad": 4,
+        "heatYield": 1,
+        "heatLossRate": 0.006,
+        "ignitionThreshold": 1,
+        "smokeYield": 1,
+        "coYield": 0.1,
+        "smokeDiffusion": 0.05,
+        "ventilationAdvectionScale": 1,
+        "ventilationDilutionScale": 0.2,
+        "airflowFireBoost": 0.5,
+        "riskyTempThreshold": 60,
+        "blockedTempThreshold": 120,
+        "riskySmokeThreshold": 0.25,
+        "blockedSmokeThreshold": 0.6,
+        "riskyVisibilityThreshold": 20,
+        "blockedVisibilityThreshold": 5,
+        "riskyCOThreshold": 50,
+        "blockedCOThreshold": 150,
+        "useVentilation": true,
+        "showFireLayer": true,
+        "showSmokeLayer": true,
+        "showRiskLayer": true,
+        "showSourceMarker": true,
+        "scenarioId": "fire_smoke_demo",
+        "autoRun": true
+      },
+      "ports": [
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset"
+        },
+        {
+          "id": "ventilationNetwork",
+          "name": "Ventilation Network",
+          "direction": "in",
+          "type": "VentilationNetworkDataset",
+          "optional": true
+        },
+        {
+          "id": "airflowState",
+          "name": "Airflow State",
+          "direction": "in",
+          "type": "AirflowStateDataset",
+          "optional": true
+        },
+        {
+          "id": "hazardState",
+          "name": "Roadway Hazard State",
+          "direction": "out",
+          "type": "RoadwayHazardStateDataset"
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "f09a33be-e412-4922-93c8-c806f46d488d",
+      "typeId": "VentilationNetworkDataNode",
+      "kind": "data",
+      "label": "Ventilation Network",
+      "position": {
+        "x": -69.89560867094757,
+        "y": 902.6972290010655
+      },
+      "params": {
+        "datasetType": "VentilationNetwork",
+        "contractId": "VentilationNetworkContract",
+        "sources": {
+          "network": {
+            "label": "Network Source",
+            "path": "/data/ventilation_network.json",
+            "adaptor": "VentilationNetworkJsonAdaptor"
+          }
+        },
+        "roleMapping": {
+          "graph.nodeId": "nodes.id",
+          "graph.nodeType": "nodes.type",
+          "graph.nodePosition": "nodes.position",
+          "graph.branchId": "branches.id",
+          "graph.fromNode": "branches.from",
+          "graph.toNode": "branches.to",
+          "graph.branchType": "branches.branchType",
+          "graph.nominalDirection": "branches.nominalDirection",
+          "graph.path": "branches.path",
+          "facility.facilityId": "facilities.id",
+          "facility.facilityType": "facilities.type",
+          "facility.branchId": "facilities.branchId",
+          "facility.ratio": "facilities.ratio",
+          "relation.roadwayEdges": "branches.roadwayEdgeIds",
+          "relation.roadwayNode": "nodes.roadwayNodeId"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "nodeCount": 63,
+            "branchCount": 81,
+            "facilityCount": 13,
+            "intakeCount": 1,
+            "returnCount": 1,
+            "templates": [
+              {
+                "id": "graph",
+                "type": "Graph",
+                "kind": "Graph",
+                "label": "Ventilation graph",
+                "role": "ventilationNetworkStructure",
+                "form": "DirectedGraph",
+                "schemaVersion": 1,
+                "nodeCount": 63,
+                "edgeCount": 81
+              },
+              {
+                "id": "facilityRegistry",
+                "type": "Registry",
+                "kind": "Registry",
+                "label": "Ventilation facility registry",
+                "role": "facilityIdentity",
+                "form": "EntityRegistry",
+                "schemaVersion": 1,
+                "entityCount": 13,
+                "keyRole": "facility.facilityId"
+              },
+              {
+                "id": "roadwayRelation",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Ventilation to roadway relation",
+                "role": "roadwayReference",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "ventilation.branchId / facilityId / nodeId",
+                "target": "Roadway.graph.edgeId / nodeId",
+                "relation": "ventilation branches, facilities, and nodes reference roadway objects",
+                "relationCount": 157
+              },
+              {
+                "id": "branchGeometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Ventilation branch geometry",
+                "role": "branchCenterline",
+                "form": "Polyline",
+                "schemaVersion": 1
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        }
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Ventilation Network",
+          "direction": "out",
+          "type": "VentilationNetworkDataset"
+        }
+      ]
+    },
+    {
+      "id": "181da44d-a00b-4990-beef-50030303314f",
+      "typeId": "AirflowStateDataNode",
+      "kind": "data",
+      "label": "Airflow State",
+      "position": {
+        "x": -68.66039572974796,
+        "y": 1049.9416048793796
+      },
+      "params": {
+        "datasetType": "AirflowState",
+        "contractId": "AirflowStateContract",
+        "sources": {
+          "state": {
+            "label": "State Source",
+            "path": "/data/airflow_state.csv",
+            "adaptor": "AirflowStateCsvAdaptor"
+          }
+        },
+        "roleMapping": {
+          "branchId": "branch_id",
+          "timestamp": "time",
+          "airQuantity": "air_quantity_m3s",
+          "velocity": "velocity_ms",
+          "pressureDrop": "pressure_drop_pa",
+          "pressureFrom": "pressure_from_pa",
+          "pressureTo": "pressure_to_pa",
+          "directionSign": "direction_sign",
+          "direction": "direction",
+          "anomalyType": "anomaly_type",
+          "scenarioId": "scenario_id"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "rowCount": 4860,
+            "branchCount": 81,
+            "timeRange": {
+              "min": 1672502400000,
+              "max": 1672520100000
+            },
+            "templates": [
+              {
+                "id": "state",
+                "type": "State",
+                "kind": "State",
+                "label": "Airflow branch state",
+                "role": "branchTimeState",
+                "form": "Snapshot",
+                "schemaVersion": 1,
+                "rowCount": 4860,
+                "subjectRole": "branchId",
+                "timeRole": "timestamp",
+                "valueRole": "airQuantity",
+                "variable": "airflow",
+                "timeRange": {
+                  "min": 1672502400000,
+                  "max": 1672520100000
+                }
+              },
+              {
+                "id": "airflowField",
+                "type": "Field",
+                "kind": "Field",
+                "label": "Graph-supported airflow field",
+                "role": "branchSupportedField",
+                "form": "ScalarField",
+                "schemaVersion": 1,
+                "support": "VentilationNetwork.graph.branches",
+                "rowCount": 4860
+              },
+              {
+                "id": "stateOfBranch",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Airflow state of branch",
+                "role": "stateBranchRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "state.branchId",
+                "target": "VentilationNetwork.graph.branchId",
+                "relation": "airflow states are defined on ventilation branches",
+                "relationCount": 81
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        }
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Airflow State",
+          "direction": "out",
+          "type": "AirflowStateDataset"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "677ce06d-eba4-4256-8885-db89a911a653",
+      "from": {
+        "nodeId": "0f7f96be-14e5-48bc-ad5b-b413f6237a50",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "d2da96a5-d0e5-4d3d-b9d5-090921c5c6c1",
+        "portId": "people"
+      }
+    },
+    {
+      "id": "acc12bd1-4507-4ff1-856e-68ce549d6500",
+      "from": {
+        "nodeId": "f8ef9e9e-6fad-4cf1-9d8d-832926ea574e",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "d2da96a5-d0e5-4d3d-b9d5-090921c5c6c1",
+        "portId": "emergencyResources"
+      }
+    },
+    {
+      "id": "179c7435-6a02-446c-b61b-aa5d1e0caa5c",
+      "from": {
+        "nodeId": "3abfa60a-b8e7-4e33-9dbc-247bd53aaf78",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "fc277250-2357-47e9-866c-50bfb79084af",
+        "portId": "roadway"
+      }
+    },
+    {
+      "id": "1842ac8c-cbe9-4426-ac9b-bc99bc44f5e6",
+      "from": {
+        "nodeId": "3abfa60a-b8e7-4e33-9dbc-247bd53aaf78",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "d2da96a5-d0e5-4d3d-b9d5-090921c5c6c1",
+        "portId": "roadway"
+      }
+    },
+    {
+      "id": "1f3f47b4-2326-4f6a-b736-c7599a3c432a",
+      "from": {
+        "nodeId": "1945ea54-26bd-4604-bc57-1938e3816990",
+        "portId": "hazardState"
+      },
+      "to": {
+        "nodeId": "d2da96a5-d0e5-4d3d-b9d5-090921c5c6c1",
+        "portId": "hazardState"
+      }
+    },
+    {
+      "id": "b8aefcc8-df8a-495b-9f10-3251ab350c4e",
+      "from": {
+        "nodeId": "3abfa60a-b8e7-4e33-9dbc-247bd53aaf78",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "1945ea54-26bd-4604-bc57-1938e3816990",
+        "portId": "roadway"
+      }
+    },
+    {
+      "id": "2ed7f0e3-cd7d-4199-9718-d80dacde9e98",
+      "from": {
+        "nodeId": "d2da96a5-d0e5-4d3d-b9d5-090921c5c6c1",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "5bb841e4-fca8-438f-a0dd-71d6fcc4c587",
+        "portId": "function-2"
+      }
+    },
+    {
+      "id": "3561ed99-c8c4-4eb8-8c9e-08b8cf78278b",
+      "from": {
+        "nodeId": "1945ea54-26bd-4604-bc57-1938e3816990",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "5bb841e4-fca8-438f-a0dd-71d6fcc4c587",
+        "portId": "function-3"
+      }
+    },
+    {
+      "id": "5420b0bb-0b56-4fa0-9ac1-447e00b74fc5",
+      "from": {
+        "nodeId": "fc277250-2357-47e9-866c-50bfb79084af",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "5bb841e4-fca8-438f-a0dd-71d6fcc4c587",
+        "portId": "function-1"
+      }
+    },
+    {
+      "id": "5df7784a-030a-46e5-b57b-f8ca1059e358",
+      "from": {
+        "nodeId": "f09a33be-e412-4922-93c8-c806f46d488d",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "1945ea54-26bd-4604-bc57-1938e3816990",
+        "portId": "ventilationNetwork"
+      }
+    },
+    {
+      "id": "e75d26ed-7862-4cf5-9830-f0d63fc16477",
+      "from": {
+        "nodeId": "181da44d-a00b-4990-beef-50030303314f",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "1945ea54-26bd-4604-bc57-1938e3816990",
+        "portId": "airflowState"
+      }
+    }
+  ],
+  "view": {
+    "panX": 196.06967407747175,
+    "panY": -314.57521692523176,
+    "zoom": 0.6782240849836775
+  }
+}

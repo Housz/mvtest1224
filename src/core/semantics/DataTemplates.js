@@ -1,8 +1,10 @@
 import { assertTemplateType } from './Taxonomies.js';
+import { DataTemplateRegistry } from './DataTemplateRegistry.js';
 
 export class DataTemplate {
   constructor({ id, type, label, role, data = {}, roleMapping = {}, metadata = {} }) {
     assertTemplateType(type);
+    const definition = DataTemplateRegistry.get(type);
     this.id = id;
     this.type = type;
     this.label = label || id;
@@ -10,14 +12,25 @@ export class DataTemplate {
     this.data = data;
     this.roleMapping = roleMapping;
     this.metadata = metadata;
+    this.kind = definition?.kind || type;
+    this.form = data.form || metadata.form || definition?.forms?.[0] || '';
+    this.schemaVersion = metadata.schemaVersion || 1;
   }
 
   summary() {
-    return { id: this.id, type: this.type, label: this.label };
+    return {
+      id: this.id,
+      type: this.type,
+      kind: this.kind,
+      label: this.label,
+      role: this.role || undefined,
+      form: this.form || undefined,
+      schemaVersion: this.schemaVersion
+    };
   }
 
   validate() {
-    return { valid: true, warnings: [], errors: [] };
+    return DataTemplateRegistry.validate(this);
   }
 }
 

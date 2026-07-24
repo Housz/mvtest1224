@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>矿山通风系统专业解算平台</title>
+    <title>Professional Mine Ventilation Network Solver</title>
     
     <script type="importmap">
         {
@@ -18,7 +18,7 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: "Microsoft YaHei", sans-serif; user-select: none; }
         
-        /* 布局 */
+        /* Layout */
         #container { display: flex; height: 100vh; width: 100vw; }
         .panel { flex: 1; position: relative; border-right: 1px solid #444; overflow: hidden; }
         #view-2d { background: #f0f2f5; border-right: 2px solid #ccc; flex: 0.8; }
@@ -32,7 +32,7 @@
             border-bottom: 1px solid #ddd; display: flex; justify-content: space-between;
         }
 
-        /* 控制栏 */
+        /* Control bar */
         #controls {
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
             background: #fff; padding: 6px 12px; border-radius: 6px;
@@ -44,7 +44,7 @@
         .btn-primary { background: #1890ff; color: white; border-color: #1890ff; }
         .btn-primary:hover { background: #40a9ff; color: white; }
 
-        /* 右键菜单 */
+        /* Context menu */
         #context-menu {
             position: absolute; display: none; background: white; 
             border: 1px solid #eee; box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
@@ -53,13 +53,13 @@
         .menu-item { padding: 8px 16px; cursor: pointer; font-size: 13px; color: #333; }
         .menu-item:hover { background-color: #f5f5f5; color: #1890ff; }
 
-        /* SVG 样式 */
+        /* SVG styles */
         .mine-node { fill: #666; cursor: pointer; }
         .mine-node:hover { fill: #333; }
         .mine-edge { stroke: #999; stroke-width: 1.5; fill: none; cursor: pointer; vector-effect: non-scaling-stroke; }
         .mine-edge:hover { stroke: #333; stroke-width: 3; }
 
-        /* 状态样式 */
+        /* State styles */
         .status-inlet { fill: #52c41a !important; stroke: #237804; stroke-width: 2px; }
         .status-outlet { fill: #f5222d !important; stroke: #a8071a; stroke-width: 2px; }
         
@@ -70,36 +70,36 @@
 <body>
 
     <div id="controls">
-        <span><b>矿山通风系统</b></span>
+        <span><b>Mine Ventilation System</b></span>
         <div style="width: 1px; height: 16px; background: #ddd;"></div>
-        <input type="file" id="file-json" accept=".json" style="width: 70px;" title="上传JSON">
-        <input type="file" id="file-obj" accept=".obj" style="width: 70px;" title="上传OBJ">
+        <input type="file" id="file-json" accept=".json" style="width: 70px;" title="Upload JSON">
+        <input type="file" id="file-obj" accept=".obj" style="width: 70px;" title="Upload OBJ">
         <div style="width: 1px; height: 16px; background: #ddd;"></div>
-        <button onclick="app.toggle3D('obj')">模型开关</button>
-        <button onclick="app.toggle3D('lines')">线框开关</button>
+        <button onclick="app.toggle3D('obj')">Toggle Model</button>
+        <button onclick="app.toggle3D('lines')">Toggle Centerlines</button>
         <div style="width: 1px; height: 16px; background: #ddd;"></div>
-        <button class="btn-primary" onclick="app.reLayout()">重算通风网络布局</button>
-        <button id="btn-merge-paths" onclick="app.togglePathMerge()">合并线性Path</button>
+        <button class="btn-primary" onclick="app.reLayout()">Recompute Ventilation Layout</button>
+        <button id="btn-merge-paths" onclick="app.togglePathMerge()">Merge Linear Paths</button>
     </div>
 
     <div id="context-menu">
-        <div class="menu-item" onclick="app.setNodeStatus('inlet')">🚩 设为：进风口 (Inlet)</div>
-        <div class="menu-item" onclick="app.setNodeStatus('outlet')">🛑 设为：出风口 (Outlet)</div>
-        <div class="menu-item" onclick="app.setNodeStatus('normal')">⚪ 设为：普通节点</div>
+        <div class="menu-item" onclick="app.setNodeStatus('inlet')">🚩 Set as Inlet</div>
+        <div class="menu-item" onclick="app.setNodeStatus('outlet')">🛑 Set as Outlet</div>
+        <div class="menu-item" onclick="app.setNodeStatus('normal')">⚪ Set as Normal Node</div>
     </div>
 
     <div id="container">
         <div id="view-2d" class="panel">
-            <div class="panel-header">平面图 (交互: 右键设置进出风口)</div>
+            <div class="panel-header">Plan View (right-click to set inlets and outlets)</div>
             <div id="svg-container" style="width:100%; height:100%;"></div>
         </div>
         
         <div id="view-3d" class="panel">
-            <div class="panel-header">三维透视图</div>
+            <div class="panel-header">3D Perspective View</div>
         </div>
 
         <div id="view-net" class="panel">
-            <div class="panel-header">通风网络拓扑图 (Canonical Diagram)</div>
+            <div class="panel-header">Ventilation Network Topology (Canonical Diagram)</div>
         </div>
     </div>
 
@@ -108,27 +108,27 @@
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
-        // === 应用核心状态 ===
+        // === Application state ===
         const state = {
             data: { nodes: [], edges: [] },
-            nodeProps: {}, // 存储 { id: { type: 'inlet'|'outlet' } }
+            nodeProps: {}, // Stores { id: { type: 'inlet'|'outlet' } }
             mergeLinearPaths: false,
             selection: null,
             loadedMeshes: {},
             svgElements: {}
         };
 
-        // === Cytoscape 实例 ===
+        // === Cytoscape instance ===
         let cy; 
 
-        // === 应用逻辑暴露给全局 ===
+        // === Expose application actions globally ===
         window.app = {
             setNodeStatus: (type) => {
                 if(ctxMenu.targetId) {
                     if(!state.nodeProps[ctxMenu.targetId]) state.nodeProps[ctxMenu.targetId] = {};
                     state.nodeProps[ctxMenu.targetId].type = type;
-                    render2D(); // 更新2D颜色
-                    renderNetwork(); // 更新网络图
+                    render2D(); // Update 2D colors
+                    renderNetwork(); // Update topology view
                     ctxMenu.hide();
                 }
             },
@@ -136,7 +136,7 @@
             togglePathMerge: () => {
                 state.mergeLinearPaths = !state.mergeLinearPaths;
                 const btn = document.getElementById('btn-merge-paths');
-                btn.textContent = state.mergeLinearPaths ? '恢复原始Path' : '合并线性Path';
+                btn.textContent = state.mergeLinearPaths ? 'Restore Original Paths' : 'Merge Linear Paths';
                 btn.classList.toggle('btn-primary', state.mergeLinearPaths);
                 renderNetwork();
             },
@@ -146,7 +146,7 @@
             }
         };
 
-        // === 1. 自定义通风网络布局算法 ===
+        // === 1. Custom ventilation network layout algorithm ===
         function runVentilationLayout(cyInstance) {
             const nodes = cyInstance.nodes();
             const edges = cyInstance.edges();
@@ -287,7 +287,7 @@
             const layers = Array.from({ length: maxLayer + 1 }, () => []);
             nodeIds.forEach(id => layers[layerOf.get(id)].push(id));
 
-            // Sugiyama 降交叉的关键：跨多层的长边必须插入 dummy 点参与层间排序。
+            // Sugiyama crossing reduction requires dummy vertices for long edges that span multiple ranks.
             const augmentedLayers = layers.map(layer => [...layer]);
             const itemLayer = new Map();
             const itemInfo = new Map();
@@ -697,16 +697,16 @@
         }
 
 
-        // === 2. 2D 交互逻辑 (SVG) ===
+        // === 2. 2D interaction logic (SVG) ===
         function render2D() {
             const container = document.getElementById('svg-container');
             container.innerHTML = '';
             const { nodes, edges } = state.data;
             if(!nodes.length) return;
 
-            // 坐标映射
+            // Coordinate mapping
             let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
-            const pts = nodes.map(n => ({ x: n.position.x, y: -n.position.y, id: n.id })); // Y取反
+            const pts = nodes.map(n => ({ x: n.position.x, y: -n.position.y, id: n.id })); // Invert Y
             pts.forEach(p => { 
                 if(p.x < minX) minX = p.x; if(p.x > maxX) maxX = p.x;
                 if(p.y < minY) minY = p.y; if(p.y > maxY) maxY = p.y;
@@ -718,7 +718,7 @@
             const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             svg.setAttribute("viewBox", `${minX-20} ${minY-20} ${width} ${height}`);
             
-            // 绘制边
+            // Draw edges
             edges.forEach(e => {
                 const pathData = e.path.map(p => `${p.x},${-p.y}`).join(" ");
                 const poly = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
@@ -729,14 +729,14 @@
                 state.svgElements[e.id] = poly;
             });
 
-            // 绘制节点
+            // Draw nodes
             nodes.forEach(n => {
                 const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 c.setAttribute("cx", n.position.x);
                 c.setAttribute("cy", -n.position.y);
                 c.setAttribute("r", 4);
                 
-                // 应用状态样式
+                // Apply status styles
                 let cls = "mine-node";
                 const type = state.nodeProps[n.id]?.type;
                 if(type === 'inlet') cls += " status-inlet";
@@ -756,7 +756,7 @@
             container.appendChild(svg);
         }
 
-        // === 3. 网络图逻辑 (Cytoscape) ===
+        // === 3. Topology graph logic (Cytoscape) ===
         function buildNetworkViewData() {
             const { nodes, edges } = state.data;
             if (!state.mergeLinearPaths) {
@@ -930,7 +930,7 @@
                             'width': 1.5, 'line-color': '#999', 'target-arrow-color': '#999',
                             'source-arrow-color': '#999', 'source-arrow-shape': 'none',
                             'target-arrow-shape': 'triangle', 'arrow-scale': 0.8,
-                            'curve-style': 'unbundled-bezier', // 关键：允许手动控制曲线
+                            'curve-style': 'unbundled-bezier', // Allows manual curve control
                             'control-point-distances': 0,
                             'control-point-weights': 0.5
                         }
@@ -939,7 +939,7 @@
                         selector: ':selected', style: { 'border-color': '#faad14', 'border-width': 4, 'line-color': '#faad14', 'source-arrow-color': '#faad14', 'target-arrow-color': '#faad14' }
                     }
                 ],
-                layout: { name: 'preset' } // 使用 preset，因为我们在 runVentilationLayout 中手动计算位置
+                layout: { name: 'preset' } // Use the preset layout because runVentilationLayout computes positions
             });
 
             cy.on('tap', (e) => {
@@ -947,11 +947,11 @@
                 else selectItem(e.target.id());
             });
 
-            // 运行自定义算法
+            // Run the custom algorithm
             runVentilationLayout(cy);
         }
 
-        // === 4. Three.js 简易逻辑 ===
+        // === 4. Basic Three.js logic ===
         const threeObj = { scene: null, camera: null, objGroup: null, linesGroup: null };
         function initThree() {
             const container = document.getElementById('view-3d');
@@ -981,7 +981,7 @@
             function animate() { requestAnimationFrame(animate); renderer.render(threeObj.scene, threeObj.camera); }
             animate();
             
-            // 响应窗口
+            // Resize handling
             window.addEventListener('resize', () => {
                 const nw = container.clientWidth, nh = container.clientHeight;
                 threeObj.camera.aspect = nw/nh; threeObj.camera.updateProjectionMatrix();
@@ -1004,17 +1004,17 @@
             }
         }
 
-        // === 5. 通用工具与交互 ===
+        // === 5. Shared utilities and interactions ===
         function selectItem(id) {
             state.selection = id;
-            // 2D 高亮
+            // 2D highlighting
             document.querySelectorAll('.hl-node, .hl-edge').forEach(el => el.classList.remove('hl-node', 'hl-edge'));
             if(id && state.svgElements[id]) {
                 const el = state.svgElements[id];
                 el.classList.add(el.tagName === 'circle' ? 'hl-node' : 'hl-edge');
             }
-            // 3D 高亮 (略，逻辑同前)
-            // Net 高亮
+            // 3D highlighting follows the same selection logic
+            // Topology highlighting
             if(cy) { cy.$(':selected').unselect(); if(id) cy.$('#'+id).select(); }
         }
 
@@ -1031,10 +1031,10 @@
         };
         document.addEventListener('click', ctxMenu.hide);
 
-        // 初始化
+        // Initialize
         initThree();
         
-        // 文件监听
+        // File input listeners
         document.getElementById('file-json').addEventListener('change', (e) => {
             const f = e.target.files[0];
             if(f) {

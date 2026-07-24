@@ -1,3 +1,5 @@
+import { BaseSemanticDataset } from '../semantics/BaseSemanticDataset.js';
+
 const toPoint = (value = {}) => {
   if (Array.isArray(value)) {
     return { x: Number(value[0]) || 0, y: Number(value[1]) || 0, z: Number(value[2]) || 0 };
@@ -46,7 +48,7 @@ function normalizeResource(resource, index) {
   };
 }
 
-export class EmergencyResourcesDataset {
+export class EmergencyResourcesDataset extends BaseSemanticDataset {
   constructor({
     resources = [],
     source = null,
@@ -57,14 +59,17 @@ export class EmergencyResourcesDataset {
     validation = null,
     adaptorResults = null
   } = {}) {
-    this.type = 'EmergencyResourcesDataset';
-    this.contract = contract;
-    this.semanticClass = contract?.class ?? 'EmergencyResources';
-    this.templates = templates ?? {};
-    this.roleMapping = roleMapping;
-    this.validation = validation ?? { valid: true, warnings: [], errors: [], summary: {} };
-    this.adaptorResults = adaptorResults;
-    this.source = source ?? { resourcesPath };
+    super({
+      type: 'EmergencyResourcesDataset',
+      semanticClass: contract?.class ?? 'EmergencyResources',
+      taxonomyId: 'safety-emergency',
+      contract,
+      templates,
+      roleMapping,
+      validation,
+      adaptorResults,
+      source: source ?? { resourcesPath }
+    });
     this.resourcesPath = resourcesPath;
     this.resources = resources.map(normalizeResource);
     this.resourceMap = new Map(this.resources.map((resource) => [resource.resourceId, resource]));

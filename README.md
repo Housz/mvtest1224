@@ -8,6 +8,8 @@ Data -> Operator -> Module
 
 Configurators use the node editor to connect semantic Data Nodes, reusable Operator Nodes, and Module Nodes. End users use the runtime workspace, functions, and visual contributions.
 
+The implementation-level mapping from the paper formalism to registries, packages, and runtime services is documented in [D-O-M Architecture: Paper-to-Code Mapping](docs/architecture/dom-code-mapping.md).
+
 ## Run
 
 ```bash
@@ -17,26 +19,16 @@ npm run dev
 
 Open the Vite URL in the browser. The editor is served from `index.html`; the runtime preview is served from `preview.html`.
 
-## Current Demo Graph
+## Built-in Demo Graphs
 
-The editor seeds a minimal concept-correct graph:
+The Editor discovers every `*.json` graph in `src/presets/graphs/` through Vite at build time. Presets are listed by filename in the `Built-in graph` selector, and the first filename in case-insensitive alphabetical order is loaded when the Editor starts.
 
-```text
-Roadway
-Sensor Registry
-Temperature Sensor Readings
-        -> Roadway Temperature Analysis
-        -> Monitoring Workspace
-```
+The bundled presets are:
 
-The graph contains:
+- `Environmental_Monitoring.json`: six nodes and seven connections.
+- `Ventilation_Analysis.json`: eight nodes and fifteen connections.
 
-- `Roadway` Data Node: materializes a `RoadwayDataset` from `roadway_topo.json` and `roadway_model.obj`.
-- `Sensor Registry` Data Node: materializes a `SensorRegistryDataset` from `temperature_sensors.csv`.
-- `Temperature Sensor Readings` Data Node: materializes an environmental scalar readings dataset from `Temperature_timeseries_20steps.csv`.
-- `Roadway Temperature Analysis` Operator Node: colors roadway geometry by temperature, displays sensor markers, handles sensor selection, and renders the selected sensor trend chart.
-- `Monitoring Workspace` Module Node: turns connected root operators into runtime functions.
-
+Selecting a preset replaces the current graph immediately. If the current graph has unsaved changes, the Editor asks for confirmation first. `Load JSON` imports a local graph for the current session; it does not add that file to the built-in preset catalog. Add source-controlled presets to `src/presets/graphs/`; Vite reloads them during development, while GitHub Pages requires a new production build and deployment. If no valid preset exists, the Editor falls back to its minimal Monitoring seed graph.
 ## Environmental Monitoring Presets
 
 The editor exposes concrete environmental monitoring presets for configurators while reusing generic developer-maintained implementations.
@@ -58,6 +50,8 @@ Operator presets:
 - `Roadway Scalar State Analysis`
 
 The concrete presets set variable, unit, default range, colormap, and labels. Internally they reuse the same environmental readings materializer and the same roadway scalar state analysis runtime.
+Roadway scalar operators support coordinated multi-sensor comparison (up to eight sensors). The linked time-series chart can be presented as a docked panel, an interactive scene callout, a camera-facing world billboard, or a fixed world plane. One to four series use a shared chart by default; five to eight use small multiples. The Sensor List, 3D markers, chart series, and legend share primary, comparison, and hover selection state.
+
 
 ## Ventilation Analysis Additions
 
@@ -77,13 +71,15 @@ Operator presets:
 
 The overview and airflow operators share module context keys:
 
-- `time`: current airflow state snapshot time.
-- `selectedBranch`: current ventilation branch.
-- `selectedFacility`: current ventilation facility, used by the overview operator.
-- `selection`: generic shared selection object.
+- `timeCursor`: current airflow state snapshot time (`time` remains a legacy alias).
+- `selectedVentilationBranch`: primary ventilation branch (`selectedBranch` remains a legacy alias).
+- `selectedVentilationFacility`: current ventilation facility.
+- `selection`: generic primary selection.
+- `selectionSet`: ordered same-type comparison members and primary ID.
+- `hoveredSelection`: transient cross-view hover target.
 - `activeAirflowVariable`: current airflow variable, such as `airQuantity`, `velocity`, or `pressureDrop`.
 
-`Airflow Distribution Analysis` uses a branch-attached airflow glyph metaphor: arrows encode direction, branch width/tube radius encodes air quantity, color encodes the selected variable, and non-normal `anomaly_type` rows are highlighted. `Branch Airflow Trend Inspection` follows the shared `selectedBranch`, `time`, and `activeAirflowVariable` context to update trend charts and statistics. `Ventilation Anomaly Inspection` evaluates the current airflow snapshot for non-normal anomaly types, reverse flow, low airflow, high pressure drop, and missing data; it adds type/severity/branch filters, branch search, sorting, a shared time slider, an anomaly timeline, explanatory detail, and branch selection publishing for coordinated diagnosis.
+`Airflow Distribution Analysis` uses a branch-attached airflow glyph metaphor: arrows encode direction, branch width/tube radius encodes air quantity, color encodes the selected variable, and non-normal `anomaly_type` rows are highlighted. Airflow Distribution and Branch Airflow Trend both support up to eight linked branches, stable comparison colors, 3D halos, automatic superimposed/small-multiple layouts, and the four shared chart presentations. `Ventilation Anomaly Inspection` evaluates the current airflow snapshot for non-normal anomaly types, reverse flow, low airflow, high pressure drop, and missing data; it adds type/severity/branch filters, branch search, sorting, a shared time slider, an anomaly timeline, explanatory detail, and branch selection publishing for coordinated diagnosis.
 
 ## Emergency Response Data Layer
 
@@ -253,15 +249,32 @@ Interactions include roadway segment selection, risk / unit / structure filterin
 - **Function**: runtime concept inferred from a root operator connected to a module. There is no separate Function Node in the editor.
 - **Visual Contribution**: visible artifact produced by an operator, such as scene layers, charts, controls, legends, or panels.
 
+## Preview Workspace
+
+Preview uses a full-screen Main Scene with an overlay dock workspace. The Three.js canvas always occupies the complete viewport. Function controls, charts, topology views, sections, profiles, legends, details, summaries, and the Visual Contributions manager are dockable UI contributions above the scene.
+
+Panels can be resized, grouped as tabs, moved between the left/right/bottom regions, floated inside Preview, auto-hidden to an edge rail, closed, and restored. `Scene Focus` temporarily hides unpinned panels without disabling Functions, while `Reset Layout` restores the descriptor-driven layout for the active Module and viewport class.
+
+The semantic and spatial responsibilities remain separate:
+
+- `VisualContributionManager` owns contribution lifecycle, visibility, opacity, focus, pinning, order, and composition.
+- `WorkspaceLayoutService` owns docking, tab groups, floating bounds, auto-hide, resize, and layout persistence.
+- `SceneViewportInsets` keeps camera focus and orientation aids inside the currently unobstructed scene area.
+- `ResponsiveViewHost` resizes visible charts and 2D views after dock changes without rebuilding Operator state.
+
+Layout state is stored separately for each graph identity, Module, and wide/medium/compact viewport class. It is UI state and is never written to graph JSON. See [Preview Workspace and Visual Contribution Layout](docs/architecture/preview-workspace.md) for the contribution layout contract and extension rules.
+
 ## Data Node Semanticization Flow
 
 Each Data Node follows the same pipeline:
 
-```text
-Data Source
-  -> Source Adaptor
-  -> Role Mapping
-  -> Data Templates
+````text
+Optional Descriptor
+  -> Source Slot Loading / Inspection
+  -> Field Catalog
+  -> Editable Role Resolution
+  -> Dataset Materialization
+  -> Data Template Validation
   -> Semantic Contract Validation
   -> Dataset Instance
 ```
@@ -311,32 +324,38 @@ Developer-oriented details such as resolved source adaptors, semantic contracts,
 
 ## Source Layout
 
-- `src/main.js`: editor entry. Registers node definitions, seeds the graph, opens preview.
-- `src/preview.js`: runtime entry. Executes data nodes, creates operator instances, builds workspaces, manages visual contributions.
-- `src/core/adaptors/`: source adaptor registry and format adaptors.
-- `src/core/semantics/`: dataset taxonomy, semantic contracts, data templates, and dataset materializers.
-- `src/core/environmental/EnvironmentalPresets.js`: environmental readings and roadway scalar analysis preset metadata.
-- `src/core/nodes/DataNodes.js`: semantic Data Node definitions.
-- `src/core/datasets/`: runtime dataset classes and data loading registry.
-- `src/core/operators/OperatorNodes.js`: compatibility facade that exports the aggregated `OperatorNodeDefinitions`.
-- `src/core/operators/environmental/`, `ventilation/`, `emergency/`, and `geology/`: operator family aggregators and operator packages. New operators should live in their own directory with `definition.js`, `runtime.js`, and optional `panels.js` / `views.js` / `sceneLayers.js`.
-- `src/core/operators/shared/`: shared operator runtime helpers, definition factory, canvas helpers, selection sync, and scene-layer utilities.
-- `src/core/operators/OperatorKernels.js`: low-level kernels used internally by operators. These are not editor nodes.
-- `src/core/modules/ModuleNodes.js`: Module Node definitions.
-- `src/core/graph/`: graph model and node definition registry.
-- `src/core/algorithms/FieldSolver.js`: roadway temperature field and mesh coloring algorithms.
-- `src/scene/SceneManager.js`: Three.js scene, OBJ roadway loading, sensor/ventilation picking, layer visibility/opacity.
-- `src/ui/`: node editor, inspector, chart, legend, runtime panel/control/list/table/legend/canvas helpers, and related UI components.
-- `src/utils/colors.js`: colormap definitions and sampling utilities.
-- `public/data/`: bundled demo roadway, sensor registry, environmental readings, ventilation data, people, and emergency resources files.
+- `src/main.js`: editor bootstrap. Registers public node-definition facades, loads built-in graph presets, and opens Preview.
+- `src/preview.js`: runtime page bootstrap and UI adapter. Workspace compilation and lifecycle behavior live in Module services.
+- `src/core/adaptors/`: source adaptor registry and format adaptors. Every registered adaptor exposes `canLoad`, `load`, and `inspect`.
+- `src/core/semantics/`: Data Template, Dataset definition/materializer, semanticization, and taxonomy registries.
+- `src/core/datasets/<Dataset>/`: package-local contract, definition, materializer, runtime export, validators, and public index for each built-in Dataset.
+- `src/core/nodes/DataNodes.js`: stable Data Node compatibility facade.
+- `src/core/nodes/DataNodeRuntime.js`: compatibility parameter normalization and semanticization entry point.
+- `src/core/nodes/DataNodePresetRegistry.js` and `src/core/nodes/presets/`: formal preset registry and built-in Data Node catalog.
+- `src/core/operators/OperatorNodes.js`: compatibility facade that exports aggregated `OperatorNodeDefinitions`.
+- `src/core/operators/environmental/`, `ventilation/`, `emergency/`, and `geology/`: family aggregators and independent Operator packages.
+- `src/core/operators/manifests/`: explicit paper-level Operator manifests.
+- `src/core/operators/shared/`: definition factory, execution context, lifecycle base, rendering utilities, and runtime composition.
+- `src/core/modules/`: Module definition registry, Workspace compiler/runtime, Shared Context, Dataset Channel, contribution manager, and host registry.
+- `src/core/graph/`: versioned graph model, migration reader, built-in graph registry, and node definition registry.
+- `src/presets/graphs/`: source-controlled built-in Editor graph JSON files discovered automatically by Vite.
+- `src/core/algorithms/` and `src/core/simulation/`: source-neutral analysis and simulation kernels.
+- `src/scene/SceneManager.js`: Three.js scene ownership and shared scene services.
+- `src/ui/`: editor, Inspector, chart, legend, runtime panel/control/list/table/canvas helpers, and related UI components.
+- `public/data/`: bundled semanticization input data for the demo.
+
+The formal paper symbols and their implementation interfaces are mapped in [D-O-M Architecture: Paper-to-Code Mapping](docs/architecture/dom-code-mapping.md).
 
 ## Extension Rules
 
-- New dataset classes should come from the MineVis dataset taxonomy or be explicit extensions of it.
-- New data template instances should use the paper template taxonomy: `Geometry`, `Graph`, `Registry`, `State`, `Field`, or `Relation`.
-- New operators must declare one primary operator taxonomy class: `Spatial`, `Topological`, `Temporal`, or `Simulation`.
-- Source parsing belongs in source adaptors. Domain meaning belongs in semantic contracts and dataset materializers.
-- Data templates are internal to datasets and should not be exposed as draggable editor nodes.
+- New Dataset capabilities must use a package under `src/core/datasets/<Dataset>/` with a Semantic Contract, template bindings, materializer, runtime Dataset export, and executable validators.
+- New Data Template instances must use `Geometry`, `Graph`, `Registry`, `State`, `Field`, or `Relation`. Data Templates are never draggable nodes.
+- New Data Node presets reference an existing Dataset ID and declare source slots, representation profile, descriptor support, and editable role mapping.
+- New Operators must use `defineOperator()` and explicitly declare inputs, parameters, context, processing, contributions, interactions, and outputs.
+- Every Operator declares one primary class: `Spatial`, `Topological`, `Temporal`, or `Simulation`.
+- Source parsing belongs in adaptors. Domain meaning belongs in Dataset contracts and materializers. Operators consume Dataset accessors only.
+- Module behavior belongs in `WorkspaceCompiler`, `WorkspaceRuntime`, `SharedContext`, `DatasetChannel`, or `VisualContributionManager`; `preview.js` must remain bootstrap-only.
+- Existing type IDs, ports, Dataset types, graph schema migration, and compatibility facade import paths remain stable.
 
 ## Legacy Cleanup Note
 

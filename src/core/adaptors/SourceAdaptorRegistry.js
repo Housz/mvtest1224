@@ -20,13 +20,56 @@ import {
   GeologicalAttributeTableAdaptor
 } from './GeologyAdaptors.js';
 
+function normalizeSourcePayload(source) {
+  if (!source || typeof source !== 'object') return source;
+  if (typeof source.text !== 'string' || source.text.trim() || !source.path) return source;
+  const normalized = { ...source };
+  delete normalized.text;
+  return normalized;
+}
+
+function createAdaptorFacade(adaptor) {
+  if (!adaptor?.id || typeof adaptor.load !== 'function') {
+    throw new Error('A source adaptor must declare id and load(source, contract).');
+  }
+
+  const canLoad = typeof adaptor.canLoad === 'function'
+    ? adaptor.canLoad.bind(adaptor)
+    : typeof adaptor.supports === 'function'
+      ? adaptor.supports.bind(adaptor)
+      : () => false;
+  const load = adaptor.load.bind(adaptor);
+  const inspect = typeof adaptor.inspect === 'function'
+    ? adaptor.inspect.bind(adaptor)
+    : async (source, contract = null) => {
+        const result = await load(source, contract);
+        const fields = [...new Set([...(result?.fields || []), ...(result?.paths || [])])];
+        return {
+          kind: result?.kind || adaptor.kind || 'source',
+          fields,
+          paths: result?.paths || result?.fields || [],
+          summary: result?.summary || {},
+          suggestedRoleMapping: result?.suggestedRoleMapping || {}
+        };
+      };
+
+  return Object.assign(Object.create(adaptor), {
+    canLoad,
+    supports: canLoad,
+    load,
+    inspect
+  });
+}
+
 export class SourceAdaptorRegistry {
   constructor() {
     this.adaptors = new Map();
   }
 
   register(adaptor) {
-    this.adaptors.set(adaptor.id, adaptor);
+    const facade = createAdaptorFacade(adaptor);
+    this.adaptors.set(facade.id, facade);
+    return facade;
   }
 
   get(id) {
@@ -38,13 +81,30 @@ export class SourceAdaptorRegistry {
   }
 
   infer(source) {
-    return this.list().find((adaptor) => adaptor.supports(source)) ?? null;
+    return this.list().find((adaptor) => adaptor.canLoad(source)) ?? null;
+  }
+
+  resolve(source) {
+    return this.get(source?.adaptor) || this.infer(source);
   }
 
   async load(source, contract = null) {
-    const adaptor = this.get(source?.adaptor) || this.infer(source);
+    const normalizedSource = normalizeSourcePayload(source);
+    const adaptor = this.resolve(normalizedSource);
     if (!adaptor) throw new Error(`No source adaptor supports ${source?.path || source?.name || 'source'}`);
-    const result = await adaptor.load(source, contract);
+    const result = await adaptor.load(normalizedSource, contract);
+    return {
+      adaptorId: adaptor.id,
+      adaptorLabel: adaptor.label,
+      ...result
+    };
+  }
+
+  async inspect(source, contract = null) {
+    const normalizedSource = normalizeSourcePayload(source);
+    const adaptor = this.resolve(normalizedSource);
+    if (!adaptor) throw new Error(`No source adaptor supports ${source?.path || source?.name || 'source'}`);
+    const result = await adaptor.inspect(normalizedSource, contract);
     return {
       adaptorId: adaptor.id,
       adaptorLabel: adaptor.label,

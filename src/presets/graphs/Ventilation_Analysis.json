@@ -1,0 +1,711 @@
+{
+  "nodes": [
+    {
+      "id": "b78e38fe-2a7b-42e3-8338-7229bef42bad",
+      "typeId": "RoadwayDataNode",
+      "kind": "data",
+      "label": "Roadway",
+      "position": {
+        "x": 209.23470552261244,
+        "y": 478.68155699898847
+      },
+      "params": {
+        "datasetType": "Roadway",
+        "contractId": "RoadwayContract",
+        "sources": {
+          "topology": {
+            "label": "Topology JSON",
+            "path": "/data/roadway_topo.json",
+            "adaptor": "JSONGraphAdaptor"
+          },
+          "geometry": {
+            "label": "Roadway OBJ",
+            "path": "/data/roadway_model.obj",
+            "adaptor": "OBJGeometryAdaptor"
+          }
+        },
+        "roleMapping": {
+          "graph.nodeId": "nodes.id",
+          "graph.nodePosition": "nodes.position",
+          "graph.edgeId": "edges.id",
+          "graph.fromNode": "edges.source",
+          "graph.toNode": "edges.target",
+          "graph.path": "edges.path",
+          "geometry.meshPartId": "meshParts.name",
+          "relation.geometryTarget": "meshParts.name"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "nodeCount": 63,
+            "edgeCount": 81,
+            "meshPartCount": 144,
+            "templates": [
+              {
+                "id": "graph",
+                "type": "Graph",
+                "label": "Roadway graph",
+                "nodeCount": 63,
+                "edgeCount": 81
+              },
+              {
+                "id": "geometry",
+                "type": "Geometry",
+                "label": "Roadway geometry",
+                "form": "MeshSurface",
+                "meshPartCount": 144,
+                "modelPath": "/data/roadway_model.obj"
+              },
+              {
+                "id": "geometryToGraph",
+                "type": "Relation",
+                "label": "Geometry to roadway graph",
+                "source": "geometry.meshPartId",
+                "target": "graph.edgeId / graph.nodeId",
+                "relation": "geometry parts are attached to roadway graph entities by id/name correspondence",
+                "relationCount": 144
+              }
+            ]
+          }
+        }
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Roadway",
+          "direction": "out",
+          "type": "RoadwayDataset"
+        }
+      ]
+    },
+    {
+      "id": "4fb670b0-f4e1-401f-8bff-db5e36b1ac9b",
+      "typeId": "VentilationNetworkDataNode",
+      "kind": "data",
+      "label": "Ventilation Network",
+      "position": {
+        "x": 207.15634039443606,
+        "y": 712.2840212183311
+      },
+      "params": {
+        "datasetType": "VentilationNetwork",
+        "contractId": "VentilationNetworkContract",
+        "sources": {
+          "network": {
+            "label": "Network Source",
+            "path": "/data/ventilation_network.json",
+            "adaptor": "VentilationNetworkJsonAdaptor"
+          }
+        },
+        "roleMapping": {
+          "graph.nodeId": "nodes.id",
+          "graph.nodeType": "nodes.type",
+          "graph.nodePosition": "nodes.position",
+          "graph.branchId": "branches.id",
+          "graph.fromNode": "branches.from",
+          "graph.toNode": "branches.to",
+          "graph.branchType": "branches.branchType",
+          "graph.nominalDirection": "branches.nominalDirection",
+          "graph.path": "branches.path",
+          "facility.facilityId": "facilities.id",
+          "facility.facilityType": "facilities.type",
+          "facility.branchId": "facilities.branchId",
+          "facility.ratio": "facilities.ratio",
+          "relation.roadwayEdges": "branches.roadwayEdgeIds",
+          "relation.roadwayNode": "nodes.roadwayNodeId"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "nodeCount": 63,
+            "branchCount": 81,
+            "facilityCount": 13,
+            "intakeCount": 1,
+            "returnCount": 1,
+            "templates": [
+              {
+                "id": "graph",
+                "type": "Graph",
+                "label": "Ventilation graph",
+                "nodeCount": 63,
+                "edgeCount": 81
+              },
+              {
+                "id": "facilityRegistry",
+                "type": "Registry",
+                "label": "Ventilation facility registry",
+                "entityCount": 13,
+                "keyRole": "facility.facilityId"
+              },
+              {
+                "id": "roadwayRelation",
+                "type": "Relation",
+                "label": "Ventilation to roadway relation",
+                "source": "ventilation.branchId / facilityId / nodeId",
+                "target": "Roadway.graph.edgeId / nodeId",
+                "relation": "ventilation branches, facilities, and nodes reference roadway objects",
+                "relationCount": 157
+              },
+              {
+                "id": "branchGeometry",
+                "type": "Geometry",
+                "label": "Ventilation branch geometry",
+                "form": "Polyline"
+              }
+            ]
+          }
+        }
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Ventilation Network",
+          "direction": "out",
+          "type": "VentilationNetworkDataset"
+        }
+      ]
+    },
+    {
+      "id": "b5c6c61a-b7d5-4cb9-b9c4-e400126ca051",
+      "typeId": "AirflowStateDataNode",
+      "kind": "data",
+      "label": "Airflow State",
+      "position": {
+        "x": 205.53142988130477,
+        "y": 901.623743136885
+      },
+      "params": {
+        "datasetType": "AirflowState",
+        "contractId": "AirflowStateContract",
+        "sources": {
+          "state": {
+            "label": "State Source",
+            "path": "/data/airflow_state.csv",
+            "adaptor": "AirflowStateCsvAdaptor"
+          }
+        },
+        "roleMapping": {
+          "branchId": "branch_id",
+          "timestamp": "time",
+          "airQuantity": "air_quantity_m3s",
+          "velocity": "velocity_ms",
+          "pressureDrop": "pressure_drop_pa",
+          "pressureFrom": "pressure_from_pa",
+          "pressureTo": "pressure_to_pa",
+          "directionSign": "direction_sign",
+          "direction": "direction",
+          "anomalyType": "anomaly_type",
+          "scenarioId": "scenario_id"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "rowCount": 4860,
+            "branchCount": 81,
+            "timeRange": {
+              "min": 1672502400000,
+              "max": 1672520100000
+            },
+            "templates": [
+              {
+                "id": "state",
+                "type": "State",
+                "label": "Airflow branch state",
+                "rowCount": 4860,
+                "subjectRole": "branchId",
+                "timeRole": "timestamp",
+                "valueRole": "airQuantity",
+                "variable": "airflow",
+                "timeRange": {
+                  "min": 1672502400000,
+                  "max": 1672520100000
+                }
+              },
+              {
+                "id": "airflowField",
+                "type": "Field",
+                "label": "Graph-supported airflow field",
+                "support": "VentilationNetwork.graph.branches",
+                "rowCount": 4860
+              },
+              {
+                "id": "stateOfBranch",
+                "type": "Relation",
+                "label": "Airflow state of branch",
+                "source": "state.branchId",
+                "target": "VentilationNetwork.graph.branchId",
+                "relation": "airflow states are defined on ventilation branches",
+                "relationCount": 81
+              }
+            ]
+          }
+        }
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Airflow State",
+          "direction": "out",
+          "type": "AirflowStateDataset"
+        }
+      ]
+    },
+    {
+      "id": "d264a9e5-6912-4c1c-8925-fcdb69f7cb2d",
+      "typeId": "VentilationNetworkOverviewOperator",
+      "kind": "operator",
+      "label": "Ventilation Network Overview",
+      "position": {
+        "x": 968.1392385205255,
+        "y": 373.4417277779263
+      },
+      "params": {
+        "showFacilities": true,
+        "showDirection": true,
+        "showIntakeReturn": true,
+        "branchColorMode": "type",
+        "branchColormap": "viridis",
+        "autoFocusOnSelection": true,
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset"
+        },
+        {
+          "id": "ventilationNetwork",
+          "name": "Ventilation Network",
+          "direction": "in",
+          "type": "VentilationNetworkDataset"
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "dd1b6137-8637-49bd-9f48-34020c906dbe",
+      "typeId": "AirflowDistributionAnalysisOperator",
+      "kind": "operator",
+      "label": "Airflow Distribution Analysis",
+      "position": {
+        "x": 966.8676230027867,
+        "y": 551.4900998698001
+      },
+      "params": {
+        "defaultVariable": "velocity",
+        "displayMode": "balanced",
+        "showDirection": true,
+        "showAnomalyHighlight": true,
+        "showPressureMarkers": false,
+        "showTopologyStateView": true,
+        "showBranchSummary": true,
+        "colormap": "rainbow",
+        "minValue": null,
+        "maxValue": null,
+        "opacity": 0.85,
+        "timeToleranceMinutes": 60,
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset"
+        },
+        {
+          "id": "ventilationNetwork",
+          "name": "Ventilation Network",
+          "direction": "in",
+          "type": "VentilationNetworkDataset"
+        },
+        {
+          "id": "airflowState",
+          "name": "Airflow State",
+          "direction": "in",
+          "type": "AirflowStateDataset"
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "01f6f7d9-3dbc-496f-b6e7-3738590ded2f",
+      "typeId": "ModuleNode",
+      "kind": "module",
+      "label": "Vent Workspace",
+      "position": {
+        "x": 1596.588438412411,
+        "y": 666.9433350873852
+      },
+      "params": {
+        "workspaceName": "Vent Workspace",
+        "functions": [
+          {
+            "id": "function-1",
+            "label": "Ventilation Network Overview",
+            "operatorNodeId": "d264a9e5-6912-4c1c-8925-fcdb69f7cb2d",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-2",
+            "label": "Airflow Distribution Analysis",
+            "operatorNodeId": "dd1b6137-8637-49bd-9f48-34020c906dbe",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-3",
+            "label": "Branch Airflow Trend Inspection",
+            "operatorNodeId": "bfde263f-e9fb-4847-82be-fa01b135a90f",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-4",
+            "label": "Ventilation Anomaly Inspection",
+            "operatorNodeId": "299307a4-2815-4b67-b9be-c70bbfe33414",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-5",
+            "label": "(Add Function)",
+            "placeholder": true
+          }
+        ],
+        "context": {
+          "time": true,
+          "selection": true
+        }
+      },
+      "ports": [
+        {
+          "id": "function-1",
+          "name": "Ventilation Network Overview",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-2",
+          "name": "Airflow Distribution Analysis",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-3",
+          "name": "Branch Airflow Trend Inspection",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-4",
+          "name": "Ventilation Anomaly Inspection",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-5",
+          "name": "(Add Function)",
+          "direction": "in",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "299307a4-2815-4b67-b9be-c70bbfe33414",
+      "typeId": "VentilationAnomalyInspectionOperator",
+      "kind": "operator",
+      "label": "Ventilation Anomaly Inspection",
+      "position": {
+        "x": 961.2071414960996,
+        "y": 991.4117466037017
+      },
+      "params": {
+        "lowAirQuantityThreshold": null,
+        "highVelocityThreshold": null,
+        "highPressureDropThreshold": null,
+        "lowAirQuantityRatio": 0.6,
+        "detectReverseFlow": true,
+        "detectMissingData": true,
+        "mode": "currentTime",
+        "timeToleranceMinutes": 60,
+        "defaultSort": "severity",
+        "showTimeline": true,
+        "show3DHighlight": true,
+        "showTopologyHighlight": true,
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset"
+        },
+        {
+          "id": "ventilationNetwork",
+          "name": "Ventilation Network",
+          "direction": "in",
+          "type": "VentilationNetworkDataset"
+        },
+        {
+          "id": "airflowState",
+          "name": "Airflow State",
+          "direction": "in",
+          "type": "AirflowStateDataset"
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "bfde263f-e9fb-4847-82be-fa01b135a90f",
+      "typeId": "BranchAirflowTrendInspectionOperator",
+      "kind": "operator",
+      "label": "Branch Airflow Trend Inspection",
+      "position": {
+        "x": 963.973726502081,
+        "y": 768.6025507763594
+      },
+      "params": {
+        "defaultVariable": "airQuantity",
+        "availableVariables": [
+          "airQuantity",
+          "velocity",
+          "pressureDrop"
+        ],
+        "timeWindowMode": "all",
+        "showStatistics": true,
+        "showAnomalyMarkers": true,
+        "allowBranchSelector": true,
+        "syncWithWorkspaceTime": true,
+        "showDirection": true,
+        "showIntakeReturn": true,
+        "showFacilities": false,
+        "autoFocusOnSelection": true,
+        "uiCollapsed": true
+      },
+      "ports": [
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset"
+        },
+        {
+          "id": "ventilationNetwork",
+          "name": "Ventilation Network",
+          "direction": "in",
+          "type": "VentilationNetworkDataset"
+        },
+        {
+          "id": "airflowState",
+          "name": "Airflow State",
+          "direction": "in",
+          "type": "AirflowStateDataset"
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "84b1f39b-4250-40a2-b494-95959f0641d9",
+      "from": {
+        "nodeId": "4fb670b0-f4e1-401f-8bff-db5e36b1ac9b",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "d264a9e5-6912-4c1c-8925-fcdb69f7cb2d",
+        "portId": "ventilationNetwork"
+      }
+    },
+    {
+      "id": "0ffdbb41-4bd0-48b3-8ca7-6611c92004b4",
+      "from": {
+        "nodeId": "4fb670b0-f4e1-401f-8bff-db5e36b1ac9b",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "dd1b6137-8637-49bd-9f48-34020c906dbe",
+        "portId": "ventilationNetwork"
+      }
+    },
+    {
+      "id": "794bb56e-dca6-44f9-bd99-e4ffab899f0b",
+      "from": {
+        "nodeId": "b5c6c61a-b7d5-4cb9-b9c4-e400126ca051",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "dd1b6137-8637-49bd-9f48-34020c906dbe",
+        "portId": "airflowState"
+      }
+    },
+    {
+      "id": "9e72479d-3286-48f9-8fa6-94d7c0594cf3",
+      "from": {
+        "nodeId": "b78e38fe-2a7b-42e3-8338-7229bef42bad",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "d264a9e5-6912-4c1c-8925-fcdb69f7cb2d",
+        "portId": "roadway"
+      }
+    },
+    {
+      "id": "1c8c808f-554f-4afe-922b-b8ded52be472",
+      "from": {
+        "nodeId": "b78e38fe-2a7b-42e3-8338-7229bef42bad",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "dd1b6137-8637-49bd-9f48-34020c906dbe",
+        "portId": "roadway"
+      }
+    },
+    {
+      "id": "60fa5f72-33e4-4433-b3ee-d0c168acded2",
+      "from": {
+        "nodeId": "d264a9e5-6912-4c1c-8925-fcdb69f7cb2d",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "01f6f7d9-3dbc-496f-b6e7-3738590ded2f",
+        "portId": "function-1"
+      }
+    },
+    {
+      "id": "0300034e-1c98-4978-b55e-09696ca010c5",
+      "from": {
+        "nodeId": "dd1b6137-8637-49bd-9f48-34020c906dbe",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "01f6f7d9-3dbc-496f-b6e7-3738590ded2f",
+        "portId": "function-2"
+      }
+    },
+    {
+      "id": "63910207-1cb1-44b8-9830-ac65eb2289a8",
+      "from": {
+        "nodeId": "b78e38fe-2a7b-42e3-8338-7229bef42bad",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "299307a4-2815-4b67-b9be-c70bbfe33414",
+        "portId": "roadway"
+      }
+    },
+    {
+      "id": "027875f7-4a6a-40a1-993e-1b1647b335f5",
+      "from": {
+        "nodeId": "4fb670b0-f4e1-401f-8bff-db5e36b1ac9b",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "299307a4-2815-4b67-b9be-c70bbfe33414",
+        "portId": "ventilationNetwork"
+      }
+    },
+    {
+      "id": "12e0bce1-23fd-49df-a68c-b5686d0bcaea",
+      "from": {
+        "nodeId": "4fb670b0-f4e1-401f-8bff-db5e36b1ac9b",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "bfde263f-e9fb-4847-82be-fa01b135a90f",
+        "portId": "ventilationNetwork"
+      }
+    },
+    {
+      "id": "d613d115-7fdf-4b72-bd52-efea9a3fbc08",
+      "from": {
+        "nodeId": "b5c6c61a-b7d5-4cb9-b9c4-e400126ca051",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "299307a4-2815-4b67-b9be-c70bbfe33414",
+        "portId": "airflowState"
+      }
+    },
+    {
+      "id": "5f5dca0c-fa22-4364-8196-30a342aa0029",
+      "from": {
+        "nodeId": "b5c6c61a-b7d5-4cb9-b9c4-e400126ca051",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "bfde263f-e9fb-4847-82be-fa01b135a90f",
+        "portId": "airflowState"
+      }
+    },
+    {
+      "id": "56ee9b60-ee63-4217-8307-04e219f2b526",
+      "from": {
+        "nodeId": "bfde263f-e9fb-4847-82be-fa01b135a90f",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "01f6f7d9-3dbc-496f-b6e7-3738590ded2f",
+        "portId": "function-3"
+      }
+    },
+    {
+      "id": "c001870e-00cf-4a6c-9bb4-9a7d663541b6",
+      "from": {
+        "nodeId": "299307a4-2815-4b67-b9be-c70bbfe33414",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "01f6f7d9-3dbc-496f-b6e7-3738590ded2f",
+        "portId": "function-4"
+      }
+    },
+    {
+      "id": "efc17d41-9da0-4396-a46a-1bca4f1568de",
+      "from": {
+        "nodeId": "b78e38fe-2a7b-42e3-8338-7229bef42bad",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "bfde263f-e9fb-4847-82be-fa01b135a90f",
+        "portId": "roadway"
+      }
+    }
+  ],
+  "view": {
+    "panX": -35.861007511819025,
+    "panY": -178.31635107121804,
+    "zoom": 0.6959874011464104
+  }
+}

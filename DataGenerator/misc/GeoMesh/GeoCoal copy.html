@@ -1,0 +1,2295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Three.js 煤系旋回地质建模与勘探系统</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #121212; color: #eee; }
+        
+        /* 布局容器 */
+        #main-container { display: flex; width: 100vw; height: 100vh; }
+        #view-3d { flex: 1; position: relative; overflow: hidden; }
+        
+        /* 右侧工程面板 */
+        #view-data { 
+            width: 360px; 
+            background: #1e1e1e; 
+            border-left: 1px solid #333; 
+            display: flex; flex-direction: column; 
+            box-shadow: -4px 0 15px rgba(0,0,0,0.4); 
+            z-index: 20; 
+            overflow-y: auto;
+        }
+
+        /* 顶部标题 */
+        #header {
+            position: absolute; top: 0; left: 0; right: 360px; height: 40px;
+            background: rgba(0,0,0,0.8); color: #fff; display: flex; align-items: center;
+            padding-left: 20px; font-size: 16px; border-bottom: 1px solid #444;
+            pointer-events: none; z-index: 10;
+        }
+
+        /* 面板组件样式 */
+        .panel-section { padding: 15px; border-bottom: 1px solid #333; }
+        .panel-title { font-size: 14px; font-weight: bold; color: #ffa726; margin-bottom: 10px; display: block; border-left: 3px solid #ffa726; padding-left: 8px; }
+        
+        .control-group { margin-bottom: 10px; }
+        label { font-size: 12px; color: #aaa; display: block; margin-bottom: 4px; }
+        
+        select, input[type=number] {
+            width: 100%; background: #333; color: #fff; border: 1px solid #555; 
+            padding: 6px; border-radius: 4px; outline: none; box-sizing: border-box; font-size: 13px;
+        }
+        input:focus, select:focus { border-color: #2196F3; }
+
+        button.action-btn {
+            width: 100%; background: #333; color: #fff; border: 1px solid #555; 
+            padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px; transition: 0.2s; margin-top: 5px;
+        }
+        button.action-btn:hover { background: #444; }
+        button.action-btn.primary { background: #1976D2; border: none; font-weight: bold; }
+        button.action-btn.primary:hover { background: #1565C0; }
+        button.action-btn.success { background: #388E3C; border: none; }
+        button.action-btn.success:hover { background: #2E7D32; }
+
+        /* 统计网格 */
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: #ccc; margin-top: 5px; }
+        .stat-item { background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px; }
+        .stat-item span { display: block; font-size: 14px; color: #fff; font-weight: bold; margin-top: 2px; }
+
+        /* 可视化图表容器 */
+        #heatmap-container {
+            position: relative; width: 100%; padding-top: 100%; /* Square aspect */
+            background: #000; margin-top: 10px; border: 1px solid #444;
+        }
+        #heatmap-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        
+        .contour-label {
+            position: absolute; color: white; font-size: 10px; font-weight: bold; font-family: sans-serif;
+            text-shadow: 1px 1px 2px black, -1px -1px 2px black; pointer-events: none; transform: translate(-50%, -50%);
+        }
+
+        .legend { display: flex; justify-content: space-between; font-size: 10px; margin-top: 4px; color: #aaa; }
+        .legend-bar {
+            height: 10px; width: 100%; 
+            background: linear-gradient(to right, #313695, #4575b4, #74add1, #abd9e9, #e0f3f8, #fee090, #fdae61, #f46d43, #d73027, #a50026);
+            margin-bottom: 2px; border-radius: 2px;
+        }
+
+        /* 调整 lil-gui 位置 */
+        .lil-gui.autoPlace { top: 50px !important; left: 20px !important; right: auto !important; max-height: 90vh; overflow-y: auto; }
+    </style>
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                "lil-gui": "https://unpkg.com/lil-gui@0.19.1/dist/lil-gui.esm.min.js",
+                "d3": "https://cdn.jsdelivr.net/npm/d3@7/+esm"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="main-container">
+        <div id="view-3d">
+            <div id="header">煤系旋回地质建模与勘探系统 (Coal-Measure Cyclothem Modeling)</div>
+        </div>
+
+        <div id="view-data">
+            
+            <div class="panel-section">
+                <span class="panel-title">钻孔工程 (Drilling)</span>
+                
+                <div class="control-group">
+                    <label>钻孔数量 (Count):</label>
+                    <input type="number" id="inp-bh-count" value="8" min="1" max="50">
+                </div>
+                
+                <div class="control-group">
+                    <label>孔斜偏差系数 (Deviation):</label>
+                    <input type="number" id="inp-bh-dev" value="0.3" step="0.1" min="0.0" max="2.0">
+                    <div style="font-size:10px; color:#666; margin-top:2px;">* 模拟钻头自然漂移与受力弯曲</div>
+                </div>
+
+                <button class="action-btn primary" id="btn-gen-bh">▼ 执行钻探 (Drill)</button>
+                <button class="action-btn success" id="btn-export-bh">💾 导出钻孔数据 (JSON)</button>
+            </div>
+
+            <div class="panel-section">
+                <span class="panel-title">MineVis Dataset Export</span>
+                <button class="action-btn success" id="btn-export-mv-body">Export Geological Body Files</button>
+                <button class="action-btn success" id="btn-export-mv-borehole">Export Borehole Files</button>
+                <button class="action-btn success" id="btn-export-mv-structure">Export Geological Structure Files</button>
+                <button class="action-btn success" id="btn-export-mv-attribute">Export Coal Seam Attribute CSV</button>
+                <button class="action-btn" id="btn-export-mv-legacy">Export Legacy Single JSON Files</button>
+                <div style="font-size:10px; color:#888; margin-top:6px; line-height:1.45;">
+                    Multi-file exports match MineVis fixed source slots: OBJ for geometry, CSV/JSON for semantics and attributes.
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <span class="panel-title">层间距与等值线 (Isopach)</span>
+                
+                <div class="control-group">
+                    <label>上覆地层 (Roof):</label>
+                    <select id="sel-upper"></select>
+                </div>
+                
+                <div class="control-group">
+                    <label>下伏地层 (Floor):</label>
+                    <select id="sel-lower"></select>
+                </div>
+
+                <div class="control-group">
+                    <label>等值线间距 (Contour Step, m):</label>
+                    <input type="number" id="inp-step" value="2.0" step="0.5" min="0.1">
+                </div>
+
+                <button class="action-btn primary" id="btn-calc">▼ 计算并绘制图件</button>
+            </div>
+
+            <div class="panel-section" style="flex: 1; display: flex; flex-direction: column; min-height: 400px;">
+                <span class="panel-title">分析结果 (Results)</span>
+                
+                <div class="stat-grid">
+                    <div class="stat-item">最大厚度 <span id="val-max">-</span></div>
+                    <div class="stat-item">最小厚度 <span id="val-min">-</span></div>
+                    <div class="stat-item">平均厚度 <span id="val-avg">-</span></div>
+                    <div class="stat-item">总点数 <span id="val-count">-</span></div>
+                </div>
+
+                <div id="heatmap-container">
+                    <canvas id="heatmap-canvas" width="600" height="600"></canvas>
+                    <div id="labels-container"></div>
+                </div>
+                
+                <div class="legend-bar"></div>
+                <div class="legend">
+                    <span id="legend-min">Min</span>
+                    <span id="legend-max">Max</span>
+                </div>
+                <div style="margin-top:10px; font-size:11px; color:#888; line-height: 1.5;">
+                    图例说明:<br>
+                    <span style="color:#a50026">■</span> 红色: 厚度大 (Thick)<br>
+                    <span style="color:#313695">■</span> 蓝色: 厚度小 (Thin)<br>
+                    — 白线: 等厚线 (Isolines)
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import GUI from 'lil-gui';
+        import * as d3 from 'd3';
+
+        // ===========================================
+        // 1. 全局状态与配置
+        // ===========================================
+        
+        // 核心参数对象 (用于 lil-gui 绑定)
+        const params = {
+            // 模型尺度
+            width: 400,          // 矿区宽度 (米) - 适中范围 200-1000
+            depth: 400,          // 矿区长度 (米)
+            
+            // 地层生成 - 煤系旋回
+            cycleCount: 3,       // 煤系沉积旋回数量
+            cycleThickness: 42,  // 单个旋回平均厚度 (米)
+            resolution: 50,      // 网格精度 - 显式断层切割优先保证拓扑和交互性能
+            thicknessVar: 0.28,  // 厚度变异系数 (0=板状, 1=剧烈变化)
+            coalSeamContinuity: 0.82,      // 煤层横向连续性
+            sandBodyRatio: 0.52,           // 河道/决口砂体发育程度
+            mudstoneBackgroundRatio: 0.62, // 泛滥平原泥质背景比例
+            marineInfluence: 0.32,         // 海侵影响，控制灰岩/海相顶板概率
+            coalPartingProbability: 0.35,  // 煤层夹矸概率
+            
+            // 地形形态
+            roughness: 0.012,    // 沉积起伏频率 - 只作为受控扰动
+            amplitude: 24,       // 区域起伏幅度 (米)
+            paleoflowAzimuth: 35,// 古水流方向，控制砂体和厚度场各向异性
+            regionalDipDeg: 2.0, // 区域倾角
+
+            // 断层构造
+            seed: 20261208,      // 随机种子 - 保证地质体可复现
+            faultEnabled: true,  // 是否启用断层构造
+            faultSense: 'normal',// 断层性质: normal / reverse
+            faultStrikeDeg: 45,  // 断层走向
+            faultThrow: 25,      // 平均落差 (米)
+            faultDipDeg: 65,     // 断层倾角
+            faultDamageWidth: 6, // 断层破碎带/查询容差 (米)
+            showFaultPlanes: true, // 显示断层面
+            
+            // 渲染
+            flatShading: true,   // 棱角分明风格
+            opacity: 1.0,        // 地层透明度
+            
+            // 动作
+            regenerate: () => generateGeology()
+        };
+
+        let layersDataStore = []; // 存储地层几何数据
+        let boreholesData = [];   // 存储钻孔数据
+        let faultsDataStore = []; // 存储断层参数与构造信息
+        let layerModels = [];     // 存储断块化后的显示与查询数据
+        let faultModel = null;    // 当前主断层模型
+
+        // 岩性定义 (含煤地层常用)
+        const LITHO_TYPES = {
+            OVERBURDEN: { id: 'overburden', name: 'Overburden', color: 0x8B4513, scale: 2.0 }, // 表土较厚
+            SANDSTONE_C: { id: 'sand_c', name: 'Coarse-Grained Sandstone', color: 0xD2B48C, scale: 1.8 },      // 粗砂岩通常较厚
+            SANDSTONE_F: { id: 'sand_f', name: 'Fine-Grained Sandstone', color: 0xE6CCB3, scale: 1.2 },
+            SILTSTONE:   { id: 'silt',   name: 'Siltstone', color: 0xA9A9A9, scale: 1.0 },
+            MUDSTONE:    { id: 'mud',    name: 'Mudstone', color: 0x696969, scale: 0.9 },
+            COAL:        { id: 'coal',   name: 'Coal Seam', color: 0x111111, scale: 0.4 },     // 煤层通常较薄
+            LIMESTONE:   { id: 'lime',   name: 'Limestone', color: 0xC0C0C0, scale: 0.8 }
+        };
+
+        function getLithoColor(id) {
+            for(let key in LITHO_TYPES) if(LITHO_TYPES[key].id === id) return LITHO_TYPES[key].color;
+            return 0xffffff;
+        }
+
+        function createSeededRandom(seed) {
+            let t = Math.floor(seed) >>> 0;
+            return function() {
+                t += 0x6D2B79F5;
+                let r = Math.imul(t ^ (t >>> 15), 1 | t);
+                r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+                return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+
+        function randRange(rng, min, max) {
+            return min + (max - min) * rng();
+        }
+
+        function clamp01(v) {
+            return Math.max(0, Math.min(1, v));
+        }
+
+        function smoothstep(edge0, edge1, x) {
+            const t = clamp01((x - edge0) / Math.max(edge1 - edge0, 0.0001));
+            return t * t * (3 - 2 * t);
+        }
+
+        // 噪声生成器
+        class SimpleNoise {
+            constructor() {
+                this.p = new Uint8Array(512);
+                for(let i=0; i<256; i++) this.p[i] = i;
+                for(let i=0; i<512; i++) this.p[i+256] = this.p[i];
+            }
+            fbm(x, y, octaves = 4, persistence = 0.5, scale = 1) {
+                let total = 0, frequency = scale, amplitude = 1;
+                for(let i=0; i<octaves; i++) {
+                    total += (Math.sin(x * frequency) * Math.cos(y * frequency * 1.5) + Math.sin(x*frequency*0.5 + y*frequency*0.3)) * amplitude;
+                    amplitude *= persistence;
+                    frequency *= 2;
+                }
+                return total;
+            }
+        }
+        const noiseGen = new SimpleNoise();
+
+        // ===========================================
+        // 2. 初始化 3D 场景
+        // ===========================================
+        const container3D = document.getElementById('view-3d');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x222222); // 深灰背景
+        scene.fog = new THREE.Fog(0x222222, 500, 2000);
+
+        const camera = new THREE.PerspectiveCamera(45, container3D.clientWidth / container3D.clientHeight, 1, 5000);
+        camera.position.set(500, 400, 500);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container3D.clientWidth, container3D.clientHeight);
+        renderer.shadowMap.enabled = true;
+        container3D.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // 场景组
+        const geoGroup = new THREE.Group();
+        const faultGroup = new THREE.Group();
+        const boreGroup = new THREE.Group();
+        scene.add(geoGroup);
+        scene.add(faultGroup);
+        scene.add(boreGroup);
+
+        // 灯光
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(200, 500, 300);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // 辅助对象
+        const axesHelper = new THREE.AxesHelper(60);
+        scene.add(axesHelper);
+        const gridHelper = new THREE.GridHelper(1000, 20, 0x444444, 0x222222);
+        gridHelper.position.y = -200;
+        scene.add(gridHelper);
+
+        // ===========================================
+        // 3. 地质建模逻辑 (Generation)
+        // ===========================================
+        
+        // 煤系旋回生成器：用沉积旋回替代单纯随机层序。
+        function normalizedNoiseField(x, z, salt, scale = params.roughness, octaves = 3) {
+            const seedShift = params.seed * 0.017;
+            const n = noiseGen.fbm(
+                x + seedShift + salt * 173.37,
+                z - seedShift * 0.7 - salt * 91.73,
+                octaves,
+                0.5,
+                scale
+            );
+            return clamp01(0.5 + n * 0.22);
+        }
+
+        function signedNoiseField(x, z, salt, scale = params.roughness, octaves = 3) {
+            return normalizedNoiseField(x, z, salt, scale, octaves) * 2 - 1;
+        }
+
+        function toPaleoflowCoords(x, z, azimuthDeg) {
+            const a = THREE.MathUtils.degToRad(azimuthDeg);
+            return {
+                along: x * Math.cos(a) + z * Math.sin(a),
+                across: -x * Math.sin(a) + z * Math.cos(a)
+            };
+        }
+
+        function createRegionalTopSurface(width, depth, resolution) {
+            const count = resolution + 1;
+            const surface = new Float32Array(count * count);
+            const dipRad = THREE.MathUtils.degToRad(params.regionalDipDeg);
+            const dipAzimuth = THREE.MathUtils.degToRad(params.paleoflowAzimuth + 90);
+            const dipX = Math.cos(dipAzimuth) * Math.tan(dipRad);
+            const dipZ = Math.sin(dipAzimuth) * Math.tan(dipRad);
+
+            for(let i=0; i<count; i++) {
+                for(let j=0; j<count; j++) {
+                    const x = (j / resolution - 0.5) * width;
+                    const z = (i / resolution - 0.5) * depth;
+                    const regional = (x * dipX + z * dipZ);
+                    const relief = signedNoiseField(x * 0.75, z * 0.75, 11, params.roughness * 0.65, 3) * params.amplitude;
+                    surface[i * count + j] = regional + relief;
+                }
+            }
+            return surface;
+        }
+
+        function createCycleConfig(cycleIndex, rng) {
+            return {
+                index: cycleIndex,
+                thickness: params.cycleThickness * randRange(rng, 0.82, 1.20),
+                azimuth: params.paleoflowAzimuth + randRange(rng, -18, 18),
+                phase: randRange(rng, 0, 10000),
+                sandBias: clamp01(params.sandBodyRatio + randRange(rng, -0.12, 0.12)),
+                mudBias: clamp01(params.mudstoneBackgroundRatio + randRange(rng, -0.10, 0.10)),
+                marineBias: clamp01(params.marineInfluence + randRange(rng, -0.12, 0.12)),
+                coalContinuity: clamp01(params.coalSeamContinuity + randRange(rng, -0.10, 0.08))
+            };
+        }
+
+        function anisotropicField(x, z, cfg, salt, scaleMultiplier = 1, octaves = 3) {
+            const p = toPaleoflowCoords(x, z, cfg.azimuth);
+            // 沿古水流方向相关长度更长，横向变化更快。
+            return normalizedNoiseField(
+                p.along * 0.42 + cfg.phase * 0.07,
+                p.across * 1.55 - cfg.phase * 0.03,
+                cfg.index * 31 + salt,
+                params.roughness * scaleMultiplier,
+                octaves
+            );
+        }
+
+        function sandBeltFactor(x, z, cfg) {
+            const p = toPaleoflowCoords(x, z, cfg.azimuth);
+            const beltWidth = 55 + cfg.sandBias * 70;
+            const meander = Math.sin(p.along * 0.018 + cfg.phase * 0.015) * beltWidth * 0.45;
+            const stripe = 0.5 + 0.5 * Math.sin((p.across + meander) / beltWidth * Math.PI + cfg.phase * 0.001);
+            const field = anisotropicField(x, z, cfg, 5, 0.95, 3);
+            const mixed = stripe * 0.42 + field * 0.58;
+            const threshold = 1 - (0.28 + cfg.sandBias * 0.58);
+            return smoothstep(threshold, threshold + 0.18, mixed);
+        }
+
+        function coalContinuityFactor(x, z, cfg) {
+            const field = anisotropicField(x, z, cfg, 13, 0.62, 3);
+            const threshold = 1 - (0.34 + cfg.coalContinuity * 0.58);
+            return smoothstep(threshold, threshold + 0.22, field);
+        }
+
+        function createCyclothemUnits(cfg, rng) {
+            const units = [];
+            const includeLimestone = rng() < (0.12 + cfg.marineBias * 0.72);
+            const includeParting = rng() < params.coalPartingProbability;
+
+            if(includeLimestone) {
+                units.push({ litho: LITHO_TYPES.LIMESTONE, label: 'Transgressive Limestone Marker Bed', role: 'limestone', weight: 0.045 + cfg.marineBias * 0.060, minThickness: 0.35, variance: 0.14 });
+            }
+
+            units.push({ litho: LITHO_TYPES.MUDSTONE, label: includeLimestone ? 'Marine Roof Mudstone' : 'Roof Mudstone', role: 'roofMud', weight: 0.12 + cfg.marineBias * 0.12 + cfg.mudBias * 0.06, minThickness: 0.8, variance: 0.20 });
+
+            if(includeParting) {
+                units.push({ litho: LITHO_TYPES.COAL, label: 'Upper Coal Split', role: 'coal', weight: 0.032 + cfg.coalContinuity * 0.035, minThickness: 0.12, variance: 0.10 });
+                units.push({ litho: LITHO_TYPES.MUDSTONE, label: 'Coal Parting', role: 'parting', weight: 0.010 + (1 - cfg.coalContinuity) * 0.010, minThickness: 0.08, variance: 0.18 });
+                units.push({ litho: LITHO_TYPES.COAL, label: 'Lower Coal Split', role: 'coal', weight: 0.034 + cfg.coalContinuity * 0.038, minThickness: 0.12, variance: 0.10 });
+            } else {
+                units.push({ litho: LITHO_TYPES.COAL, label: 'Main Coal Seam', role: 'coal', weight: 0.060 + cfg.coalContinuity * 0.065, minThickness: 0.14, variance: 0.10 });
+            }
+
+            units.push({ litho: LITHO_TYPES.MUDSTONE, label: 'Underclay / Paleosol', role: 'seatEarth', weight: 0.060 + cfg.mudBias * 0.040, minThickness: 0.45, variance: 0.14 });
+            units.push({ litho: LITHO_TYPES.MUDSTONE, label: 'Floodplain Mudstone', role: 'floodplainMud', weight: 0.150 + cfg.mudBias * 0.190, minThickness: 0.8, variance: 0.28 });
+            units.push({ litho: LITHO_TYPES.SILTSTONE, label: 'Natural-Levee / Distal-Splay Siltstone', role: 'silt', weight: 0.100 + (1 - cfg.mudBias) * 0.080, minThickness: 0.6, variance: 0.30 });
+            units.push({ litho: LITHO_TYPES.SANDSTONE_F, label: 'Crevasse-Splay Fine-Grained Sandstone', role: 'fineSand', weight: 0.065 + cfg.sandBias * 0.125, minThickness: 0.35, variance: 0.36 });
+            units.push({ litho: LITHO_TYPES.SANDSTONE_C, label: 'Channel Sandstone / Erosional Base', role: 'basalSand', weight: 0.160 + cfg.sandBias * 0.300, minThickness: 0.8, variance: 0.42 });
+
+            const totalWeight = units.reduce((sum, unit) => sum + unit.weight, 0);
+            units.forEach(unit => {
+                unit.baseThickness = cfg.thickness * unit.weight / totalWeight;
+            });
+            return units;
+        }
+
+        function getUnitThicknessAt(x, z, unit, cfg, serial) {
+            const localNoise = signedNoiseField(x, z, serial + 101, params.roughness * 1.35, 2);
+            let factor = 1 + localNoise * params.thicknessVar * unit.variance;
+
+            if(unit.role === 'overburden') {
+                factor = 0.82 + anisotropicField(x, z, cfg, 2, 0.80, 2) * 0.40 + localNoise * params.thicknessVar * 0.25;
+            } else if(unit.role === 'basalSand') {
+                const sand = sandBeltFactor(x, z, cfg);
+                factor = 0.24 + sand * 1.65 + localNoise * params.thicknessVar * 0.42;
+            } else if(unit.role === 'fineSand') {
+                const sand = sandBeltFactor(x, z, cfg);
+                factor = 0.38 + sand * 1.05 + localNoise * params.thicknessVar * 0.32;
+            } else if(unit.role === 'coal') {
+                const coal = coalContinuityFactor(x, z, cfg);
+                factor = 0.06 + coal * 1.10 + localNoise * params.thicknessVar * 0.12;
+            } else if(unit.role === 'parting') {
+                const split = 1 - coalContinuityFactor(x, z, cfg);
+                factor = 0.40 + split * 0.85 + localNoise * params.thicknessVar * 0.18;
+            } else if(unit.role === 'limestone') {
+                factor = 0.78 + anisotropicField(x, z, cfg, 19, 0.42, 2) * 0.34 + localNoise * params.thicknessVar * 0.08;
+            } else if(unit.role === 'seatEarth') {
+                factor = 0.72 + coalContinuityFactor(x, z, cfg) * 0.38 + localNoise * params.thicknessVar * 0.14;
+            } else if(unit.role === 'roofMud' || unit.role === 'floodplainMud') {
+                factor = 0.78 + anisotropicField(x, z, cfg, 23, 0.85, 3) * 0.45 + localNoise * params.thicknessVar * 0.25;
+            } else if(unit.role === 'silt') {
+                factor = 0.58 + sandBeltFactor(x, z, cfg) * 0.62 + localNoise * params.thicknessVar * 0.28;
+            }
+
+            return Math.max(unit.baseThickness * factor, unit.minThickness);
+        }
+
+        function appendStratigraphicLayer(prevBotY, unit, cfg, context) {
+            const { width, depth, resolution, count } = context;
+            const curTopY = new Float32Array(prevBotY);
+            const curBotY = new Float32Array(count * count);
+            const layerIndex = layersDataStore.length;
+
+            for(let i=0; i<count; i++) {
+                for(let j=0; j<count; j++) {
+                    const idx = i * count + j;
+                    const x = (j / resolution - 0.5) * width;
+                    const z = (i / resolution - 0.5) * depth;
+                    const thick = getUnitThicknessAt(x, z, unit, cfg, layerIndex);
+                    curBotY[idx] = curTopY[idx] - thick;
+                }
+            }
+
+            const cyclePrefix = cfg.index >= 0 ? `C${cfg.index + 1}` : 'Cover';
+            const layerName = `${layerIndex + 1}. ${cyclePrefix} ${unit.label} - ${unit.litho.name}`;
+            layersDataStore.push({
+                index: layerIndex,
+                name: layerName,
+                lithoId: unit.litho.id,
+                topY: curTopY,
+                botY: curBotY,
+                count,
+                width,
+                depth,
+                resolution,
+                cycleIndex: cfg.index,
+                unitRole: unit.role,
+                depositionalUnit: unit.label,
+                baseThickness: unit.baseThickness
+            });
+
+            return curBotY;
+        }
+
+        // 主生成函数
+        function generateGeology() {
+            // 1. 清理场景
+            disposeGroup(geoGroup);
+            // 清理钻孔，因为地层变了，旧钻孔数据失效
+            disposeGroup(boreGroup);
+            disposeGroup(faultGroup);
+            layersDataStore = [];
+            boreholesData = [];
+            faultsDataStore = [];
+            layerModels = [];
+            faultModel = null;
+
+            const { width, depth, resolution } = params;
+            const rng = createSeededRandom(params.seed);
+            const count = resolution + 1;
+            
+            // 2. 生成现代地表与表土覆盖层
+            let prevBotY = createRegionalTopSurface(width, depth, resolution);
+            const context = { width, depth, resolution, count };
+            const coverCfg = {
+                index: -1,
+                thickness: params.cycleThickness * 0.35,
+                azimuth: params.paleoflowAzimuth,
+                phase: params.seed * 0.11,
+                sandBias: 0,
+                mudBias: 0.5,
+                marineBias: 0,
+                coalContinuity: 0
+            };
+            prevBotY = appendStratigraphicLayer(prevBotY, {
+                litho: LITHO_TYPES.OVERBURDEN,
+                label: 'Quaternary Overburden',
+                role: 'overburden',
+                baseThickness: Math.max(5, params.cycleThickness * 0.34),
+                minThickness: 2.0,
+                variance: 0.35
+            }, coverCfg, context);
+
+            // 3. 按煤系沉积旋回生成层序：顶板/煤层/座底/泛滥平原/砂体。
+            for(let c=0; c<params.cycleCount; c++) {
+                const cfg = createCycleConfig(c, rng);
+                const units = createCyclothemUnits(cfg, rng);
+                units.forEach(unit => {
+                    prevBotY = appendStratigraphicLayer(prevBotY, unit, cfg, context);
+                });
+            }
+
+            faultModel = createFaultModel(width, depth);
+            faultsDataStore = faultModel ? [faultModel.exportData] : [];
+
+            layersDataStore.forEach(layer => {
+                const shell = buildUnfaultedLayerShell(layer);
+                const finalMeshData = faultModel ? buildFaultedLayerMesh(shell, faultModel) : shell;
+                layerModels.push({
+                    layer,
+                    shell,
+                    meshData: finalMeshData,
+                    blocks: faultModel ? getLayerBlockMetadata(faultModel) : [{ side: 'whole', transform: { x: 0, y: 0, z: 0 } }]
+                });
+
+                let geometry = buildBufferGeometryFromMeshData(finalMeshData);
+                if (params.flatShading) geometry = geometry.toNonIndexed();
+                geometry.computeVertexNormals();
+
+                const material = new THREE.MeshLambertMaterial({
+                    color: getLithoColor(layer.lithoId),
+                    side: THREE.DoubleSide,
+                    flatShading: params.flatShading,
+                    transparent: params.opacity < 0.999,
+                    opacity: params.opacity,
+                    depthWrite: params.opacity >= 0.999
+                });
+
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.name = layer.name;
+                mesh.userData = { layerIndex: layer.index };
+                geoGroup.add(mesh);
+            });
+
+            buildFaultVisualization();
+            updateFaultVisibility();
+            
+            updateUISelects();
+        }
+
+        function disposeGroup(group) {
+            while(group.children.length > 0) {
+                const obj = group.children[0];
+                if(obj.geometry) obj.geometry.dispose();
+                if(obj.material) {
+                    if(obj.material.map) obj.material.map.dispose();
+                    obj.material.dispose();
+                }
+                group.remove(obj);
+            }
+        }
+
+        function createFaultModel(width, depth) {
+            if(!params.faultEnabled || params.faultThrow <= 0) return null;
+
+            const strikeDeg = params.faultStrikeDeg;
+            const dipDeg = Math.max(35, Math.min(85, params.faultDipDeg));
+            const throwValue = Math.max(0, params.faultThrow);
+            const strikeRad = THREE.MathUtils.degToRad(strikeDeg);
+            const dipRad = THREE.MathUtils.degToRad(dipDeg);
+            const sinDip = Math.max(Math.sin(dipRad), 0.05);
+            const cosDip = Math.cos(dipRad);
+            const tanDip = Math.tan(dipRad);
+
+            const strikeVector = { x: Math.cos(strikeRad), y: 0, z: Math.sin(strikeRad) };
+            const dipDirection = { x: -Math.sin(strikeRad), y: 0, z: Math.cos(strikeRad) };
+            const downDipVector = {
+                x: dipDirection.x * cosDip,
+                y: -sinDip,
+                z: dipDirection.z * cosDip
+            };
+            const slipMagnitude = throwValue / sinDip;
+            const slipSign = params.faultSense === 'reverse' ? -1 : 1;
+            const slipVector = {
+                x: downDipVector.x * slipMagnitude * slipSign,
+                y: downDipVector.y * slipMagnitude * slipSign,
+                z: downDipVector.z * slipMagnitude * slipSign
+            };
+            const normalScale = Math.sqrt(1 + tanDip * tanDip);
+
+            return {
+                id: 'F1',
+                type: params.faultSense === 'reverse' ? 'reverse' : 'normal',
+                center: { x: 0, y: 0, z: 0 },
+                centerX: 0,
+                centerZ: 0,
+                strikeDeg,
+                dipDeg,
+                length: Math.max(width, depth) * 1.8,
+                throw: throwValue,
+                damageWidth: Math.max(1, params.faultDamageWidth),
+                strikeVector,
+                dipDirection,
+                downDipVector,
+                slipVector,
+                tanDip,
+                normalScale,
+                exportData: {
+                    id: 'F1',
+                    type: params.faultSense === 'reverse' ? 'reverse' : 'normal',
+                    centerX: 0,
+                    centerZ: 0,
+                    strikeDeg,
+                    dipDeg,
+                    length: Math.max(width, depth) * 1.8,
+                    throw: throwValue,
+                    damageWidth: Math.max(1, params.faultDamageWidth),
+                    slipVector
+                }
+            };
+        }
+
+        function getFaultSignedValue(fault, p) {
+            const dx = p.x - fault.center.x;
+            const dz = p.z - fault.center.z;
+            const downDipDistance = dx * fault.dipDirection.x + dz * fault.dipDirection.z;
+            return (p.y - fault.center.y) + downDipDistance * fault.tanDip;
+        }
+
+        function getFaultSignedDistance(fault, p) {
+            return getFaultSignedValue(fault, p) / fault.normalScale;
+        }
+
+        function getFaultNormal(fault) {
+            return {
+                x: fault.dipDirection.x * fault.tanDip / fault.normalScale,
+                y: 1 / fault.normalScale,
+                z: fault.dipDirection.z * fault.tanDip / fault.normalScale
+            };
+        }
+
+        function isPointOnBlockSide(fault, restoredPoint, side) {
+            const signed = getFaultSignedValue(fault, restoredPoint);
+            return side === 'hanging' ? signed >= -0.001 : signed <= 0.001;
+        }
+
+        function getLayerBlockMetadata(fault) {
+            return [
+                { side: 'footwall', transform: { x: 0, y: 0, z: 0 } },
+                { side: 'hanging', transform: fault.slipVector }
+            ];
+        }
+
+        function getModelVerticalExtent() {
+            let minY = Infinity, maxY = -Infinity;
+            layersDataStore.forEach(layer => {
+                for(let i=0; i<layer.count * layer.count; i++) {
+                    minY = Math.min(minY, layer.topY[i], layer.botY[i]);
+                    maxY = Math.max(maxY, layer.topY[i], layer.botY[i]);
+                }
+            });
+            return { minY, maxY };
+        }
+
+        function buildFaultVisualization() {
+            disposeGroup(faultGroup);
+            if(!params.faultEnabled || !faultModel || layersDataStore.length === 0) return;
+
+            const { minY, maxY } = getModelVerticalExtent();
+            const fault = faultModel;
+            const halfLength = fault.length * 0.5;
+            const verticalSpan = Math.max(maxY - minY + 80, 80);
+            const downDipSpan = verticalSpan / Math.max(Math.abs(fault.downDipVector.y), 0.05);
+            const upDipOffset = -30;
+            const downDipOffset = downDipSpan;
+            const c = fault.center;
+            const s = fault.strikeVector;
+            const d = fault.downDipVector;
+
+            function planePoint(u, v) {
+                const n = getFaultNormal(fault);
+                return {
+                    x: c.x + s.x * u + d.x * v + n.x * 0.08,
+                    y: c.y + s.y * u + d.y * v + n.y * 0.08,
+                    z: c.z + s.z * u + d.z * v + n.z * 0.08
+                };
+            }
+
+            const p0 = planePoint(-halfLength, upDipOffset);
+            const p1 = planePoint(halfLength, upDipOffset);
+            const p2 = planePoint(-halfLength, downDipOffset);
+            const p3 = planePoint(halfLength, downDipOffset);
+
+            const planeGeometry = new THREE.BufferGeometry();
+            const vertices = new Float32Array([
+                p0.x, p0.y, p0.z,
+                p1.x, p1.y, p1.z,
+                p2.x, p2.y, p2.z,
+                p3.x, p3.y, p3.z
+            ]);
+            planeGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            planeGeometry.setIndex([0, 1, 2, 1, 3, 2]);
+            planeGeometry.computeVertexNormals();
+
+            const planeMaterial = new THREE.MeshLambertMaterial({
+                color: fault.type === 'normal' ? 0xff7043 : 0xffb74d,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.14,
+                depthWrite: false,
+                polygonOffset: true,
+                polygonOffsetFactor: -4,
+                polygonOffsetUnits: -4
+            });
+            const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.name = `${fault.id} fault plane`;
+            plane.renderOrder = 2;
+            faultGroup.add(plane);
+
+            const tracePoints = [
+                new THREE.Vector3(c.x - s.x * halfLength, c.y, c.z - s.z * halfLength),
+                new THREE.Vector3(c.x + s.x * halfLength, c.y, c.z + s.z * halfLength)
+            ];
+            const traceGeometry = new THREE.BufferGeometry().setFromPoints(tracePoints);
+            const traceMaterial = new THREE.LineBasicMaterial({ color: 0xffd54f, linewidth: 2 });
+            const trace = new THREE.Line(traceGeometry, traceMaterial);
+            trace.name = `${fault.id} surface trace`;
+            faultGroup.add(trace);
+
+            const label = createTextSprite(`${fault.id} ${fault.type === 'normal' ? '正断层' : '逆断层'} 落差 ${fault.throw.toFixed(1)} m`);
+            label.position.set(c.x, maxY + 28, c.z);
+            faultGroup.add(label);
+        }
+
+        function createTextSprite(text) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 128;
+            const ctx2d = canvas.getContext('2d');
+            ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+            ctx2d.fillStyle = 'rgba(0,0,0,0.65)';
+            ctx2d.fillRect(8, 28, 496, 72);
+            ctx2d.strokeStyle = 'rgba(255,213,79,0.9)';
+            ctx2d.strokeRect(8, 28, 496, 72);
+            ctx2d.fillStyle = '#fff3cd';
+            ctx2d.font = 'bold 32px "Segoe UI", sans-serif';
+            ctx2d.textAlign = 'center';
+            ctx2d.textBaseline = 'middle';
+            ctx2d.fillText(text, canvas.width / 2, 64);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(90, 22, 1);
+            return sprite;
+        }
+
+        function updateFaultVisibility() {
+            faultGroup.visible = params.faultEnabled && params.showFaultPlanes;
+        }
+
+        // 构建几何体工具函数
+        function buildUnfaultedLayerShell(layer) {
+            const { topY, botY, width: w, depth: d, resolution: segs } = layer;
+            const count = segs + 1;
+            const vertices = [];
+            const indices = [];
+            const faceTags = [];
+
+            // 顶点生成
+            for(let i=0; i<count; i++) {
+                for(let j=0; j<count; j++) {
+                    const x = (j/segs-0.5)*w;
+                    const z = (i/segs-0.5)*d;
+                    vertices.push({ x, y: topY[i*count+j], z });
+                }
+            }
+            for(let i=0; i<count; i++) {
+                for(let j=0; j<count; j++) {
+                    const x = (j/segs-0.5)*w;
+                    const z = (i/segs-0.5)*d;
+                    vertices.push({ x, y: botY[i*count+j], z });
+                }
+            }
+            
+            // 面生成
+            const offset = count * count;
+            for(let i=0; i<segs; i++) {
+                for(let j=0; j<segs; j++) {
+                    const a = i*count+j, b = i*count+j+1, c = (i+1)*count+j+1, d = (i+1)*count+j;
+                    // Top (CCW)
+                    indices.push(a, b, d, b, c, d);
+                    faceTags.push('roof', 'roof');
+                    // Bottom (CW)
+                    indices.push(offset+a, offset+d, offset+b, offset+b, offset+d, offset+c);
+                    faceTags.push('floor', 'floor');
+                }
+            }
+            
+            // 侧壁封闭
+            const topEdge=[], botEdge=[];
+            for(let j=0; j<count; j++) topEdge.push(j); 
+            for(let i=1; i<count; i++) topEdge.push(i*count+(count-1));
+            for(let j=count-2; j>=0; j--) topEdge.push((count-1)*count+j);
+            for(let i=count-2; i>0; i--) topEdge.push(i*count);
+            for(let idx of topEdge) botEdge.push(idx+offset);
+            
+            for(let k=0; k<topEdge.length; k++) {
+                const n = (k+1)%topEdge.length;
+                indices.push(topEdge[k], botEdge[k], topEdge[n], topEdge[n], botEdge[k], botEdge[n]);
+                faceTags.push('side', 'side');
+            }
+
+            return { vertices, indices, faceTags };
+        }
+
+        function buildFaultedLayerMesh(shell, fault) {
+            const split = splitClosedMeshByPlane(shell, fault);
+            const footwall = transformMeshData(split.footwall, { x: 0, y: 0, z: 0 });
+            const hangingWall = transformMeshData(split.hangingWall, fault.slipVector);
+            return mergeMeshData([footwall, hangingWall]);
+        }
+
+        function splitClosedMeshByPlane(meshData, fault) {
+            const hangingWall = { vertices: [], indices: [], faceTags: [] };
+            const footwall = { vertices: [], indices: [], faceTags: [] };
+            const cutSegments = [];
+
+            for(let i=0; i<meshData.indices.length; i+=3) {
+                const faceTag = meshData.faceTags?.[Math.floor(i / 3)] || 'surface';
+                const tri = [
+                    meshData.vertices[meshData.indices[i]],
+                    meshData.vertices[meshData.indices[i+1]],
+                    meshData.vertices[meshData.indices[i+2]]
+                ];
+                const vals = tri.map(p => getFaultSignedValue(fault, p));
+                const intersections = getTrianglePlaneIntersections(tri, vals);
+                if(intersections.length === 2) cutSegments.push(intersections);
+
+                addPolygonToMesh(hangingWall, clipTriangleByFaultPlane(tri, fault, true), faceTag);
+                addPolygonToMesh(footwall, clipTriangleByFaultPlane(tri, fault, false), faceTag);
+            }
+
+            capFaultCutFaces(hangingWall, cutSegments, fault, true);
+            capFaultCutFaces(footwall, cutSegments, fault, false);
+            return { hangingWall, footwall };
+        }
+
+        function clipTriangleByFaultPlane(triangle, fault, keepHanging) {
+            const eps = 1e-5;
+            const output = [];
+            for(let i=0; i<triangle.length; i++) {
+                const current = triangle[i];
+                const previous = triangle[(i + triangle.length - 1) % triangle.length];
+                const curVal = getFaultSignedValue(fault, current);
+                const prevVal = getFaultSignedValue(fault, previous);
+                const curInside = keepHanging ? curVal >= -eps : curVal <= eps;
+                const prevInside = keepHanging ? prevVal >= -eps : prevVal <= eps;
+
+                if(curInside) {
+                    if(!prevInside) output.push(interpolatePlaneIntersection(previous, current, prevVal, curVal));
+                    output.push(clonePoint(current));
+                } else if(prevInside) {
+                    output.push(interpolatePlaneIntersection(previous, current, prevVal, curVal));
+                }
+            }
+            return output;
+        }
+
+        function getTrianglePlaneIntersections(triangle, vals) {
+            const eps = 1e-5;
+            const points = [];
+            for(let i=0; i<3; i++) {
+                const j = (i + 1) % 3;
+                const a = triangle[i], b = triangle[j];
+                const va = vals[i], vb = vals[j];
+                if(Math.abs(va) <= eps && Math.abs(vb) > eps) {
+                    points.push(clonePoint(a));
+                } else if(Math.abs(vb) <= eps && Math.abs(va) > eps) {
+                    points.push(clonePoint(b));
+                } else if((va > eps && vb < -eps) || (va < -eps && vb > eps)) {
+                    points.push(interpolatePlaneIntersection(a, b, va, vb));
+                }
+            }
+            return dedupePoints(points).slice(0, 2);
+        }
+
+        function interpolatePlaneIntersection(a, b, va, vb) {
+            const t = va / (va - vb);
+            return {
+                x: a.x + (b.x - a.x) * t,
+                y: a.y + (b.y - a.y) * t,
+                z: a.z + (b.z - a.z) * t
+            };
+        }
+
+        function addPolygonToMesh(target, polygon, faceTag = 'surface') {
+            if(polygon.length < 3) return;
+            const base = target.vertices.length;
+            polygon.forEach(p => target.vertices.push(clonePoint(p)));
+            for(let i=1; i<polygon.length-1; i++) {
+                target.indices.push(base, base+i, base+i+1);
+                if(target.faceTags) target.faceTags.push(faceTag);
+            }
+        }
+
+        function capFaultCutFaces(target, cutSegments, fault, keepHanging) {
+            let loops = buildCutLoops(cutSegments);
+            if(loops.length === 0) {
+                const points = dedupePoints(cutSegments.flat());
+                if(points.length >= 3) loops = [sortPointsAroundFaultPlane(points, fault)];
+            }
+            if(loops.length === 0) return;
+
+            const normal = getFaultNormal(fault);
+            const offset = keepHanging ? 0.035 : -0.035;
+            loops.forEach(loop => {
+                if(loop.length < 3) return;
+                const triangles = triangulateCapLoop(loop, fault);
+                if(triangles.length === 0) return;
+
+                const base = target.vertices.length;
+                loop.forEach(p => {
+                    target.vertices.push({
+                        x: p.x + normal.x * offset,
+                        y: p.y + normal.y * offset,
+                        z: p.z + normal.z * offset
+                    });
+                });
+
+                triangles.forEach(tri => {
+                    if(keepHanging) target.indices.push(base + tri[0], base + tri[2], base + tri[1]);
+                    else target.indices.push(base + tri[0], base + tri[1], base + tri[2]);
+                    if(target.faceTags) target.faceTags.push('fault_cut');
+                });
+            });
+        }
+
+        function buildCutLoops(cutSegments) {
+            const nodes = new Map();
+            const adjacency = new Map();
+
+            function addNode(point) {
+                const key = pointKey(point);
+                if(!nodes.has(key)) nodes.set(key, clonePoint(point));
+                if(!adjacency.has(key)) adjacency.set(key, new Set());
+                return key;
+            }
+
+            cutSegments.forEach(seg => {
+                if(seg.length !== 2) return;
+                const a = addNode(seg[0]);
+                const b = addNode(seg[1]);
+                if(a === b) return;
+                adjacency.get(a).add(b);
+                adjacency.get(b).add(a);
+            });
+
+            const visited = new Set();
+            const loops = [];
+
+            function edgeKey(a, b) {
+                return `${a}->${b}`;
+            }
+
+            adjacency.forEach((neighbors, start) => {
+                neighbors.forEach(next => {
+                    if(visited.has(edgeKey(start, next))) return;
+
+                    const loopKeys = [start];
+                    let prev = start;
+                    let cur = next;
+                    visited.add(edgeKey(start, next));
+                    visited.add(edgeKey(next, start));
+
+                    for(let guard=0; guard<10000; guard++) {
+                        loopKeys.push(cur);
+                        const curNeighbors = Array.from(adjacency.get(cur) || []);
+                        const candidates = curNeighbors.filter(k => k !== prev);
+                        let chosen = candidates.find(k => !visited.has(edgeKey(cur, k)));
+                        if(!chosen && candidates.length > 0) chosen = candidates[0];
+                        if(!chosen) break;
+
+                        visited.add(edgeKey(cur, chosen));
+                        visited.add(edgeKey(chosen, cur));
+                        prev = cur;
+                        cur = chosen;
+                        if(cur === start) {
+                            loops.push(loopKeys.map(k => nodes.get(k)));
+                            break;
+                        }
+                    }
+                });
+            });
+
+            return loops
+                .map(loop => removeSequentialDuplicates(loop))
+                .filter(loop => loop.length >= 3);
+        }
+
+        function sortPointsAroundFaultPlane(points, fault) {
+            const center = points.reduce((acc, p) => {
+                acc.x += p.x; acc.y += p.y; acc.z += p.z;
+                return acc;
+            }, { x: 0, y: 0, z: 0 });
+            center.x /= points.length; center.y /= points.length; center.z /= points.length;
+            const center2 = projectPointToFaultPlane2D(center, fault);
+
+            return points.slice().sort((a, b) => {
+                const pa = projectPointToFaultPlane2D(a, fault);
+                const pb = projectPointToFaultPlane2D(b, fault);
+                return Math.atan2(pa.y - center2.y, pa.x - center2.x) - Math.atan2(pb.y - center2.y, pb.x - center2.x);
+            });
+        }
+
+        function removeSequentialDuplicates(points) {
+            const result = [];
+            points.forEach(p => {
+                const prev = result[result.length - 1];
+                if(!prev || pointKey(prev) !== pointKey(p)) result.push(p);
+            });
+            if(result.length > 1 && pointKey(result[0]) === pointKey(result[result.length - 1])) result.pop();
+            return result;
+        }
+
+        function triangulateCapLoop(loop, fault) {
+            const projected = loop.map(p => projectPointToFaultPlane2D(p, fault));
+            const area = polygonArea2D(projected);
+            if(Math.abs(area) < 1e-6) return [];
+
+            const order = projected.map((_, idx) => idx);
+            if(area < 0) order.reverse();
+            const triangles = [];
+            let guard = 0;
+
+            while(order.length > 3 && guard++ < loop.length * loop.length) {
+                let earFound = false;
+                for(let i=0; i<order.length; i++) {
+                    const ia = order[(i + order.length - 1) % order.length];
+                    const ib = order[i];
+                    const ic = order[(i + 1) % order.length];
+                    const a = projected[ia], b = projected[ib], c = projected[ic];
+                    if(!isConvex2D(a, b, c)) continue;
+
+                    let containsPoint = false;
+                    for(let j=0; j<order.length; j++) {
+                        const ip = order[j];
+                        if(ip === ia || ip === ib || ip === ic) continue;
+                        if(pointInTriangle2D(projected[ip], a, b, c)) {
+                            containsPoint = true;
+                            break;
+                        }
+                    }
+                    if(containsPoint) continue;
+
+                    triangles.push([ia, ib, ic]);
+                    order.splice(i, 1);
+                    earFound = true;
+                    break;
+                }
+
+                if(!earFound) {
+                    for(let i=1; i<order.length-1; i++) triangles.push([order[0], order[i], order[i+1]]);
+                    return triangles;
+                }
+            }
+
+            if(order.length === 3) triangles.push([order[0], order[1], order[2]]);
+            return triangles;
+        }
+
+        function projectPointToFaultPlane2D(point, fault) {
+            return {
+                x: point.x * fault.strikeVector.x + point.y * fault.strikeVector.y + point.z * fault.strikeVector.z,
+                y: point.x * fault.downDipVector.x + point.y * fault.downDipVector.y + point.z * fault.downDipVector.z
+            };
+        }
+
+        function polygonArea2D(points) {
+            let area = 0;
+            for(let i=0; i<points.length; i++) {
+                const a = points[i];
+                const b = points[(i + 1) % points.length];
+                area += a.x * b.y - b.x * a.y;
+            }
+            return area * 0.5;
+        }
+
+        function isConvex2D(a, b, c) {
+            return ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)) > 1e-8;
+        }
+
+        function pointInTriangle2D(p, a, b, c) {
+            const area = Math.abs(cross2D(a, b, c));
+            const area1 = Math.abs(cross2D(p, a, b));
+            const area2 = Math.abs(cross2D(p, b, c));
+            const area3 = Math.abs(cross2D(p, c, a));
+            return Math.abs(area - (area1 + area2 + area3)) < 1e-6;
+        }
+
+        function cross2D(a, b, c) {
+            return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+        }
+
+        function transformMeshData(meshData, transform) {
+            return {
+                vertices: meshData.vertices.map(p => ({
+                    x: p.x + transform.x,
+                    y: p.y + transform.y,
+                    z: p.z + transform.z
+                })),
+                indices: meshData.indices.slice(),
+                faceTags: meshData.faceTags ? meshData.faceTags.slice() : undefined
+            };
+        }
+
+        function mergeMeshData(parts) {
+            const merged = { vertices: [], indices: [], faceTags: [] };
+            parts.forEach(part => {
+                const offset = merged.vertices.length;
+                const tagOffset = merged.faceTags.length;
+                part.vertices.forEach(p => merged.vertices.push(clonePoint(p)));
+                part.indices.forEach(idx => merged.indices.push(idx + offset));
+                const triangleCount = Math.floor(part.indices.length / 3);
+                for(let i = 0; i < triangleCount; i++) {
+                    merged.faceTags[tagOffset + i] = part.faceTags?.[i] || 'surface';
+                }
+            });
+            return merged;
+        }
+
+        function buildBufferGeometryFromMeshData(meshData) {
+            const positions = [];
+            meshData.vertices.forEach(p => positions.push(p.x, p.y, p.z));
+            const geom = new THREE.BufferGeometry();
+            geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geom.setIndex(meshData.indices);
+            return geom;
+        }
+
+        function clonePoint(p) {
+            return { x: p.x, y: p.y, z: p.z };
+        }
+
+        function pointKey(p) {
+            return `${Math.round(p.x*1000)}_${Math.round(p.y*1000)}_${Math.round(p.z*1000)}`;
+        }
+
+        function dedupePoints(points) {
+            const seen = new Map();
+            points.forEach(p => {
+                const key = pointKey(p);
+                if(!seen.has(key)) seen.set(key, clonePoint(p));
+            });
+            return Array.from(seen.values());
+        }
+
+        // ===========================================
+        // 4. 钻孔系统 (Boreholes)
+        // ===========================================
+        
+        function getInterpolatedHeight(gridData, worldX, worldZ, width, depth, resolution) {
+            const gridX = (worldX / width + 0.5) * resolution;
+            const gridZ = (worldZ / depth + 0.5) * resolution;
+            if (gridX < 0 || gridX > resolution || gridZ < 0 || gridZ > resolution) return null;
+
+            const x0 = Math.floor(gridX), x1 = Math.min(x0 + 1, resolution);
+            const z0 = Math.floor(gridZ), z1 = Math.min(z0 + 1, resolution);
+            const tx = gridX - x0, tz = gridZ - z0;
+            const count = resolution + 1;
+            
+            const h00 = gridData[z0 * count + x0];
+            const h10 = gridData[z0 * count + x1];
+            const h01 = gridData[z1 * count + x0];
+            const h11 = gridData[z1 * count + x1];
+
+            return (h00*(1-tx) + h10*tx)*(1-tz) + (h01*(1-tx) + h11*tx)*tz;
+        }
+
+        function getBlockCandidates() {
+            if(!faultModel) return [{ side: 'whole', transform: { x: 0, y: 0, z: 0 } }];
+            return getLayerBlockMetadata(faultModel);
+        }
+
+        function getRestoredPoint(worldPoint, transform) {
+            return {
+                x: worldPoint.x - transform.x,
+                y: worldPoint.y - transform.y,
+                z: worldPoint.z - transform.z
+            };
+        }
+
+        function getWorldSurfaceHeight(layer, worldX, worldZ, surfaceKey, mode = 'highest') {
+            const values = [];
+            getBlockCandidates().forEach(block => {
+                const restoredX = worldX - block.transform.x;
+                const restoredZ = worldZ - block.transform.z;
+                const y = getInterpolatedHeight(layer[surfaceKey], restoredX, restoredZ, layer.width, layer.depth, layer.resolution);
+                if(y === null) return;
+                const restoredPoint = { x: restoredX, y, z: restoredZ };
+                if(faultModel && !isPointOnBlockSide(faultModel, restoredPoint, block.side)) return;
+                values.push(y + block.transform.y);
+            });
+            if(values.length === 0) return null;
+            return mode === 'lowest' ? Math.min(...values) : Math.max(...values);
+        }
+
+        function getLayerHitAtWorldPoint(worldPoint) {
+            for(let L=0; L<layersDataStore.length; L++) {
+                const layer = layersDataStore[L];
+                const candidates = getBlockCandidates();
+                for(let i=0; i<candidates.length; i++) {
+                    const block = candidates[i];
+                    const restored = getRestoredPoint(worldPoint, block.transform);
+                    if(faultModel && !isPointOnBlockSide(faultModel, restored, block.side)) continue;
+
+                    const topY = getInterpolatedHeight(layer.topY, restored.x, restored.z, layer.width, layer.depth, layer.resolution);
+                    const botY = getInterpolatedHeight(layer.botY, restored.x, restored.z, layer.width, layer.depth, layer.resolution);
+                    if(topY === null || botY === null) continue;
+
+                    const worldTop = topY + block.transform.y;
+                    const worldBot = botY + block.transform.y;
+                    if(worldPoint.y <= worldTop && worldPoint.y >= worldBot) {
+                        return { layer, layerIndex: L, blockSide: block.side };
+                    }
+                }
+            }
+            return null;
+        }
+
+        function generateBoreholes() {
+            disposeGroup(boreGroup);
+            boreholesData = [];
+
+            const bhCount = parseInt(document.getElementById('inp-bh-count').value) || 5;
+            const devFactor = parseFloat(document.getElementById('inp-bh-dev').value) || 0.5;
+            const { width, depth, resolution } = params;
+            const rng = createSeededRandom(params.seed + 1001);
+            
+            const margin = width * 0.1; 
+            const boundsX = width/2 - margin;
+            const boundsZ = depth/2 - margin;
+
+            for(let i=0; i<bhCount; i++) {
+                const cx = (rng() - 0.5) * 2 * boundsX;
+                const cz = (rng() - 0.5) * 2 * boundsZ;
+                
+                if(layersDataStore.length === 0) return;
+                const surfaceY = getWorldSurfaceHeight(layersDataStore[0], cx, cz, 'topY', 'highest');
+                if (surfaceY === null) continue;
+
+                // 模拟路径
+                const pathPoints = []; 
+                let currPos = new THREE.Vector3(cx, surfaceY + 2, cz);
+                let direction = new THREE.Vector3(0, -1, 0);
+                
+                const stepSize = 2.0; 
+                const localBottom = getWorldSurfaceHeight(layersDataStore[layersDataStore.length-1], cx, cz, 'botY', 'lowest');
+                const maxDepth = localBottom === null ? 220 : Math.max(40, surfaceY - localBottom + 50); // 自适应深度
+                let currentDepth = 0;
+
+                while(currentDepth < maxDepth) {
+                    pathPoints.push(currPos.clone());
+                    // 随机偏斜
+                    direction.x += (rng() - 0.5) * 0.05 * devFactor;
+                    direction.z += (rng() - 0.5) * 0.05 * devFactor;
+                    direction.normalize();
+                    currPos.add(direction.clone().multiplyScalar(stepSize));
+                    currentDepth += stepSize;
+                    const bottomHere = getWorldSurfaceHeight(layersDataStore[layersDataStore.length-1], currPos.x, currPos.z, 'botY', 'lowest');
+                    if(bottomHere !== null && currPos.y < bottomHere - 20) break;
+                }
+
+                // 岩性判别与分段
+                const lithoLog = [];
+                const faultIntersections = [];
+                const activeFaults = new Set();
+                let currentStart = 0;
+                let currentId = null;
+
+                for(let p=0; p < pathPoints.length; p++) {
+                    const pt = pathPoints[p];
+                    const hit = getLayerHitAtWorldPoint({ x: pt.x, y: pt.y, z: pt.z });
+                    const detected = hit ? hit.layer.lithoId : null;
+
+                    const dist = p * stepSize;
+                    updateFaultIntersections(pt, dist, faultIntersections, activeFaults);
+                    if (detected !== currentId) {
+                        if (currentId !== null) {
+                            lithoLog.push({ from: currentStart, to: dist, lithoId: currentId });
+                            createBoreholeSegment(pathPoints, Math.floor(currentStart/stepSize), p, currentId);
+                        }
+                        currentId = detected;
+                        currentStart = dist;
+                    }
+                }
+                // 收尾
+                if (currentId !== null) {
+                     lithoLog.push({ from: currentStart, to: pathPoints.length * stepSize, lithoId: currentId });
+                     createBoreholeSegment(pathPoints, Math.floor(currentStart/stepSize), pathPoints.length - 1, currentId);
+                }
+
+                // 孔口标记
+                const cone = new THREE.Mesh(new THREE.ConeGeometry(3, 6, 8), new THREE.MeshLambertMaterial({color:0xff0000}));
+                cone.position.set(cx, surfaceY + 3, cz);
+                cone.rotation.x = Math.PI;
+                boreGroup.add(cone);
+
+                boreholesData.push({
+                    id: `ZK${String(i+1).padStart(2, '0')}`,
+                    collar: { x: cx, y: surfaceY, z: cz },
+                    depth: pathPoints.length * stepSize,
+                    track: pathPoints.map((p, idx)=>({ md: idx*stepSize, x:p.x, y:p.y, z:p.z })),
+                    litho: lithoLog,
+                    faultIntersections
+                });
+            }
+        }
+
+        function updateFaultIntersections(point, md, intersections, activeFaults) {
+            if(!params.faultEnabled || !faultModel) return;
+
+            const fault = faultModel;
+            const dx = point.x - fault.center.x;
+            const dz = point.z - fault.center.z;
+            const alongStrike = dx * fault.strikeVector.x + dz * fault.strikeVector.z;
+            const distance = getFaultSignedDistance(fault, point);
+            const inFaultLength = Math.abs(alongStrike) <= fault.length * 0.5;
+            const inDamageZone = Math.abs(distance) <= fault.damageWidth;
+            const isNear = inFaultLength && inDamageZone;
+
+            if(isNear && !activeFaults.has(fault.id)) {
+                intersections.push({
+                    faultId: fault.id,
+                    type: fault.type,
+                    md,
+                    x: point.x,
+                    y: point.y,
+                    z: point.z,
+                    distanceToFault: distance
+                });
+                activeFaults.add(fault.id);
+            } else if(!isNear && activeFaults.has(fault.id)) {
+                activeFaults.delete(fault.id);
+            }
+        }
+
+        function createBoreholeSegment(points, startIdx, endIdx, lithoId) {
+            if (startIdx >= endIdx || endIdx >= points.length) return;
+            const segPoints = points.slice(startIdx, endIdx + 1);
+            if (segPoints.length < 2) return;
+            
+            const curve = new THREE.CatmullRomCurve3(segPoints);
+            const geometry = new THREE.TubeGeometry(curve, segPoints.length, 1.0, 6, false);
+            const material = new THREE.MeshLambertMaterial({ color: getLithoColor(lithoId) });
+            boreGroup.add(new THREE.Mesh(geometry, material));
+        }
+
+        // ===========================================
+        // 5. 层间距分析 (Interval & Contours)
+        // ===========================================
+        
+        const selUpper = document.getElementById('sel-upper');
+        const selLower = document.getElementById('sel-lower');
+        const canvas = document.getElementById('heatmap-canvas');
+        const ctx = canvas.getContext('2d');
+        const labelsContainer = document.getElementById('labels-container');
+
+        function updateUISelects() {
+            selUpper.innerHTML = ''; selLower.innerHTML = '';
+            layersDataStore.forEach((layer, idx) => {
+                const opt1 = document.createElement('option'); opt1.value = idx; opt1.text = layer.name; selUpper.appendChild(opt1);
+                const opt2 = document.createElement('option'); opt2.value = idx; opt2.text = layer.name; selLower.appendChild(opt2);
+            });
+            if(layersDataStore.length > 2) selLower.value = layersDataStore.length - 1;
+        }
+
+        function calculateInterval() {
+            const idxU = parseInt(selUpper.value);
+            const idxL = parseInt(selLower.value);
+            if (isNaN(idxU) || isNaN(idxL)) return;
+
+            const layerU = layersDataStore[idxU];
+            const layerL = layersDataStore[idxL];
+            const count = layerU.count;
+            const thicknessData = new Float32Array(count * count);
+            let minVal = Infinity, maxVal = -Infinity, sum = 0, validCount = 0;
+
+            for (let row = 0; row < count; row++) {
+                for (let col = 0; col < count; col++) {
+                    const i = row * count + col;
+                    const x = (col / layerU.resolution - 0.5) * layerU.width;
+                    const z = (row / layerU.resolution - 0.5) * layerU.depth;
+                    let val = getBlockAwareIntervalValue(layerU, layerL, idxU, idxL, x, z);
+                    if(Number.isFinite(val) && val < 0) val = 0; // 理论上不应小于0
+                    thicknessData[i] = val;
+                    if(Number.isFinite(val)) {
+                        if(val < minVal) minVal = val;
+                        if(val > maxVal) maxVal = val;
+                        sum += val;
+                        validCount++;
+                    }
+                }
+            }
+
+            if(validCount === 0) {
+                minVal = 0; maxVal = 0;
+            }
+
+            // 更新统计
+            document.getElementById('val-max').innerText = maxVal.toFixed(2) + " m";
+            document.getElementById('val-min').innerText = minVal.toFixed(2) + " m";
+            document.getElementById('val-avg').innerText = (validCount ? sum / validCount : 0).toFixed(2) + " m";
+            document.getElementById('val-count').innerText = `${validCount}/${thicknessData.length}`;
+            document.getElementById('legend-min').innerText = minVal.toFixed(1);
+            document.getElementById('legend-max').innerText = maxVal.toFixed(1);
+
+            // 绘制
+            const step = parseFloat(document.getElementById('inp-step').value) || 2.0;
+            drawVisualization(thicknessData, params.resolution, minVal, maxVal, step);
+
+            // 3D 高亮
+            geoGroup.children.forEach(mesh => {
+                const idx = mesh.userData.layerIndex;
+                if(idx === idxU || idx === idxL) {
+                    mesh.material.opacity = 1.0; mesh.material.transparent = false;
+                } else if(idx > idxU && idx < idxL) {
+                    mesh.material.opacity = 0.3; mesh.material.transparent = true; // 中间层半透明
+                } else {
+                    mesh.material.opacity = 0.05; mesh.material.transparent = true; // 其他层几乎隐形
+                }
+            });
+        }
+
+        function getBlockAwareIntervalValue(layerU, layerL, idxU, idxL, worldX, worldZ) {
+            if(idxU >= idxL) return 0;
+            if(!faultModel) {
+                const gridX = (worldX / layerU.width + 0.5) * layerU.resolution;
+                const gridZ = (worldZ / layerU.depth + 0.5) * layerU.resolution;
+                const col = Math.round(gridX), row = Math.round(gridZ);
+                const idx = row * layerU.count + col;
+                return layerU.botY[idx] - layerL.topY[idx];
+            }
+
+            const probe = { x: worldX, y: 0, z: worldZ };
+            const distance = getFaultSignedDistance(faultModel, probe);
+            if(Math.abs(distance) < faultModel.damageWidth * 0.5) return NaN;
+
+            const side = getFaultSignedValue(faultModel, probe) >= 0 ? 'hanging' : 'footwall';
+            const block = getBlockCandidates().find(b => b.side === side);
+            if(!block) return NaN;
+
+            const restoredX = worldX - block.transform.x;
+            const restoredZ = worldZ - block.transform.z;
+            const restoredProbe = { x: restoredX, y: probe.y - block.transform.y, z: restoredZ };
+            if(!isPointOnBlockSide(faultModel, restoredProbe, side)) return NaN;
+
+            const upperBot = getInterpolatedHeight(layerU.botY, restoredX, restoredZ, layerU.width, layerU.depth, layerU.resolution);
+            const lowerTop = getInterpolatedHeight(layerL.topY, restoredX, restoredZ, layerL.width, layerL.depth, layerL.resolution);
+            if(upperBot === null || lowerTop === null) return NaN;
+            return upperBot - lowerTop;
+        }
+
+        function drawVisualization(data, resolution, min, max, contourStep) {
+            const scale = 8;
+            const width = resolution * scale;
+            canvas.width = width; canvas.height = width;
+            ctx.clearRect(0,0,width,width);
+
+            // Heatmap
+            const geoColor = d3.scaleSequential(d3.interpolateRdYlBu).domain([min, max]); // 红(薄)-蓝(厚)是常见工程色标，或者反过来
+            // 这里用 RdYlBu，红是Max还是Min取决于domain顺序。通常红色代表高值(厚)，蓝色低值(薄)，或者反之。
+            // 修正：interpolateRdYlBu 0是红，1是蓝。我们将 domain([min, max]) -> min对应红，max对应蓝。
+            
+            const pixelW = width / resolution;
+            for(let y=0; y<resolution; y++){
+                for(let x=0; x<resolution; x++){
+                    // 数据是行优先
+                    const val = data[y*(resolution+1) + x]; // 注意：grid数据大小是 resolution+1
+                    ctx.fillStyle = Number.isFinite(val) ? geoColor(val) : '#111';
+                    ctx.fillRect(x * pixelW, y * pixelW, pixelW+1, pixelW+1);
+                }
+            }
+
+            // Contours
+            // D3 contours 需要输入 dimensions = [resolution+1, resolution+1]
+            const contours = d3.contours()
+                .size([resolution+1, resolution+1])
+                .thresholds(d3.range(Math.floor(min), Math.ceil(max), contourStep))
+                (Array.from(data, v => Number.isFinite(v) ? v : min));
+
+            ctx.save();
+            ctx.scale(scale * (resolution/(resolution+1)), scale * (resolution/(resolution+1))); // 修正比例
+            ctx.lineWidth = 1.5 / scale;
+            ctx.strokeStyle = "rgba(255,255,255,0.7)";
+            const path = d3.geoPath(null, ctx);
+            contours.forEach(g => { ctx.beginPath(); path(g); ctx.stroke(); });
+            ctx.restore();
+
+            // Labels
+            labelsContainer.innerHTML = '';
+            const pathGen = d3.geoPath();
+            contours.forEach(g => {
+                if(g.coordinates.length===0) return;
+                const c = pathGen.centroid(g);
+                const l = (c[0]/(resolution+1))*100;
+                const t = (c[1]/(resolution+1))*100;
+                if(!isNaN(l) && !isNaN(t)) {
+                    const div = document.createElement('div');
+                    div.className = 'contour-label';
+                    div.innerText = g.value.toFixed(1);
+                    div.style.left = l + '%';
+                    div.style.top = t + '%';
+                    labelsContainer.appendChild(div);
+                }
+            });
+        }
+
+        // 导出
+        function roundValue(value, digits = 4) {
+            const n = Number(value);
+            if(!Number.isFinite(n)) return null;
+            const scale = Math.pow(10, digits);
+            return Math.round(n * scale) / scale;
+        }
+
+        const EXPORT_HAN_PATTERN = /\p{Script=Han}/u;
+
+        function decodeExportUnicodeEscapes(value) {
+            return String(value ?? '').replace(/\\u([0-9a-fA-F]{4})/g, (_, code) =>
+                String.fromCharCode(Number.parseInt(code, 16))
+            );
+        }
+
+        function findCjkExportIssue(filename, content) {
+            const decodedFilename = decodeExportUnicodeEscapes(filename);
+            const filenameMatch = decodedFilename.match(EXPORT_HAN_PATTERN);
+            if (filenameMatch) {
+                return { line: 0, character: filenameMatch[0], excerpt: decodedFilename };
+            }
+
+            const lines = String(content ?? '').split(/\r?\n/);
+            for (let index = 0; index < lines.length; index += 1) {
+                const decodedLine = decodeExportUnicodeEscapes(lines[index]);
+                const match = decodedLine.match(EXPORT_HAN_PATTERN);
+                if (match) {
+                    return {
+                        line: index + 1,
+                        character: match[0],
+                        excerpt: decodedLine.trim().slice(0, 160) || match[0]
+                    };
+                }
+            }
+            return null;
+        }
+
+        function assertEnglishExport(filename, content) {
+            const issue = findCjkExportIssue(filename, content);
+            if (!issue) return;
+            const location = issue.line === 0 ? 'filename' : 'line ' + issue.line;
+            const message = 'Export blocked: "' + filename + '" contains CJK text at ' + location + ': ' + issue.excerpt;
+            if (typeof alert === 'function') alert(message);
+            throw new Error(message);
+        }
+
+        function downloadJson(filename, data) {
+            assertEnglishExport(filename, JSON.stringify(data, null, 2));
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        function csvValue(value) {
+            if(value == null) return '';
+            const text = String(value);
+            return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+        }
+
+        function toCsv(rows, fields) {
+            return [fields.join(','), ...rows.map(row => fields.map(field => csvValue(row[field])).join(','))].join('\n');
+        }
+
+        function downloadText(filename, text, type = 'text/plain') {
+            assertEnglishExport(filename, text);
+            const blob = new Blob([text], { type });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        function downloadFiles(files) {
+            files.forEach((file) => {
+                if (!file.buffer) assertEnglishExport(file.filename, file.content ?? '');
+            });
+            files.forEach((file, index) => {
+                setTimeout(() => downloadText(file.filename, file.content, file.type || 'text/plain'), index * 120);
+            });
+        }
+
+        function layerGridRows(layer, values, valueKey) {
+            const rows = [];
+            const count = layer.count;
+            for(let row = 0; row < count; row++) {
+                for(let col = 0; col < count; col++) {
+                    const idx = row * count + col;
+                    rows.push({
+                        gridX: col,
+                        gridY: row,
+                        x: roundValue((col / layer.resolution - 0.5) * layer.width, 3),
+                        y: roundValue(values[idx], 3),
+                        z: roundValue((row / layer.resolution - 0.5) * layer.depth, 3),
+                        [valueKey]: roundValue(values[idx], 3)
+                    });
+                }
+            }
+            return rows;
+        }
+
+        function meshHasFaceTag(meshData, faceTag) {
+            if(!meshData?.indices?.length) return false;
+            for(let i = 0; i < meshData.indices.length; i += 3) {
+                const tag = meshData.faceTags?.[Math.floor(i / 3)] || 'surface';
+                if(tag === faceTag) return true;
+            }
+            return false;
+        }
+
+        function buildSurfaceObj() {
+            const lines = [
+                '# MineVis layered geological surfaces',
+                '# Object names are mesh_part_id values used by layered_geological_surfaces.csv',
+                '# Geometry is exported from the final fault-cut layer mesh. A cut surface keeps the same surface_id and may contain disconnected triangle patches.'
+            ];
+            let vertexOffset = 1;
+
+            const appendTriangleSurface = (meshData, meshPartId, faceTag) => {
+                const triangles = [];
+                for(let i = 0; i < meshData.indices.length; i += 3) {
+                    const tag = meshData.faceTags?.[Math.floor(i / 3)] || 'surface';
+                    if(tag !== faceTag) continue;
+                    triangles.push([
+                        meshData.vertices[meshData.indices[i]],
+                        meshData.vertices[meshData.indices[i + 1]],
+                        meshData.vertices[meshData.indices[i + 2]]
+                    ]);
+                }
+                if(triangles.length === 0) return false;
+                lines.push(`o ${meshPartId}`);
+                triangles.forEach((tri) => {
+                    tri.forEach((p) => lines.push(`v ${roundValue(p.x, 4)} ${roundValue(p.y, 4)} ${roundValue(p.z, 4)}`));
+                    lines.push(`f ${vertexOffset} ${vertexOffset + 1} ${vertexOffset + 2}`);
+                    vertexOffset += 3;
+                });
+                return true;
+            };
+
+            const appendGridSurfaceFallback = (layer, values, meshPartId) => {
+                const count = layer.count;
+                lines.push(`o ${meshPartId}`);
+                for(let row = 0; row < count; row++) {
+                    for(let col = 0; col < count; col++) {
+                        const idx = row * count + col;
+                        const x = roundValue((col / layer.resolution - 0.5) * layer.width, 4);
+                        const y = roundValue(values[idx], 4);
+                        const z = roundValue((row / layer.resolution - 0.5) * layer.depth, 4);
+                        lines.push(`v ${x} ${y} ${z}`);
+                    }
+                }
+                for(let row = 0; row < count - 1; row++) {
+                    for(let col = 0; col < count - 1; col++) {
+                        const a = vertexOffset + row * count + col;
+                        lines.push(`f ${a} ${a + 1} ${a + count + 1} ${a + count}`);
+                    }
+                }
+                vertexOffset += count * count;
+            };
+
+            layersDataStore.forEach((layer) => {
+                const model = layerModels.find((entry) => entry.layer?.index === layer.index);
+                const meshData = model?.meshData;
+                const wroteRoof = meshData ? appendTriangleSurface(meshData, `SURF_${layer.index}_roof`, 'roof') : false;
+                const wroteFloor = meshData ? appendTriangleSurface(meshData, `SURF_${layer.index}_floor`, 'floor') : false;
+                if(meshData) {
+                    appendTriangleSurface(meshData, `SURF_${layer.index}_side`, 'side');
+                    appendTriangleSurface(meshData, `SURF_${layer.index}_fault_cut`, 'fault_cut');
+                }
+                if(!wroteRoof) appendGridSurfaceFallback(layer, layer.topY, `SURF_${layer.index}_roof`);
+                if(!wroteFloor) appendGridSurfaceFallback(layer, layer.botY, `SURF_${layer.index}_floor`);
+            });
+            return lines.join('\n');
+        }
+
+        function buildLayeredBodyFiles() {
+            const unitRows = layersDataStore.map((layer) => ({
+                body_id: `GB_${layer.index}`,
+                unit_id: `GU_${layer.index}`,
+                unit_name: layer.name,
+                unit_type: layer.unitRole || layer.lithoId,
+                layer_order: layer.index,
+                roof_surface_id: `SURF_${layer.index}_roof`,
+                floor_surface_id: `SURF_${layer.index}_floor`,
+                color: `#${Number(getLithoColor(layer.lithoId) || 0x999999).toString(16).padStart(6, '0')}`,
+                confidence: 1
+            }));
+            const surfaceRows = layersDataStore.flatMap((layer) => {
+                const model = layerModels.find((entry) => entry.layer?.index === layer.index);
+                const meshData = model?.meshData;
+                const rows = [
+                    { surface_id: `SURF_${layer.index}_roof`, mesh_part_id: `SURF_${layer.index}_roof`, body_id: `GB_${layer.index}`, unit_id: `GU_${layer.index}`, surface_type: 'roof', layer_order: layer.index, attribute_name: 'horizonElevation', confidence: 1 },
+                    { surface_id: `SURF_${layer.index}_floor`, mesh_part_id: `SURF_${layer.index}_floor`, body_id: `GB_${layer.index}`, unit_id: `GU_${layer.index}`, surface_type: 'floor', layer_order: layer.index, attribute_name: 'horizonElevation', confidence: 1 }
+                ];
+                if(meshHasFaceTag(meshData, 'side')) {
+                    rows.push({ surface_id: `SURF_${layer.index}_side`, mesh_part_id: `SURF_${layer.index}_side`, body_id: `GB_${layer.index}`, unit_id: `GU_${layer.index}`, surface_type: 'side', layer_order: layer.index, attribute_name: 'closure', confidence: 1 });
+                }
+                if(meshHasFaceTag(meshData, 'fault_cut')) {
+                    rows.push({ surface_id: `SURF_${layer.index}_fault_cut`, mesh_part_id: `SURF_${layer.index}_fault_cut`, body_id: `GB_${layer.index}`, unit_id: `GU_${layer.index}`, surface_type: 'fault_cut', layer_order: layer.index, attribute_name: 'faultClosure', confidence: 1 });
+                }
+                return rows;
+            });
+            const boundaryRelationRows = unitRows.flatMap((row, index) => [
+                { relation_id: `R_${index + 1}_ROOF`, relation_type: 'roof_of', source_type: 'surface', source_id: row.roof_surface_id, target_type: 'body', target_id: row.body_id, description: 'Roof surface defines layered body top boundary.' },
+                { relation_id: `R_${index + 1}_FLOOR`, relation_type: 'floor_of', source_type: 'surface', source_id: row.floor_surface_id, target_type: 'body', target_id: row.body_id, description: 'Floor surface defines layered body bottom boundary.' }
+            ]);
+            const faultRelationRows = unitRows.flatMap((row) => faultsDataStore.map((fault, index) => {
+                const structureId = fault.id || `FAULT_${index + 1}`;
+                return {
+                    relation_id: `R_${row.body_id}_${structureId}_CUT`,
+                    relation_type: 'cut_by',
+                    source_type: 'body',
+                    source_id: row.body_id,
+                    target_type: 'structure',
+                    target_id: structureId,
+                    description: 'Fault cuts and displaces this geological body. Surface ids remain stable after cutting.'
+                };
+            }));
+            const relationRows = [...boundaryRelationRows, ...faultRelationRows];
+            return [
+                { filename: 'layered_geological_surfaces.obj', content: buildSurfaceObj(), type: 'text/plain' },
+                { filename: 'layered_geological_units.csv', content: toCsv(unitRows, ['body_id','unit_id','unit_name','unit_type','layer_order','roof_surface_id','floor_surface_id','color','confidence']), type: 'text/csv' },
+                { filename: 'layered_geological_surfaces.csv', content: toCsv(surfaceRows, ['surface_id','mesh_part_id','body_id','unit_id','surface_type','layer_order','attribute_name','confidence']), type: 'text/csv' },
+                { filename: 'layered_geological_relations.csv', content: toCsv(relationRows, ['relation_id','relation_type','source_type','source_id','target_type','target_id','description']), type: 'text/csv' }
+            ];
+        }
+
+        function buildBoreholeFiles() {
+            const boreholeRows = boreholesData.map((hole) => ({
+                borehole_id: hole.id,
+                borehole_name: hole.id,
+                collar_x: roundValue(hole.collar?.x, 3),
+                collar_y: roundValue(hole.collar?.y, 3),
+                collar_z: roundValue(hole.collar?.z, 3),
+                total_depth: roundValue(hole.depth, 3),
+                status: 'planned'
+            }));
+            const trajectories = boreholesData.map((hole) => ({
+                boreholeId: hole.id,
+                points: hole.track.map((p) => ({ x: roundValue(p.x, 3), y: roundValue(p.y, 3), z: roundValue(p.z, 3), depth: roundValue(p.md, 3) }))
+            }));
+            const intervalRows = boreholesData.flatMap((hole) => [
+                ...(hole.litho || []).map((interval, index) => ({
+                    interval_id: `${hole.id}_INT_${String(index + 1).padStart(3, '0')}`,
+                    borehole_id: hole.id,
+                    depth_from: roundValue(interval.from, 3),
+                    depth_to: roundValue(interval.to, 3),
+                    lithology: interval.lithoId,
+                    grade: '',
+                    attribute_name: 'lithology',
+                    attribute_value: interval.lithoId,
+                    sample_id: `${hole.id}_INT_${String(index + 1).padStart(3, '0')}`
+                })),
+                ...(hole.faultIntersections || []).map((hit, index) => ({
+                    interval_id: `${hole.id}_FAULT_${String(index + 1).padStart(3, '0')}`,
+                    borehole_id: hole.id,
+                    depth_from: roundValue(hit.md, 3),
+                    depth_to: roundValue(hit.md, 3),
+                    lithology: 'fault_zone',
+                    grade: '',
+                    attribute_name: 'faultIntersection',
+                    attribute_value: hit.type,
+                    sample_id: `${hole.id}_FAULT_${String(index + 1).padStart(3, '0')}`
+                }))
+            ]);
+            return [
+                { filename: 'boreholes.csv', content: toCsv(boreholeRows, ['borehole_id','borehole_name','collar_x','collar_y','collar_z','total_depth','status']), type: 'text/csv' },
+                { filename: 'borehole_trajectories.json', content: JSON.stringify(trajectories, null, 2), type: 'application/json' },
+                { filename: 'borehole_intervals.csv', content: toCsv(intervalRows, ['interval_id','borehole_id','depth_from','depth_to','lithology','grade','attribute_name','attribute_value','sample_id']), type: 'text/csv' }
+            ];
+        }
+
+        function minevisExportMetadata(kind) {
+            return {
+                createdBy: 'MineVis DataGenerator GeoMesh',
+                sourceTool: 'GeoMesh/GeoCoal.html',
+                exportKind: kind,
+                generatedAt: new Date().toISOString(),
+                model: 'coal_measure_cyclothem_v1',
+                parameters: {
+                    width: params.width,
+                    depth: params.depth,
+                    resolution: params.resolution,
+                    seed: params.seed,
+                    cycleCount: params.cycleCount,
+                    cycleThickness: params.cycleThickness,
+                    coalSeamContinuity: params.coalSeamContinuity,
+                    sandBodyRatio: params.sandBodyRatio,
+                    mudstoneBackgroundRatio: params.mudstoneBackgroundRatio,
+                    marineInfluence: params.marineInfluence,
+                    coalPartingProbability: params.coalPartingProbability,
+                    paleoflowAzimuth: params.paleoflowAzimuth,
+                    regionalDipDeg: params.regionalDipDeg,
+                    faultEnabled: params.faultEnabled,
+                    faultSense: params.faultSense,
+                    faultStrikeDeg: params.faultStrikeDeg,
+                    faultThrow: params.faultThrow,
+                    faultDipDeg: params.faultDipDeg,
+                    faultDamageWidth: params.faultDamageWidth
+                }
+            };
+        }
+
+        function buildMineVisGeologicalBodyDataset() {
+            const units = layersDataStore.map((layer) => ({
+                id: `GU_${layer.index}`,
+                geologicalUnitId: `GU_${layer.index}`,
+                geologicalUnitName: layer.name,
+                geologicalUnitType: layer.unitRole || layer.lithoId,
+                lithology: layer.lithoId,
+                cycleIndex: layer.cycleIndex,
+                depositionalUnit: layer.depositionalUnit
+            }));
+            const bodies = layersDataStore.map((layer) => ({
+                bodyId: `GB_${layer.index}`,
+                bodyName: layer.name,
+                geologicalUnitId: `GU_${layer.index}`,
+                geologicalUnitType: layer.unitRole || layer.lithoId,
+                lithology: layer.lithoId,
+                roofSurface: `SURF_${layer.index}_roof`,
+                floorSurface: `SURF_${layer.index}_floor`
+            }));
+            const surfaces = layersDataStore.flatMap((layer) => [
+                {
+                    surfaceId: `SURF_${layer.index}_roof`,
+                    surfaceType: 'roof',
+                    geologicalUnitId: `GU_${layer.index}`,
+                    layerOrder: layer.index,
+                    grid: {
+                        width: layer.width,
+                        depth: layer.depth,
+                        resolution: layer.resolution,
+                        count: layer.count,
+                        valueRole: 'horizonElevation',
+                        points: layerGridRows(layer, layer.topY, 'horizonElevation')
+                    }
+                },
+                {
+                    surfaceId: `SURF_${layer.index}_floor`,
+                    surfaceType: 'floor',
+                    geologicalUnitId: `GU_${layer.index}`,
+                    layerOrder: layer.index,
+                    grid: {
+                        width: layer.width,
+                        depth: layer.depth,
+                        resolution: layer.resolution,
+                        count: layer.count,
+                        valueRole: 'horizonElevation',
+                        points: layerGridRows(layer, layer.botY, 'horizonElevation')
+                    }
+                }
+            ]);
+            const attributes = layersDataStore.map((layer) => {
+                const thicknessValues = Array.from(layer.topY, (top, idx) => top - layer.botY[idx]).filter(Number.isFinite);
+                const min = Math.min(...thicknessValues);
+                const max = Math.max(...thicknessValues);
+                const mean = thicknessValues.reduce((sum, value) => sum + value, 0) / Math.max(thicknessValues.length, 1);
+                return {
+                    elementId: `GB_${layer.index}`,
+                    attributeName: 'thickness',
+                    attributeValue: roundValue(mean, 3),
+                    min: roundValue(min, 3),
+                    max: roundValue(max, 3),
+                    unit: 'm'
+                };
+            });
+            const relations = bodies.flatMap((body) => [
+                { relationType: 'bodyHasRoofSurface', bodyId: body.bodyId, surfaceId: body.roofSurface },
+                { relationType: 'bodyHasFloorSurface', bodyId: body.bodyId, surfaceId: body.floorSurface }
+            ]);
+            return {
+                datasetType: 'GeologicalBody',
+                semanticClass: 'GeologicalBody',
+                version: '1.0',
+                representationProfile: 'layered-surface',
+                metadata: minevisExportMetadata('geological-body'),
+                units,
+                bodies,
+                surfaces,
+                attributes,
+                relations
+            };
+        }
+
+        function buildMineVisBoreholeDataset() {
+            const boreholes = boreholesData.map((hole) => ({
+                boreholeId: hole.id,
+                boreholeName: hole.id,
+                collar: hole.collar,
+                trajectory: hole.track.map((p) => ({ md: p.md, x: roundValue(p.x, 3), y: roundValue(p.y, 3), z: roundValue(p.z, 3) })),
+                depth: roundValue(hole.depth, 3)
+            }));
+            const intervals = boreholesData.flatMap((hole) => (hole.litho || []).map((interval, index) => ({
+                boreholeId: hole.id,
+                sampleId: `${hole.id}_INT_${String(index + 1).padStart(3, '0')}`,
+                depthFrom: roundValue(interval.from, 3),
+                depthTo: roundValue(interval.to, 3),
+                lithology: interval.lithoId,
+                attributeName: 'lithology',
+                attributeValue: interval.lithoId
+            })));
+            const faultIntervals = boreholesData.flatMap((hole) => (hole.faultIntersections || []).map((hit, index) => ({
+                boreholeId: hole.id,
+                sampleId: `${hole.id}_FAULT_${String(index + 1).padStart(3, '0')}`,
+                depthFrom: roundValue(hit.md, 3),
+                depthTo: roundValue(hit.md, 3),
+                lithology: 'fault_zone',
+                structureId: hit.faultId,
+                attributeName: 'faultIntersection',
+                attributeValue: hit.type
+            })));
+            return {
+                datasetType: 'Borehole',
+                semanticClass: 'Borehole',
+                version: '1.0',
+                metadata: minevisExportMetadata('borehole'),
+                boreholes,
+                intervals: [...intervals, ...faultIntervals],
+                samples: intervals
+            };
+        }
+
+        function buildMineVisGeologicalStructureDataset() {
+            const structures = faultsDataStore.map((fault, index) => ({
+                structureId: fault.id || `FAULT_${index + 1}`,
+                structureName: fault.id || `Fault ${index + 1}`,
+                structureType: 'fault',
+                strike: fault.strikeDeg,
+                dip: fault.dipDeg,
+                throw: fault.throw,
+                width: fault.damageWidth,
+                confidence: 1,
+                riskLevel: 'structural_zone',
+                geometry: {
+                    form: 'parametricFaultPlane',
+                    center: { x: fault.centerX ?? 0, y: 0, z: fault.centerZ ?? 0 },
+                    length: fault.length,
+                    strikeDeg: fault.strikeDeg,
+                    dipDeg: fault.dipDeg,
+                    slipVector: fault.slipVector
+                }
+            }));
+            return {
+                datasetType: 'GeologicalStructure',
+                semanticClass: 'GeologicalStructure',
+                version: '1.0',
+                metadata: minevisExportMetadata('geological-structure'),
+                structures,
+                relations: layersDataStore.flatMap((layer) => structures.map((structure) => ({
+                    relationType: 'structureCutsGeologicalBody',
+                    structureId: structure.structureId,
+                    bodyId: `GB_${layer.index}`
+                })))
+            };
+        }
+
+        function buildMineVisCoalSeamAttributeModel() {
+            const idxU = parseInt(selUpper.value);
+            const idxL = parseInt(selLower.value);
+            if(isNaN(idxU) || isNaN(idxL) || idxU >= idxL) return null;
+            const layerU = layersDataStore[idxU];
+            const layerL = layersDataStore[idxL];
+            const elements = [];
+            for(let row = 0; row < layerU.count; row++) {
+                for(let col = 0; col < layerU.count; col++) {
+                    const x = (col / layerU.resolution - 0.5) * layerU.width;
+                    const z = (row / layerU.resolution - 0.5) * layerU.depth;
+                    let thickness = getBlockAwareIntervalValue(layerU, layerL, idxU, idxL, x, z);
+                    if(Number.isFinite(thickness) && thickness < 0) thickness = 0;
+                    elements.push({
+                        elementId: `CELL_${row}_${col}`,
+                        seamId: `${idxU}_${idxL}`,
+                        surfaceId: `${layerU.index}_${layerL.index}`,
+                        gridX: col,
+                        gridY: row,
+                        x: roundValue(x, 3),
+                        y: roundValue((layerU.botY[row * layerU.count + col] + layerL.topY[row * layerL.count + col]) * 0.5, 3),
+                        z: roundValue(z, 3),
+                        thickness: Number.isFinite(thickness) ? roundValue(thickness, 3) : null,
+                        confidence: Number.isFinite(thickness) ? 1 : 0,
+                        category: Number.isFinite(thickness) ? 'valid' : 'fault_damage_zone'
+                    });
+                }
+            }
+            return {
+                datasetType: 'GeologicalAttributeModel',
+                semanticClass: 'GeologicalAttributeModel',
+                version: '1.0',
+                representationProfile: 'coal-seam-attribute',
+                metadata: {
+                    ...minevisExportMetadata('coal-seam-attribute-model'),
+                    upperLayer: layerU.name,
+                    lowerLayer: layerL.name
+                },
+                attributes: [
+                    { attributeName: 'thickness', unit: 'm', valueType: 'number' },
+                    { attributeName: 'confidence', unit: 'ratio', valueType: 'number' }
+                ],
+                elements
+            };
+        }
+
+        function buildStructureObj() {
+            const lines = ['# MineVis geological structures'];
+            let vertexOffset = 1;
+            faultsDataStore.forEach((fault, index) => {
+                const id = fault.id || `FAULT_${index + 1}`;
+                const centerX = fault.centerX ?? 0;
+                const centerZ = fault.centerZ ?? 0;
+                const length = fault.length || Math.max(params.width, params.depth);
+                const height = Math.max(params.cycleThickness * params.cycleCount, Math.abs(fault.throw || 20), 20);
+                const strike = (fault.strikeDeg || 0) * Math.PI / 180;
+                const dx = Math.cos(strike) * length * 0.5;
+                const dz = Math.sin(strike) * length * 0.5;
+                lines.push(`o ${id}`);
+                lines.push(`v ${roundValue(centerX - dx, 3)} ${roundValue(-height, 3)} ${roundValue(centerZ - dz, 3)}`);
+                lines.push(`v ${roundValue(centerX + dx, 3)} ${roundValue(-height, 3)} ${roundValue(centerZ + dz, 3)}`);
+                lines.push(`v ${roundValue(centerX + dx, 3)} ${roundValue(height, 3)} ${roundValue(centerZ + dz, 3)}`);
+                lines.push(`v ${roundValue(centerX - dx, 3)} ${roundValue(height, 3)} ${roundValue(centerZ - dz, 3)}`);
+                lines.push(`f ${vertexOffset} ${vertexOffset + 1} ${vertexOffset + 2} ${vertexOffset + 3}`);
+                vertexOffset += 4;
+            });
+            return lines.join('\n');
+        }
+
+        function buildStructureFiles() {
+            const structureRows = faultsDataStore.map((fault, index) => {
+                const id = fault.id || `FAULT_${index + 1}`;
+                return {
+                    structure_id: id,
+                    structure_name: id,
+                    structure_type: 'fault',
+                    mesh_part_id: id,
+                    strike: fault.strikeDeg,
+                    dip: fault.dipDeg,
+                    throw: fault.throw,
+                    width: fault.damageWidth,
+                    risk_level: 'structural_zone',
+                    confidence: 1
+                };
+            });
+            const relationRows = layersDataStore.flatMap((layer) => structureRows.map((structure, index) => ({
+                relation_id: `R_${structure.structure_id}_${layer.index}_${index}`,
+                relation_type: 'cuts',
+                structure_id: structure.structure_id,
+                target_type: 'body',
+                target_id: `GB_${layer.index}`
+            })));
+            return [
+                { filename: 'geological_structures.obj', content: buildStructureObj(), type: 'text/plain' },
+                { filename: 'geological_structures.csv', content: toCsv(structureRows, ['structure_id','structure_name','structure_type','mesh_part_id','strike','dip','throw','width','risk_level','confidence']), type: 'text/csv' },
+                { filename: 'geological_structure_relations.csv', content: toCsv(relationRows, ['relation_id','relation_type','structure_id','target_type','target_id']), type: 'text/csv' }
+            ];
+        }
+
+        function buildCoalSeamAttributeCsv() {
+            const dataset = buildMineVisCoalSeamAttributeModel();
+            if(!dataset) return null;
+            const rows = dataset.elements.map((element) => ({
+                element_id: element.elementId,
+                seam_id: element.seamId,
+                x: element.x,
+                y: element.y,
+                z: element.z,
+                elevation: element.y,
+                thickness: element.thickness,
+                ash: '',
+                sulfur: '',
+                calorific_value: '',
+                gas_content: '',
+                water_content: '',
+                confidence: element.confidence
+            }));
+            return toCsv(rows, ['element_id','seam_id','x','y','z','elevation','thickness','ash','sulfur','calorific_value','gas_content','water_content','confidence']);
+        }
+
+        document.getElementById('btn-export-mv-body').addEventListener('click', () => {
+            if(layersDataStore.length === 0) { alert('No geological body data.'); return; }
+            downloadFiles(buildLayeredBodyFiles());
+        });
+        document.getElementById('btn-export-mv-borehole').addEventListener('click', () => {
+            if(boreholesData.length === 0) { alert('Generate boreholes first.'); return; }
+            downloadFiles(buildBoreholeFiles());
+        });
+        document.getElementById('btn-export-mv-structure').addEventListener('click', () => {
+            if(faultsDataStore.length === 0) { alert('No fault / geological structure data.'); return; }
+            downloadFiles(buildStructureFiles());
+        });
+        document.getElementById('btn-export-mv-attribute').addEventListener('click', () => {
+            const csv = buildCoalSeamAttributeCsv();
+            if(!csv) { alert('Choose a valid roof/floor interval first.'); return; }
+            downloadText('coal_seam_attribute_grid.csv', csv, 'text/csv');
+        });
+        document.getElementById('btn-export-mv-legacy').addEventListener('click', () => {
+            if(layersDataStore.length) downloadJson('minevis_geological_body_layered.json', buildMineVisGeologicalBodyDataset());
+            if(boreholesData.length) setTimeout(() => downloadJson('minevis_boreholes.json', buildMineVisBoreholeDataset()), 120);
+            if(faultsDataStore.length) setTimeout(() => downloadJson('minevis_geological_structures.json', buildMineVisGeologicalStructureDataset()), 240);
+            const dataset = buildMineVisCoalSeamAttributeModel();
+            if(dataset) setTimeout(() => downloadJson('minevis_coal_seam_attribute_model.json', dataset), 360);
+        });
+
+        document.getElementById('btn-export-bh').addEventListener('click', () => {
+            if(boreholesData.length===0) { alert('无钻孔数据'); return; }
+            downloadJson('boreholes.json', {
+                project: "Mine_Demo",
+                date: new Date(),
+                stratigraphyParameters: {
+                    model: 'coal_measure_cyclothem_v1',
+                    seed: params.seed,
+                    cycleCount: params.cycleCount,
+                    cycleThickness: params.cycleThickness,
+                    coalSeamContinuity: params.coalSeamContinuity,
+                    sandBodyRatio: params.sandBodyRatio,
+                    mudstoneBackgroundRatio: params.mudstoneBackgroundRatio,
+                    marineInfluence: params.marineInfluence,
+                    coalPartingProbability: params.coalPartingProbability,
+                    paleoflowAzimuth: params.paleoflowAzimuth,
+                    regionalDipDeg: params.regionalDipDeg
+                },
+                faultParameters: {
+                    enabled: params.faultEnabled,
+                    seed: params.seed,
+                    sense: params.faultSense,
+                    strikeDeg: params.faultStrikeDeg,
+                    throw: params.faultThrow,
+                    dipDeg: params.faultDipDeg,
+                    damageWidth: params.faultDamageWidth
+                },
+                faults: faultsDataStore,
+                boreholes: boreholesData
+            });
+        });
+
+        // 绑定按钮事件
+        document.getElementById('btn-gen-bh').addEventListener('click', generateBoreholes);
+        document.getElementById('btn-calc').addEventListener('click', calculateInterval);
+
+        // ===========================================
+        // 6. 整合 GUI 控制面板 (lil-gui)
+        // ===========================================
+        const gui = new GUI({ title: '参数控制 (Parameters)' });
+        
+        const f_dims = gui.addFolder('1. 矿区尺度 (Dimensions)');
+        f_dims.add(params, 'width', 200, 1000, 50).name('宽度 Width (m)');
+        f_dims.add(params, 'depth', 200, 1000, 50).name('长度 Depth (m)');
+        f_dims.add(params, 'resolution', 30, 150, 1).name('网格精度 Grid');
+
+        const f_geo = gui.addFolder('2. 煤系旋回 (Coal Cyclothems)');
+        f_geo.add(params, 'seed', 1, 99999999, 1).name('随机种子 Seed').onFinishChange(generateGeology);
+        f_geo.add(params, 'cycleCount', 1, 7, 1).name('煤系旋回数').onFinishChange(generateGeology);
+        f_geo.add(params, 'cycleThickness', 18, 80, 1).name('旋回平均厚度 (m)').onFinishChange(generateGeology);
+        f_geo.add(params, 'coalSeamContinuity', 0.1, 1.0, 0.01).name('煤层连续性').onFinishChange(generateGeology);
+        f_geo.add(params, 'sandBodyRatio', 0.05, 0.95, 0.01).name('砂体发育程度').onFinishChange(generateGeology);
+        f_geo.add(params, 'mudstoneBackgroundRatio', 0.0, 1.0, 0.01).name('泥质背景比例').onFinishChange(generateGeology);
+        f_geo.add(params, 'marineInfluence', 0.0, 1.0, 0.01).name('海侵/灰岩影响').onFinishChange(generateGeology);
+        f_geo.add(params, 'coalPartingProbability', 0.0, 1.0, 0.01).name('煤层夹矸概率').onFinishChange(generateGeology);
+        f_geo.add(params, 'thicknessVar', 0.0, 1.0, 0.01).name('厚度不均系数').onFinishChange(generateGeology);
+        
+        const f_morph = gui.addFolder('3. 构造形态 (Morphology)');
+        f_morph.add(params, 'roughness', 0.005, 0.05, 0.001).name('沉积起伏频率').onFinishChange(generateGeology);
+        f_morph.add(params, 'amplitude', 0, 80, 1).name('区域起伏高度 (m)').onFinishChange(generateGeology);
+        f_morph.add(params, 'paleoflowAzimuth', 0, 180, 1).name('古水流方向').onFinishChange(generateGeology);
+        f_morph.add(params, 'regionalDipDeg', 0, 8, 0.1).name('区域倾角').onFinishChange(generateGeology);
+
+        const f_fault = gui.addFolder('4. 断层构造 (Faults)');
+        f_fault.add(params, 'faultEnabled').name('启用断层').onChange(generateGeology);
+        f_fault.add(params, 'faultSense', { '正断层 Normal': 'normal', '逆断层 Reverse': 'reverse' }).name('断层性质').onChange(generateGeology);
+        f_fault.add(params, 'faultStrikeDeg', 0, 180, 1).name('断层走向').onFinishChange(generateGeology);
+        f_fault.add(params, 'faultThrow', 0, 80, 1).name('平均落差 (m)').onFinishChange(generateGeology);
+        f_fault.add(params, 'faultDipDeg', 35, 85, 1).name('断层倾角').onFinishChange(generateGeology);
+        f_fault.add(params, 'faultDamageWidth', 2, 40, 1).name('破碎带宽度 (m)').onFinishChange(generateGeology);
+        f_fault.add(params, 'showFaultPlanes').name('显示断层面').onChange(updateFaultVisibility);
+        
+        const f_view = gui.addFolder('5. 显示 (Display)');
+        f_view.add(params, 'flatShading').name('硬表面风格').onChange(generateGeology);
+        f_view.add(params, 'opacity', 0.1, 1.0).name('地层不透明度').onChange(v => {
+            geoGroup.children.forEach(m => {
+                m.material.opacity = v;
+                m.material.transparent = v < 0.999;
+                m.material.depthWrite = v >= 0.999;
+                m.material.needsUpdate = true;
+            });
+        });
+
+        gui.add(params, 'regenerate').name('⚡ 重新生成地质模型');
+
+        // 窗口适配
+        window.addEventListener('resize', () => {
+            camera.aspect = container3D.clientWidth / container3D.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container3D.clientWidth, container3D.clientHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // 启动
+        generateGeology();
+        animate();
+
+    </script>
+</body>
+</html>

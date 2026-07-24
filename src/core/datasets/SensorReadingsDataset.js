@@ -1,3 +1,5 @@
+import { BaseSemanticDataset } from '../semantics/BaseSemanticDataset.js';
+
 const toTimestamp = (value) => {
   if (value instanceof Date) return value.getTime();
   const numeric = Number(value);
@@ -28,7 +30,7 @@ function normalizeReading(rawReading) {
   };
 }
 
-export class SensorReadingsDataset {
+export class SensorReadingsDataset extends BaseSemanticDataset {
   constructor({
     readings = [],
     source = null,
@@ -42,14 +44,17 @@ export class SensorReadingsDataset {
     validation = null,
     adaptorResults = null
   } = {}) {
-    this.type = 'SensorReadingsDataset';
-    this.contract = contract;
-    this.semanticClass = contract?.class ?? 'SensorReadings';
-    this.templates = templates ?? {};
-    this.roleMapping = roleMapping;
-    this.validation = validation ?? { valid: true, warnings: [], errors: [], summary: {} };
-    this.adaptorResults = adaptorResults;
-    this.source = source ?? { readingsPath };
+    super({
+      type: 'SensorReadingsDataset',
+      semanticClass: contract?.class ?? 'SensorReadings',
+      taxonomyId: 'monitoring-sensing',
+      contract,
+      templates,
+      roleMapping,
+      validation,
+      adaptorResults,
+      source: source ?? { readingsPath }
+    });
     this.readingsPath = readingsPath;
     this.variable = variable;
     this.unit = unit;

@@ -1,3 +1,5 @@
+import { BaseSemanticDataset } from '../semantics/BaseSemanticDataset.js';
+
 const toPoint = (value = {}) => {
   if (Array.isArray(value)) {
     return { x: Number(value[0]) || 0, y: Number(value[1]) || 0, z: Number(value[2]) || 0 };
@@ -47,7 +49,7 @@ function normalizePerson(person, index) {
   };
 }
 
-export class PeopleDataset {
+export class PeopleDataset extends BaseSemanticDataset {
   constructor({
     people = [],
     source = null,
@@ -58,14 +60,17 @@ export class PeopleDataset {
     validation = null,
     adaptorResults = null
   } = {}) {
-    this.type = 'PeopleDataset';
-    this.contract = contract;
-    this.semanticClass = contract?.class ?? 'People';
-    this.templates = templates ?? {};
-    this.roleMapping = roleMapping;
-    this.validation = validation ?? { valid: true, warnings: [], errors: [], summary: {} };
-    this.adaptorResults = adaptorResults;
-    this.source = source ?? { peoplePath };
+    super({
+      type: 'PeopleDataset',
+      semanticClass: contract?.class ?? 'People',
+      taxonomyId: 'people-vehicles',
+      contract,
+      templates,
+      roleMapping,
+      validation,
+      adaptorResults,
+      source: source ?? { peoplePath }
+    });
     this.peoplePath = peoplePath;
     this.people = people.map(normalizePerson);
     this.personMap = new Map(this.people.map((person) => [person.personId, person]));

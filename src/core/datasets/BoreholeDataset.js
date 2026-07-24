@@ -1,3 +1,5 @@
+import { BaseSemanticDataset } from '../semantics/BaseSemanticDataset.js';
+
 const asArray = (value) => (Array.isArray(value) ? value : value == null ? [] : [value]);
 
 function toPoint(value = {}) {
@@ -34,7 +36,7 @@ function normalizeInterval(row = {}, index = 0) {
   };
 }
 
-export class BoreholeDataset {
+export class BoreholeDataset extends BaseSemanticDataset {
   constructor({
     boreholes = [],
     intervals = [],
@@ -48,16 +50,19 @@ export class BoreholeDataset {
     validation = null,
     adaptorResults = null
   } = {}) {
-    this.type = 'BoreholeDataset';
-    this.contract = contract;
-    this.semanticClass = contract?.class ?? 'Borehole';
+    super({
+      type: 'BoreholeDataset',
+      semanticClass: contract?.class ?? 'Borehole',
+      taxonomyId: 'geology-resources',
+      contract,
+      templates,
+      roleMapping,
+      validation,
+      adaptorResults,
+      source,
+      metadata
+    });
     this.taxonomyClass = contract?.taxonomyClass ?? 'Geology & Resource Datasets';
-    this.templates = templates ?? {};
-    this.roleMapping = roleMapping;
-    this.validation = validation ?? { valid: true, warnings: [], errors: [], summary: {} };
-    this.adaptorResults = adaptorResults;
-    this.source = source;
-    this.metadata = metadata;
     this.boreholes = asArray(boreholes).map(normalizeBorehole);
     this.intervals = asArray(intervals).map(normalizeInterval);
     this.samples = asArray(samples).map(normalizeInterval);

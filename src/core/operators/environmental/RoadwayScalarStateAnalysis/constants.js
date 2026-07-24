@@ -46,7 +46,13 @@ function defaultParamsFromPreset(preset) {
     colormap: preset.colormap,
     toleranceMinutes: 60,
     showSensors: true,
-    chartMode: 'overlay',
+    chartPresentation: 'docked',
+    comparisonLayout: 'auto',
+    selectionMode: 'multiple',
+    maxComparedItems: 8,
+    chartAnchor: 'primary-selection',
+    worldChartScale: 1,
+    worldChartOcclusion: 'depth-aware',
     ...(preset.warningThreshold != null ? { warningThreshold: preset.warningThreshold } : {})
   };
 }

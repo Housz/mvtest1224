@@ -1,0 +1,36 @@
+.minevis-preview {
+  --preview-toolbar-height: 38px;
+  --preview-tab-height: 26px;
+  --preview-control-height: 24px;
+  --preview-icon-hit: 24px;
+  --preview-panel-padding: 6px;
+  --preview-section-padding: 5px;
+  --preview-gap: 4px;
+  --preview-gap-large: 6px;
+  --preview-radius: 6px;
+  --preview-edge: 8px;
+  --preview-system-panel-gap: 4px;
+  --preview-functions-accent: #f59e0b;
+  --preview-contributions-accent: #38bdf8;
+  --preview-surface-system: rgba(8, 15, 24, 0.88);
+  --preview-surface-panel: rgba(12, 20, 30, 0.78);
+  --preview-surface-panel-active: rgba(14, 24, 36, 0.84);
+  --preview-surface-section: rgba(15, 23, 34, 0.52);
+  --preview-surface-input: rgba(4, 10, 18, 0.62);
+  --preview-border-subtle: rgba(148, 163, 184, 0.18);
+  --preview-border-active: rgba(56, 189, 248, 0.42);
+  --preview-text: #e5edf7;
+  --preview-text-muted: #94a3b8;
+  --preview-accent: #38bdf8;
+  --preview-shadow: 0 8px 24px rgba(2, 6, 23, 0.28);
+  --preview-font:
+    "Segoe UI Variable",
+    "Segoe UI",
+    system-ui,
+    sans-serif;
+  --preview-font-mono:
+    "Cascadia Mono",
+    "SFMono-Regular",
+    Consolas,
+    monospace;
+}

@@ -3,44 +3,102 @@ import { DataNodeDefinitions } from './core/nodes/DataNodes.js';
 import { OperatorNodeDefinitions } from './core/operators/OperatorNodes.js';
 import { ModuleNodeDefinitions } from './core/modules/ModuleNodes.js';
 import { NodeDefinitionRegistry } from './core/graph/NodeDefinitionRegistry.js';
-import { GraphModel } from './core/graph/GraphModel.js';
+import { GRAPH_SCHEMA_VERSION, GraphModel } from './core/graph/GraphModel.js';
+import { listBuiltInGraphs } from './core/graph/BuiltInGraphRegistry.js';
 import { NodeEditor } from './ui/NodeEditor.js';
 import { Inspector } from './ui/Inspector.js';
 import { appPagePath } from './utils/appPath.js';
+import mineVisLogoUrl from './assets/MineVisLogo.png';
+import { renderLucideIcons } from './ui/LucideIcons.js';
 
 const app = document.querySelector('#app');
 app.innerHTML = `
   <div id="layout" class="fill-layout">
-    <header>
-      <div>
-        <h2>MineVis Editor</h2>
-      </div>
-      <div class="actions">
-        <div class="quick-add">
-          <label>Data
+    <header class="editor-toolbar">
+      <div class="editor-toolbar-start">
+        <div class="editor-brand">
+          <img class="editor-logo" src="${mineVisLogoUrl}" alt="" aria-hidden="true" />
+          <span>MineVis Editor</span>
+        </div>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <div class="toolbar-group toolbar-create-group" aria-label="Create nodes">
+          <label class="toolbar-select">Data
             <select id="add-data-node"></select>
           </label>
-          <label>Operator
+          <label class="toolbar-select">Operator
             <select id="add-operator-node"></select>
           </label>
-          <button id="btn-add-module-node">Add module</button>
-          <button id="btn-collapse-nodes" title="Collapse all nodes">Collapse nodes</button>
+          <button id="btn-add-module-node" class="toolbar-button" type="button">
+            <i data-lucide="box" aria-hidden="true"></i>
+            <span>Add module</span>
+          </button>
         </div>
-        <button id="btn-save">Save graph.json</button>
-        <button id="btn-load">Load graph.json</button>
-        <input id="graph-file-input" type="file" accept=".json,application/json" hidden />
-        <button id="btn-open-preview">Open Preview Window</button>
+      </div>
+      <div class="editor-toolbar-actions">
+        <div class="toolbar-group toolbar-file-group" aria-label="Graph file actions">
+          <button id="btn-save" class="toolbar-button" type="button">
+            <i data-lucide="save" aria-hidden="true"></i>
+            <span>Save graph</span>
+          </button>
+          <label class="toolbar-select toolbar-graph-select">
+            <span>Built-in graph</span>
+            <select id="built-in-graph-select" aria-label="Load built-in graph">
+              <option value="">Load built-in graph...</option>
+            </select>
+          </label>
+          <button id="btn-load-json" class="toolbar-button" type="button">
+            <i data-lucide="folder-open" aria-hidden="true"></i>
+            <span>Load JSON</span>
+          </button>
+          <input id="graph-file-input" type="file" accept=".json,application/json" hidden />
+        </div>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="btn-open-preview" class="toolbar-button toolbar-preview-button" type="button">
+          <i data-lucide="external-link" aria-hidden="true"></i>
+          <span>Open Preview</span>
+        </button>
       </div>
     </header>
     <main>
-      <section id="editor" class="panel fill"></section>
+      <section id="editor" class="panel fill">
+        <button
+          id="btn-collapse-nodes"
+          class="editor-canvas-tool"
+          type="button"
+          title="Collapse all nodes"
+          aria-label="Collapse all nodes"
+          aria-pressed="false"
+        >
+          <i class="collapse-action collapse-action-collapse" data-lucide="chevrons-up" aria-hidden="true"></i>
+          <i class="collapse-action collapse-action-expand" data-lucide="chevrons-down" aria-hidden="true" hidden></i>
+        </button>
+      </section>
       <section id="inspector" class="panel inspector-panel">
         <h3>Inspector</h3>
         <div class="node-config"></div>
       </section>
     </main>
   </div>
+  <dialog
+    id="graph-replace-dialog"
+    class="graph-replace-dialog"
+    aria-labelledby="graph-replace-dialog-title"
+    aria-describedby="graph-replace-dialog-message"
+  >
+    <form method="dialog" class="graph-replace-dialog-card">
+      <h2 id="graph-replace-dialog-title">Replace current graph?</h2>
+      <p id="graph-replace-dialog-message"></p>
+      <div class="graph-replace-dialog-actions">
+        <button class="graph-dialog-button" type="submit" value="cancel" autofocus>Cancel</button>
+        <button class="graph-dialog-button graph-dialog-destructive" type="submit" value="confirm">
+          Discard and load
+        </button>
+      </div>
+    </form>
+  </dialog>
 `;
+
+renderLucideIcons(app);
 
 const DataCategories = [
   'Roadways & Infrastructure',
@@ -76,7 +134,48 @@ function seedGraph() {
   graph.connect({ nodeId: operator.id, portId: 'operator' }, { nodeId: moduleNode.id, portId: 'function-1' });
 }
 
-seedGraph();
+const builtInGraphs = listBuiltInGraphs();
+let cleanGraphSnapshot = '';
+
+function validateGraphDocument(document, sourceName = 'graph.json') {
+  if (!document || typeof document !== 'object' || Array.isArray(document)) {
+    throw new Error(`${sourceName} does not contain a graph document.`);
+  }
+  if (!Array.isArray(document.nodes) || !Array.isArray(document.edges)) {
+    throw new Error(`${sourceName} is not a MineVis graph export.`);
+  }
+  const schemaVersion = Number(document.schemaVersion || 0);
+  if (!Number.isFinite(schemaVersion) || schemaVersion < 0) {
+    throw new Error(`${sourceName} has an invalid graph schema version.`);
+  }
+  if (schemaVersion > GRAPH_SCHEMA_VERSION) {
+    throw new Error(
+      `${sourceName} uses graph schema version ${schemaVersion}; this Editor supports version ${GRAPH_SCHEMA_VERSION}.`
+    );
+  }
+  return document;
+}
+
+function markGraphClean() {
+  cleanGraphSnapshot = graphFingerprint();
+  localStorage.setItem('minevis.graph', graph.serialize());
+}
+
+function initializeGraph() {
+  for (const preset of builtInGraphs) {
+    try {
+      graph.load(validateGraphDocument(preset.document, preset.name));
+      markGraphClean();
+      return;
+    } catch (error) {
+      console.error(`Failed to load built-in graph ${preset.name}:`, error);
+    }
+  }
+  seedGraph();
+  markGraphClean();
+}
+
+initializeGraph();
 
 const editor = new NodeEditor(document.querySelector('#editor'), graph);
 const inspector = new Inspector(document.querySelector('#inspector'));
@@ -84,29 +183,28 @@ editor.onSelect = (node) => inspector.showNode(node);
 editor.onDelete = () => inspector.showNode(null);
 editor.onNodeChange = (node, options = {}) => {
   if (!node) return;
+  updateCollapseNodesButton();
   if (options.refreshInspector !== false && inspector.currentNode?.id === node.id) {
     inspector.showNode(node);
   }
 };
 inspector.onNodeChange = (node, options = {}) => {
-  editor.render();
-  if (options.refreshInspector && node && inspector.currentNode?.id === node.id) {
+  if (!node) return;
+  editor.updateNodeView(node.id);
+  updateCollapseNodesButton();
+  if (options.refreshInspector && inspector.currentNode?.id === node.id) {
     inspector.showNode(node);
   }
 };
-let graphRefreshQueued = false;
-graph.subscribe(() => {
-  if (graphRefreshQueued) return;
-  graphRefreshQueued = true;
-  queueMicrotask(() => {
-    graphRefreshQueued = false;
-    editor.render();
-    const selected = graph.nodes.find((node) => node.id === editor.selectedNodeId);
-    if (selected && inspector.currentNode?.id === selected.id) inspector.showNode(selected);
-    if (!selected && inspector.currentNode) inspector.showNode(null);
-  });
+graph.subscribe((change) => {
+  editor.applyGraphChange(change);
+  updateCollapseNodesButton();
+  const selected = graph.getNode(editor.selectedNodeId);
+  if (selected && inspector.currentNode?.id === selected.id) inspector.showNode(selected);
+  if (!selected && inspector.currentNode) inspector.showNode(null);
 });
 editor.render();
+editor.refreshDataStatuses();
 
 const definitions = definitionRegistry.list();
 const dataDefinitions = definitions.filter((definition) => definition.kind === 'data');
@@ -126,8 +224,7 @@ function editorCenterWorld() {
 
 function addNode(typeId, position = editorCenterWorld()) {
   const node = graph.createNode(typeId, position);
-  editor.selectedNodeId = node.id;
-  editor.render();
+  editor.setSelectedNode(node.id, { notify: false });
   inspector.showNode(node);
   return node;
 }
@@ -174,12 +271,35 @@ document.querySelector('#btn-add-module-node').addEventListener('click', () => {
   if (moduleDefinition) addNode(moduleDefinition.typeId);
 });
 
-let nodesCollapsed = false;
-document.querySelector('#btn-collapse-nodes').addEventListener('click', () => {
-  nodesCollapsed = !nodesCollapsed;
-  editor.setAllCollapsed(nodesCollapsed);
-  document.querySelector('#btn-collapse-nodes').textContent = nodesCollapsed ? 'Expand nodes' : 'Collapse nodes';
+const collapseNodesButton = document.querySelector('#btn-collapse-nodes');
+
+function allNodesCollapsed() {
+  return graph.nodes.length > 0 && graph.nodes.every((node) => node.params?.uiCollapsed === true);
+}
+
+function updateCollapseNodesButton() {
+  const collapsed = allNodesCollapsed();
+  const action = collapsed ? 'Expand all nodes' : 'Collapse all nodes';
+  collapseNodesButton.disabled = graph.nodes.length === 0;
+  collapseNodesButton.title = action;
+  collapseNodesButton.setAttribute('aria-label', action);
+  collapseNodesButton.setAttribute('aria-pressed', String(collapsed));
+  collapseNodesButton.querySelector('.collapse-action-collapse')?.toggleAttribute('hidden', collapsed);
+  collapseNodesButton.querySelector('.collapse-action-expand')?.toggleAttribute('hidden', !collapsed);
+}
+
+['pointerdown', 'pointerup', 'wheel', 'contextmenu'].forEach((eventName) => {
+  collapseNodesButton.addEventListener(eventName, (event) => event.stopPropagation());
 });
+
+collapseNodesButton.addEventListener('click', (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  editor.setAllCollapsed(!allNodesCollapsed());
+  updateCollapseNodesButton();
+});
+
+updateCollapseNodesButton();
 
 function groupedDefinitionsForMenu(defs, categories) {
   return categories
@@ -193,59 +313,115 @@ function groupedDefinitionsForMenu(defs, categories) {
 const contextMenu = document.createElement('div');
 contextMenu.id = 'node-context-menu';
 contextMenu.className = 'node-context-menu hidden';
+contextMenu.setAttribute('aria-label', 'Add node');
+contextMenu.setAttribute('aria-hidden', 'true');
+
+const contextMenuSearch = document.createElement('input');
+contextMenuSearch.className = 'node-search';
+contextMenuSearch.type = 'search';
+contextMenuSearch.placeholder = 'Search nodes...';
+contextMenuSearch.setAttribute('aria-label', 'Search nodes');
+
+const contextMenuContent = document.createElement('div');
+contextMenuContent.className = 'node-menu-content';
+contextMenuContent.setAttribute('role', 'menu');
+contextMenuContent.setAttribute('aria-label', 'Available nodes');
+
+contextMenu.append(contextMenuSearch, contextMenuContent);
 document.body.appendChild(contextMenu);
+
 let contextMenuWorld = null;
+let contextMenuActiveIndex = -1;
+
+function contextMenuItems() {
+  return [...contextMenuContent.querySelectorAll('.node-menu-item')];
+}
+
+function setContextMenuActive(index, { focus = false } = {}) {
+  const items = contextMenuItems();
+  if (!items.length) {
+    contextMenuActiveIndex = -1;
+    contextMenuSearch.removeAttribute('aria-activedescendant');
+    return;
+  }
+  contextMenuActiveIndex = Math.max(0, Math.min(index, items.length - 1));
+  items.forEach((item, itemIndex) => {
+    const active = itemIndex === contextMenuActiveIndex;
+    item.classList.toggle('keyboard-active', active);
+    item.setAttribute('aria-current', active ? 'true' : 'false');
+  });
+  const activeItem = items[contextMenuActiveIndex];
+  contextMenuSearch.setAttribute('aria-activedescendant', activeItem.id);
+  activeItem.scrollIntoView({ block: 'nearest' });
+  if (focus) activeItem.focus();
+}
 
 function closeContextMenu() {
   contextMenu.classList.add('hidden');
+  contextMenu.setAttribute('aria-hidden', 'true');
+  contextMenu.style.visibility = '';
   contextMenuWorld = null;
+  contextMenuActiveIndex = -1;
 }
 
-function renderContextMenu(filter = '') {
+function renderContextMenu(filter = contextMenuSearch.value) {
   const query = filter.trim().toLowerCase();
-  contextMenu.innerHTML = '';
-  const search = document.createElement('input');
-  search.className = 'node-search';
-  search.placeholder = 'Search nodes...';
-  search.value = filter;
-  contextMenu.appendChild(search);
-
-  const content = document.createElement('div');
-  content.className = 'node-menu-content';
-  contextMenu.appendChild(content);
+  contextMenuContent.innerHTML = '';
+  contextMenuActiveIndex = -1;
+  let itemSequence = 0;
 
   const addSection = (title, groups) => {
     const matchedGroups = groups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => !query || item.label.toLowerCase().includes(query) || group.category.toLowerCase().includes(query))
+        items: group.items.filter((item) =>
+          !query ||
+          item.label.toLowerCase().includes(query) ||
+          group.category.toLowerCase().includes(query)
+        )
       }))
       .filter((group) => group.items.length);
     if (!matchedGroups.length) return;
+
     const section = document.createElement('section');
-    section.className = `node-menu-section ${title.toLowerCase()}`;
+    section.className = 'node-menu-section ' + title.toLowerCase();
+    section.setAttribute('role', 'group');
+    section.setAttribute('aria-label', title);
+
     const heading = document.createElement('div');
     heading.className = 'node-menu-title';
     heading.textContent = title;
     section.appendChild(heading);
+
     matchedGroups.forEach((group) => {
       const category = document.createElement('div');
       category.className = 'node-menu-category';
       category.textContent = group.category;
+      category.setAttribute('role', 'presentation');
       section.appendChild(category);
+
       group.items.forEach((definition) => {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = `node-menu-item kind-${definition.kind}`;
+        button.id = 'node-menu-item-' + itemSequence;
+        button.className = 'node-menu-item kind-' + definition.kind;
         button.textContent = definition.label;
+        button.title = definition.label;
+        button.setAttribute('role', 'menuitem');
+        button.setAttribute('aria-current', 'false');
+        button.addEventListener('pointerenter', () => {
+          const index = contextMenuItems().indexOf(button);
+          if (index >= 0) setContextMenuActive(index);
+        });
         button.addEventListener('click', () => {
           addNode(definition.typeId, contextMenuWorld || editorCenterWorld());
           closeContextMenu();
         });
+        itemSequence += 1;
         section.appendChild(button);
       });
     });
-    content.appendChild(section);
+    contextMenuContent.appendChild(section);
   };
 
   addSection('Data', groupedDefinitionsForMenu(dataDefinitions, DataCategories));
@@ -254,36 +430,67 @@ function renderContextMenu(filter = '') {
     addSection('Module', [{ category: 'Workspace', items: moduleDefinition ? [moduleDefinition] : [] }]);
   }
 
-  if (!content.children.length) {
+  if (!contextMenuContent.children.length) {
     const empty = document.createElement('div');
     empty.className = 'node-menu-empty';
     empty.textContent = 'No matching nodes.';
-    content.appendChild(empty);
+    contextMenuContent.appendChild(empty);
+    contextMenuSearch.removeAttribute('aria-activedescendant');
+    return;
   }
-
-  search.addEventListener('input', () => {
-    const value = search.value;
-    renderContextMenu(value);
-    contextMenu.querySelector('.node-search')?.focus();
-    const input = contextMenu.querySelector('.node-search');
-    input?.setSelectionRange(value.length, value.length);
-  });
+  setContextMenuActive(0);
 }
+
+contextMenuSearch.addEventListener('input', () => {
+  renderContextMenu(contextMenuSearch.value);
+});
+
+contextMenu.addEventListener('keydown', (event) => {
+  const items = contextMenuItems();
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeContextMenu();
+    return;
+  }
+  if (!items.length) return;
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    setContextMenuActive(contextMenuActiveIndex + 1);
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    setContextMenuActive(contextMenuActiveIndex <= 0 ? items.length - 1 : contextMenuActiveIndex - 1);
+  } else if (event.key === 'Home') {
+    event.preventDefault();
+    setContextMenuActive(0);
+  } else if (event.key === 'End') {
+    event.preventDefault();
+    setContextMenuActive(items.length - 1);
+  } else if (event.key === 'Enter' && contextMenuActiveIndex >= 0) {
+    event.preventDefault();
+    items[contextMenuActiveIndex].click();
+  }
+});
 
 function openContextMenu(event) {
   contextMenuWorld = event.world;
+  contextMenuSearch.value = '';
   renderContextMenu('');
-  const margin = 12;
-  const width = 340;
-  const height = 460;
-  const left = Math.min(event.clientX, window.innerWidth - width - margin);
-  const top = Math.min(event.clientY, window.innerHeight - height - margin);
-  contextMenu.style.left = `${Math.max(margin, left)}px`;
-  contextMenu.style.top = `${Math.max(margin, top)}px`;
+  contextMenu.style.left = '0px';
+  contextMenu.style.top = '0px';
+  contextMenu.style.visibility = 'hidden';
   contextMenu.classList.remove('hidden');
-  contextMenu.querySelector('.node-search')?.focus();
-}
+  contextMenu.setAttribute('aria-hidden', 'false');
 
+  const margin = 6;
+  const rect = contextMenu.getBoundingClientRect();
+  const left = Math.min(event.clientX, window.innerWidth - rect.width - margin);
+  const top = Math.min(event.clientY, window.innerHeight - rect.height - margin);
+  contextMenu.style.left = Math.max(margin, left) + 'px';
+  contextMenu.style.top = Math.max(margin, top) + 'px';
+  contextMenu.style.visibility = '';
+  contextMenuSearch.focus();
+  contextMenuSearch.select();
+}
 editor.onCanvasContextMenu = openContextMenu;
 document.addEventListener('pointerdown', (event) => {
   if (!contextMenu.classList.contains('hidden') && !contextMenu.contains(event.target)) closeContextMenu();
@@ -291,6 +498,76 @@ document.addEventListener('pointerdown', (event) => {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeContextMenu();
 });
+
+const builtInGraphSelect = document.querySelector('#built-in-graph-select');
+const builtInGraphByName = new Map(builtInGraphs.map((preset) => [preset.name, preset]));
+const builtInGraphPlaceholder = builtInGraphSelect.options[0];
+
+if (!builtInGraphs.length) {
+  builtInGraphPlaceholder.textContent = 'No built-in graphs';
+  builtInGraphSelect.disabled = true;
+} else {
+  builtInGraphs.forEach((preset) => {
+    const option = document.createElement('option');
+    option.value = preset.name;
+    option.textContent = preset.name;
+    builtInGraphSelect.appendChild(option);
+  });
+}
+
+const graphReplaceDialog = document.querySelector('#graph-replace-dialog');
+const graphReplaceDialogMessage = document.querySelector('#graph-replace-dialog-message');
+const graphReplaceCancelButton = graphReplaceDialog.querySelector('[value="cancel"]');
+
+function graphFingerprint() {
+  const document = JSON.parse(graph.serialize());
+  document.nodes.forEach((node) => {
+    if (!node.params) return;
+    delete node.params.semanticStatus;
+    delete node.params.detectedRange;
+  });
+  return JSON.stringify(document);
+}
+
+function graphIsDirty() {
+  return graphFingerprint() !== cleanGraphSnapshot;
+}
+
+function confirmGraphReplacement(sourceName) {
+  const message = `Unsaved changes will be discarded before loading "${sourceName}".`;
+  if (typeof graphReplaceDialog.showModal !== 'function') {
+    return Promise.resolve(window.confirm(`${message}\n\nContinue?`));
+  }
+
+  graphReplaceDialogMessage.textContent = message;
+  graphReplaceDialog.returnValue = 'cancel';
+  return new Promise((resolve) => {
+    graphReplaceDialog.addEventListener(
+      'close',
+      () => resolve(graphReplaceDialog.returnValue === 'confirm'),
+      { once: true }
+    );
+    graphReplaceDialog.showModal();
+    requestAnimationFrame(() => graphReplaceCancelButton.focus());
+  });
+}
+
+function reportGraphLoadError(sourceName, error) {
+  console.error(`Failed to load ${sourceName}:`, error);
+  alert(`Failed to load ${sourceName}: ${error.message || error}`);
+}
+
+async function loadGraphDocument(document, sourceName) {
+  const validated = validateGraphDocument(document, sourceName);
+  if (graphIsDirty() && !(await confirmGraphReplacement(sourceName))) return false;
+
+  graph.load(validated);
+  editor.setSelectedNode(null, { notify: false });
+  inspector.showNode(null);
+  markGraphClean();
+  updateCollapseNodesButton();
+  return true;
+}
 
 document.querySelector('#btn-save').addEventListener('click', () => {
   const json = graph.serialize();
@@ -301,10 +578,24 @@ document.querySelector('#btn-save').addEventListener('click', () => {
   anchor.download = 'graph.json';
   anchor.click();
   URL.revokeObjectURL(url);
+  markGraphClean();
+});
+
+builtInGraphSelect.addEventListener('change', async () => {
+  const presetName = builtInGraphSelect.value;
+  builtInGraphSelect.value = '';
+  if (!presetName) return;
+  const preset = builtInGraphByName.get(presetName);
+  if (!preset) return;
+  try {
+    await loadGraphDocument(preset.document, preset.name);
+  } catch (error) {
+    reportGraphLoadError(preset.name, error);
+  }
 });
 
 const graphFileInput = document.querySelector('#graph-file-input');
-document.querySelector('#btn-load').addEventListener('click', () => {
+document.querySelector('#btn-load-json').addEventListener('click', () => {
   graphFileInput.value = '';
   graphFileInput.click();
 });
@@ -313,22 +604,14 @@ graphFileInput.addEventListener('change', async () => {
   const file = graphFileInput.files?.[0];
   if (!file) return;
   try {
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
-      throw new Error('The selected file is not a MineVis graph export.');
-    }
-    graph.load(parsed);
-    editor.selectedNodeId = null;
-    inspector.showNode(null);
-    editor.render();
-    localStorage.setItem('minevis.graph', graph.serialize());
+    const parsed = JSON.parse(await file.text());
+    await loadGraphDocument(parsed, file.name || 'graph.json');
   } catch (error) {
-    console.error('Failed to load graph.json:', error);
-    alert(`Failed to load graph.json: ${error.message}`);
+    reportGraphLoadError(file.name || 'graph.json', error);
+  } finally {
+    graphFileInput.value = '';
   }
 });
-
 document.querySelector('#btn-open-preview').addEventListener('click', () => {
   const json = graph.serialize();
   localStorage.setItem('minevis.graph', json);

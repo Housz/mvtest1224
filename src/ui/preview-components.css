@@ -1,0 +1,694 @@
+#preview-root .runtime-shell button,
+#preview-root .runtime-shell select,
+#preview-root .runtime-shell input,
+#preview-root .runtime-shell textarea {
+  box-sizing: border-box;
+  color: var(--preview-text);
+  font-family: var(--preview-font);
+  font-size: 10.5px;
+  line-height: 14px;
+  border-radius: 5px;
+}
+
+#preview-root .runtime-shell button,
+#preview-root .runtime-shell select,
+#preview-root .runtime-shell input:not([type="checkbox"]):not([type="range"]) {
+  min-height: var(--preview-control-height);
+  height: var(--preview-control-height);
+  padding: 3px 6px;
+}
+
+#preview-root .runtime-shell select,
+#preview-root .runtime-shell input:not([type="checkbox"]):not([type="range"]),
+#preview-root .runtime-shell textarea {
+  min-width: 0;
+  border: 1px solid var(--preview-border-subtle);
+  background: var(--preview-surface-input);
+}
+
+#preview-root .runtime-shell input[type="number"],
+#preview-root .numeric,
+#preview-root .metric-value {
+  font-family: var(--preview-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+#preview-root .runtime-shell input:focus-visible,
+#preview-root .runtime-shell select:focus-visible,
+#preview-root .runtime-shell textarea:focus-visible,
+#preview-root .runtime-shell button:focus-visible {
+  border-color: var(--preview-border-active);
+  outline: 1px solid rgba(56, 189, 248, 0.28);
+  outline-offset: 1px;
+}
+
+#preview-root .runtime-shell input[type="range"] {
+  min-width: 72px;
+  height: 18px;
+  margin: 0;
+}
+
+#preview-root .runtime-shell input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+#preview-root .runtime-shell .panel-title {
+  margin: 0 0 var(--preview-gap);
+  color: var(--preview-text);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 15px;
+}
+
+#preview-root .control-section,
+#preview-root .geology-form-section,
+#preview-root .runtime-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--preview-gap);
+  margin: 0 0 var(--preview-gap-large);
+  padding: var(--preview-section-padding);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 5px;
+  background: var(--preview-surface-section);
+}
+
+#preview-root .control-section {
+  padding-bottom: var(--preview-section-padding) !important;
+  border-bottom-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+#preview-root .control-section h4,
+#preview-root .control-section h5,
+#preview-root .geology-form-section-title,
+#preview-root .section-title {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 14px;
+}
+
+#preview-root .control-grid,
+#preview-root .geology-controls,
+#preview-root .geology-control-stack,
+#preview-root .geology-volume-stack,
+#preview-root .geology-volume-controls,
+#preview-root .geology-analysis-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--preview-gap);
+  margin: 0;
+}
+
+#preview-root .field-row,
+#preview-root .geology-form-row,
+#preview-root .geology-slider-row,
+#preview-root .geology-range-pair {
+  display: grid;
+  grid-template-columns: minmax(82px, 0.8fr) minmax(96px, 1.25fr);
+  align-items: center;
+  gap: var(--preview-gap-large);
+  min-height: 26px;
+  padding: 2px 4px;
+  font-size: 10.5px;
+}
+
+#preview-root .geology-slider-row,
+#preview-root .geology-range-pair {
+  grid-template-columns: minmax(82px, 0.8fr) minmax(90px, 1.35fr) 70px;
+}
+
+#preview-root .geology-slider-label,
+#preview-root .geology-form-row > span,
+#preview-root .field-row > span,
+#preview-root .field-row > label {
+  min-width: 0;
+  color: #b8c5d6;
+  line-height: 14px;
+}
+
+#preview-root .geology-value-input {
+  width: 70px !important;
+  min-width: 0 !important;
+}
+
+#preview-root .geology-range-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+}
+
+#preview-root .geology-range-values .geology-value-input {
+  width: 100% !important;
+}
+
+#preview-root .checkbox-row,
+#preview-root .geology-toggle-row,
+#preview-root label.checkbox-row {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  gap: 8px;
+  padding: 3px 5px;
+  color: var(--preview-text);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 10.5px;
+}
+
+#preview-root .runtime-shell :is(.checkbox-row, .geology-toggle-row) > span {
+  order: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: visible;
+  color: #cbd5e1;
+  line-height: 14px;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+#preview-root .runtime-shell :is(.checkbox-row, .geology-toggle-row) > input[type="checkbox"] {
+  position: relative;
+  order: 2;
+  flex: 0 0 30px;
+  justify-self: auto;
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 16px !important;
+  min-height: 16px !important;
+  margin: 0 0 0 auto !important;
+  padding: 0 !important;
+  appearance: none !important;
+  border: 1px solid rgba(148, 163, 184, 0.42) !important;
+  border-radius: 999px !important;
+  background: rgba(100, 116, 139, 0.36) !important;
+  box-shadow: inset 0 0 0 1px rgba(2, 6, 23, 0.12);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+#preview-root .runtime-shell :is(.checkbox-row, .geology-toggle-row) > input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f8fafc;
+  box-shadow: 0 1px 3px rgba(2, 6, 23, 0.5);
+  transform: translateX(0);
+  transition: transform 120ms ease;
+}
+
+#preview-root .runtime-shell :is(.checkbox-row, .geology-toggle-row) > input[type="checkbox"]:checked {
+  border-color: rgba(251, 146, 60, 0.86) !important;
+  background: #d97706 !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 237, 213, 0.14);
+}
+
+#preview-root .runtime-shell :is(.checkbox-row, .geology-toggle-row) > input[type="checkbox"]:checked::after {
+  transform: translateX(14px);
+}
+
+#preview-root .runtime-shell :is(.checkbox-row, .geology-toggle-row) > input[type="checkbox"]:focus-visible {
+  border-color: #38bdf8 !important;
+  outline: 2px solid rgba(56, 189, 248, 0.28);
+  outline-offset: 2px;
+}
+
+#preview-root .runtime-shell :is(.checkbox-row, .geology-toggle-row) > input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+#preview-root .sensor-list-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden !important;
+}
+
+#preview-root .sensor-list-layout {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 5px;
+}
+
+#preview-root .sensor-list-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+
+#preview-root .sensor-list-search {
+  width: 100%;
+}
+
+#preview-root .sensor-list-count {
+  min-width: 42px;
+  color: var(--preview-text-muted);
+  font-family: var(--preview-font-mono);
+  font-size: 9.5px;
+  line-height: 14px;
+  text-align: right;
+}
+
+#preview-root .sensor-list-items {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 3px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+#preview-root .sensor-list-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+#preview-root .sensor-list-item:hover {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+#preview-root .sensor-list-item.selected {
+  border-color: rgba(56, 189, 248, 0.48);
+  background: rgba(14, 165, 233, 0.12);
+  box-shadow: inset 2px 0 0 #38bdf8;
+}
+
+#preview-root .sensor-list-select {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  height: auto !important;
+  min-height: 39px !important;
+  gap: 6px;
+  padding: 4px 5px !important;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+#preview-root .sensor-list-marker {
+  width: 9px;
+  height: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  background: #ff9f43;
+  box-shadow: 0 0 7px rgba(255, 159, 67, 0.55);
+}
+
+#preview-root .sensor-list-item.warning .sensor-list-marker {
+  background: #ef4444;
+  box-shadow: 0 0 7px rgba(239, 68, 68, 0.55);
+}
+
+#preview-root .sensor-list-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+#preview-root .sensor-list-copy strong {
+  overflow: hidden;
+  color: #e5edf7;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#preview-root .sensor-list-copy small {
+  overflow: hidden;
+  color: var(--preview-text-muted);
+  font-size: 9.5px;
+  line-height: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#preview-root .sensor-list-value {
+  color: #fed7aa;
+  font-family: var(--preview-font-mono);
+  font-size: 9.5px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+#preview-root .sensor-list-locate {
+  align-self: center;
+  width: auto !important;
+  min-width: 40px;
+  margin-right: 3px;
+  padding: 2px 5px !important;
+  color: #bae6fd;
+  border-color: transparent;
+  background: transparent;
+  font-size: 9px !important;
+}
+
+#preview-root .sensor-list-locate:hover,
+#preview-root .sensor-list-locate:focus-visible {
+  border-color: rgba(56, 189, 248, 0.25);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+#preview-root .geology-form-actions,
+#preview-root .geology-quick-actions,
+#preview-root .panel-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+}
+
+#preview-root .detail-row {
+  display: grid;
+  grid-template-columns: minmax(84px, 0.8fr) minmax(0, 1.2fr);
+  align-items: baseline;
+  min-height: 22px;
+  gap: 6px;
+  padding: 2px 3px;
+  font-size: 10.5px;
+  line-height: 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+#preview-root .detail-row > span {
+  color: var(--preview-text-muted);
+}
+
+#preview-root .detail-row > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--preview-text);
+  font-weight: 500;
+  text-align: right;
+}
+
+#preview-root .detail-row.stacked {
+  display: block;
+}
+
+#preview-root .detail-row.stacked > strong {
+  display: block;
+  margin-top: 2px;
+  text-align: left;
+}
+
+#preview-root .runtime-legend,
+#preview-root .geology-legend-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+#preview-root .runtime-legend-list,
+#preview-root .route-legend-list,
+#preview-root .ventilation-legend-list,
+#preview-root .geology-symbols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 148px), 1fr));
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+}
+
+#preview-root .legend-row,
+#preview-root .route-legend-list > div:not(.geology-gradient),
+#preview-root .ventilation-legend-list > div,
+#preview-root .geology-symbols > div {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  min-height: 26px;
+  gap: 8px;
+  padding: 4px 6px;
+  color: #dbe4ef;
+  border: 1px solid rgba(148, 163, 184, 0.09);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 10.5px;
+  line-height: 14px;
+}
+
+#preview-root .legend-row:hover,
+#preview-root .route-legend-list > div:not(.geology-gradient):hover,
+#preview-root .ventilation-legend-list > div:hover,
+#preview-root .geology-symbols > div:hover {
+  border-color: rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+#preview-root .legend-dot,
+#preview-root .legend-swatch {
+  flex: 0 0 auto;
+  width: 10px !important;
+  height: 10px !important;
+  margin: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(2, 6, 23, 0.2);
+}
+
+#preview-root .legend-line {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 3px;
+  border-radius: 999px;
+}
+
+#preview-root .legend-label {
+  min-width: 0;
+  color: #dbe4ef;
+  line-height: 14px;
+  overflow-wrap: anywhere;
+}
+
+#preview-root .legend-meta {
+  grid-column: 2;
+  color: var(--preview-text-muted);
+  font-size: 9.5px;
+  line-height: 13px;
+  overflow-wrap: anywhere;
+}
+
+#preview-root .runtime-legend-section-title {
+  margin: 2px 1px 0;
+  color: var(--preview-text-muted);
+  font-size: 9.5px;
+  font-weight: 650;
+  line-height: 13px;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+#preview-root .runtime-legend-gradient {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  min-width: 0;
+  padding: 5px 6px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+#preview-root .runtime-legend-gradient-label {
+  min-width: 0;
+  color: #dbe4ef;
+  font-size: 10.5px;
+  line-height: 14px;
+  overflow-wrap: anywhere;
+}
+
+#preview-root .runtime-legend-gradient-range {
+  color: var(--preview-text-muted);
+  font-family: var(--preview-font-mono);
+  font-size: 9.5px;
+  line-height: 14px;
+}
+
+#preview-root .runtime-legend-gradient-bar {
+  grid-column: 1 / -1;
+  height: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+#preview-root .legend-block,
+#preview-root .branch-color-legend {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin: 6px 0;
+  padding: 5px 6px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+#preview-root .legend-block .bar,
+#preview-root .branch-color-legend .bar {
+  width: 100%;
+  height: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+#preview-root .legend-labels {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 8px;
+  margin: 0;
+  color: var(--preview-text-muted);
+  font-family: var(--preview-font-mono);
+  font-size: 9.5px;
+  line-height: 13px;
+}
+
+#preview-root .legend-labels > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+#preview-root .legend-labels > span:last-child {
+  text-align: right;
+}
+
+#preview-root .dataset-card {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px;
+  border-radius: 5px;
+  background: var(--preview-surface-section);
+  color: var(--preview-text-muted);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+#preview-root .dataset-card strong {
+  color: var(--preview-text);
+  font-size: 10.5px;
+}
+
+#preview-root .relation-table,
+#preview-root .runtime-table,
+#preview-root .scroll-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  max-height: 220px;
+  overflow: auto;
+}
+
+#preview-root .relation-row,
+#preview-root .runtime-table-row {
+  min-height: 24px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 14px;
+}
+
+#preview-root .muted-note,
+#preview-root .time-label,
+#preview-root .empty-state {
+  color: var(--preview-text-muted);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+#preview-root .empty-state {
+  min-height: 0 !important;
+  padding: 6px !important;
+}
+
+#preview-root * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.36) transparent;
+}
+
+#preview-root *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+#preview-root *::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: rgba(148, 163, 184, 0.32);
+}
+
+@container (max-width: 310px) {
+  #preview-root .geology-slider-row,
+  #preview-root .geology-range-pair {
+    grid-template-columns: minmax(72px, 0.8fr) minmax(70px, 1fr) 62px;
+  }
+
+  #preview-root .geology-value-input {
+    width: 62px !important;
+  }
+}
+
+@container (max-width: 250px) {
+  #preview-root .field-row,
+  #preview-root .geology-form-row {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 3px;
+  }
+
+  #preview-root .geology-toggle-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #preview-root .geology-slider-row,
+  #preview-root .geology-range-pair {
+    grid-template-columns: minmax(0, 1fr) 62px;
+    gap: 3px 5px;
+  }
+
+  #preview-root .geology-slider-label {
+    grid-column: 1 / -1;
+  }
+
+  #preview-root .geology-slider-row > input[type="range"],
+  #preview-root .geology-range-pair > :nth-child(2) {
+    grid-column: 1;
+  }
+
+  #preview-root .geology-slider-row > .geology-value-input,
+  #preview-root .geology-range-pair > .geology-range-values {
+    grid-column: 2;
+  }
+}

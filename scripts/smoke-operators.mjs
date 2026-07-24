@@ -1,4 +1,5 @@
 import { OperatorNodeDefinitions } from '../src/core/operators/OperatorNodes.js';
+import { GraphModel } from '../src/core/graph/GraphModel.js';
 import { geologyColorForKey, GEOLOGY_PALETTE } from '../src/core/operators/shared/OperatorRuntimeUtils.js';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -249,6 +250,60 @@ if (!Array.isArray(GEOLOGY_PALETTE) || GEOLOGY_PALETTE.length === 0) {
   failures.push('GEOLOGY_PALETTE is empty or not exported.');
 }
 
+function smokeGraphIndexes() {
+  const definitions = new Map([
+    [
+      'GraphSmokeSource',
+      {
+        typeId: 'GraphSmokeSource',
+        kind: 'data',
+        label: 'Source',
+        ports: [{ id: 'dataset', name: 'dataset', direction: 'out', type: 'SmokeDataset' }],
+        createRuntime: () => ({})
+      }
+    ],
+    [
+      'GraphSmokeTarget',
+      {
+        typeId: 'GraphSmokeTarget',
+        kind: 'operator',
+        label: 'Target',
+        ports: [{ id: 'dataset', name: 'dataset', direction: 'in', type: 'SmokeDataset' }],
+        createRuntime: () => ({})
+      }
+    ]
+  ]);
+  const graph = new GraphModel({ get: (typeId) => definitions.get(typeId) });
+  const firstSource = graph.createNode('GraphSmokeSource');
+  const secondSource = graph.createNode('GraphSmokeSource');
+  const target = graph.createNode('GraphSmokeTarget');
+
+  if (!graph.connect({ nodeId: firstSource.id, portId: 'dataset' }, { nodeId: target.id, portId: 'dataset' })) {
+    failures.push('GraphModel failed to connect indexed smoke nodes.');
+    return;
+  }
+  const firstEdge = graph.getIncomingEdge(target.id, 'dataset');
+  if (!firstEdge || graph.getNode(firstSource.id) !== firstSource || graph.getIncidentEdges(target.id).length !== 1) {
+    failures.push('GraphModel indexes did not resolve the first connection.');
+  }
+
+  graph.connect({ nodeId: secondSource.id, portId: 'dataset' }, { nodeId: target.id, portId: 'dataset' });
+  const replacement = graph.getIncomingEdge(target.id, 'dataset');
+  if (
+    replacement?.from.nodeId !== secondSource.id ||
+    graph.getEdge(firstEdge?.id) !== null ||
+    graph.getOutgoingEdges(firstSource.id, 'dataset').length !== 0
+  ) {
+    failures.push('GraphModel indexes were not updated after replacing an input edge.');
+  }
+
+  graph.removeNode(secondSource.id);
+  if (graph.getNode(secondSource.id) !== null || graph.getIncomingEdge(target.id, 'dataset') !== null) {
+    failures.push('GraphModel indexes retained removed nodes or edges.');
+  }
+}
+
+smokeGraphIndexes();
 if (failures.length) {
   console.error('Operator smoke test failed:');
   for (const failure of failures) console.error(`- ${failure}`);

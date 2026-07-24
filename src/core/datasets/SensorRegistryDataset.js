@@ -1,3 +1,5 @@
+import { BaseSemanticDataset } from '../semantics/BaseSemanticDataset.js';
+
 const toNumber = (value, fallback = 0) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
@@ -45,7 +47,7 @@ function normalizeSensor(rawSensor, index) {
   };
 }
 
-export class SensorRegistryDataset {
+export class SensorRegistryDataset extends BaseSemanticDataset {
   constructor({
     sensors = [],
     source = null,
@@ -56,14 +58,17 @@ export class SensorRegistryDataset {
     validation = null,
     adaptorResults = null
   } = {}) {
-    this.type = 'SensorRegistryDataset';
-    this.contract = contract;
-    this.semanticClass = contract?.class ?? 'SensorRegistry';
-    this.templates = templates ?? {};
-    this.roleMapping = roleMapping;
-    this.validation = validation ?? { valid: true, warnings: [], errors: [], summary: {} };
-    this.adaptorResults = adaptorResults;
-    this.source = source ?? { registryPath };
+    super({
+      type: 'SensorRegistryDataset',
+      semanticClass: contract?.class ?? 'SensorRegistry',
+      taxonomyId: 'monitoring-sensing',
+      contract,
+      templates,
+      roleMapping,
+      validation,
+      adaptorResults,
+      source: source ?? { registryPath }
+    });
     this.registryPath = registryPath;
     this.sensors = sensors.map(normalizeSensor);
     this.sensorMap = new Map(this.sensors.map((sensor) => [String(sensor.id), sensor]));
