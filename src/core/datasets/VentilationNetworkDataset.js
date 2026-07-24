@@ -1,3 +1,5 @@
+import { BaseSemanticDataset } from '../semantics/BaseSemanticDataset.js';
+
 const toPoint = (value = {}) => {
   if (Array.isArray(value)) return { x: Number(value[0]) || 0, y: Number(value[1]) || 0, z: Number(value[2]) || 0 };
   return {
@@ -55,7 +57,7 @@ function normalizeFacility(facility, index) {
   };
 }
 
-export class VentilationNetworkDataset {
+export class VentilationNetworkDataset extends BaseSemanticDataset {
   constructor({
     nodes = [],
     branches = [],
@@ -70,14 +72,17 @@ export class VentilationNetworkDataset {
     validation = null,
     adaptorResults = null
   } = {}) {
-    this.type = 'VentilationNetworkDataset';
-    this.contract = contract;
-    this.semanticClass = contract?.class ?? 'VentilationNetwork';
-    this.templates = templates ?? {};
-    this.roleMapping = roleMapping;
-    this.validation = validation ?? { valid: true, warnings: [], errors: [], summary: {} };
-    this.adaptorResults = adaptorResults;
-    this.source = source ?? { networkPath };
+    super({
+      type: 'VentilationNetworkDataset',
+      semanticClass: contract?.class ?? 'VentilationNetwork',
+      taxonomyId: 'ventilation',
+      contract,
+      templates,
+      roleMapping,
+      validation,
+      adaptorResults,
+      source: source ?? { networkPath }
+    });
     this.networkPath = networkPath;
     this.nodes = nodes.map(normalizeNode);
     this.branches = branches.map(normalizeBranch);

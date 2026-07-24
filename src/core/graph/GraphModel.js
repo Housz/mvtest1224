@@ -1,5 +1,22 @@
 import { v4 as uuidv4 } from 'uuid';
 
+export const GRAPH_SCHEMA_VERSION = 1;
+
+export function migrateGraphDocument(document) {
+  const parsed = clone(document || {});
+  const version = Number(parsed.schemaVersion || 0);
+  if (version > GRAPH_SCHEMA_VERSION) {
+    throw new Error(`Graph schema version ${version} is newer than supported version ${GRAPH_SCHEMA_VERSION}.`);
+  }
+  if (version === 0) {
+    parsed.nodes = Array.isArray(parsed.nodes) ? parsed.nodes : [];
+    parsed.edges = Array.isArray(parsed.edges) ? parsed.edges : [];
+    parsed.view = parsed.view || { panX: 0, panY: 0, zoom: 1 };
+  }
+  parsed.schemaVersion = GRAPH_SCHEMA_VERSION;
+  return parsed;
+}
+
 const clone = (value) => (typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value)));
 
 const buildPortsFromDefinition = (def, nodeLike) => {
@@ -174,6 +191,7 @@ export class GraphModel {
   serialize() {
     return JSON.stringify(
       {
+        schemaVersion: GRAPH_SCHEMA_VERSION,
         nodes: this.nodes.map((n) => ({
           id: n.id,
           typeId: n.typeId,
@@ -192,10 +210,11 @@ export class GraphModel {
   }
 
   load(json) {
-    this.nodes = [];
-    this.edges = [];
-    const parsed = typeof json === 'string' ? JSON.parse(json) : json;
-    this.view = parsed.view || { panX: 0, panY: 0, zoom: 1 };
+    const raw = typeof json === 'string' ? JSON.parse(json) : json;
+    const parsed = migrateGraphDocument(raw);
+    const nextNodes = [];
+    const nextEdges = parsed.edges || [];
+    const nextView = parsed.view || { panX: 0, panY: 0, zoom: 1 };
     for (const n of parsed.nodes) {
       const def = this.definitionRegistry.get(n.typeId);
       if (!def) continue;
@@ -215,10 +234,16 @@ export class GraphModel {
         ports,
         runtime: def.createRuntime()
       };
-      this.nodes.push(node);
+      nextNodes.push(node);
     }
-    this.edges = parsed.edges || [];
-    this.syncModuleNodes();
+    nextNodes
+      .filter((node) => node.kind === 'module')
+      .forEach((node) => node.runtime?.syncFunctionSlots?.(node, { edges: nextEdges, nodes: nextNodes }));
+
+    this.schemaVersion = parsed.schemaVersion;
+    this.nodes = nextNodes;
+    this.edges = nextEdges;
+    this.view = nextView;
     this.emitChange({ type: 'graph-loaded', affectedNodeIds: this.nodes.map((node) => node.id) });
   }
 }

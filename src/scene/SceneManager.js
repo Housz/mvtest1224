@@ -1,32 +1,73 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { ViewHelper } from 'three/examples/jsm/helpers/ViewHelper.js';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
-import { appPath } from '../utils/appPath.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { fetchText } from '../core/adaptors/adaptorUtils.js';
+import { parseObjAsync } from './AsyncObjParser.js';
+import { SceneInteractionRouter } from './SceneInteractionRouter.js';
+import {
+  createRoadwayFieldLayer,
+  createRoadwaySelectionOverlay,
+  disposeRoadwayFieldLayer,
+  setRoadwayFieldLayerOpacity
+} from './RoadwayFieldLayer.js';
+
+const SENSOR_MARKER_RADIUS = 2.0;
+const SENSOR_PICK_RADIUS = 3.6;
+const SENSOR_MARKER_LIFT = 2.2;
+const SENSOR_FOCUS_DISTANCE = 24;
+const MAX_SCENE_PIXEL_RATIO = 1.5;
+const IDLE_RENDER_INTERVAL_MS = 500;
 
 export class SceneManager {
   constructor(container) {
     this.container = container;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, stencil: true });
+    this.renderer.domElement.classList.add('scene-main-canvas');
     this.renderer.localClippingEnabled = true;
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.setSize(Math.max(1, container.clientWidth), Math.max(1, container.clientHeight), false);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_SCENE_PIXEL_RATIO));
     container.appendChild(this.renderer.domElement);
     this.ensureOverlayHost();
 
     this.scene = new THREE.Scene();
     // this.scene.background = new THREE.Color('#434343ff');
     this.scene.background = new THREE.Color(0x000000);
-    this.camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 50000);
+    this.camera = new THREE.PerspectiveCamera(60, Math.max(1, container.clientWidth) / Math.max(1, container.clientHeight), 0.1, 50000);
     this.camera.position.set(0, 0, 1000);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.target.set(0, 0, 0);
-
-    this.clock = new THREE.Clock();
+    this.controlsInteracting = false;
+    this.interactiveRenderUntil = 0;
+    this.lastRenderAt = 0;
+    this.performanceStats = { renderSamples: [], maxRenderMs: 0, totalFrames: 0, roadwayLoads: [] };
+    this.handleControlsStart = () => {
+      this.controlsInteracting = true;
+      this.interactiveRenderUntil = performance.now() + 250;
+    };
+    this.handleControlsChange = () => {
+      this.interactiveRenderUntil = performance.now() + 250;
+    };
+    this.handleControlsEnd = () => {
+      this.controlsInteracting = false;
+      this.interactiveRenderUntil = performance.now() + 250;
+    };
+    this.handleVisualInput = () => {
+      this.interactiveRenderUntil = performance.now() + 250;
+    };
+    this.controls.addEventListener('start', this.handleControlsStart);
+    this.controls.addEventListener('change', this.handleControlsChange);
+    this.controls.addEventListener('end', this.handleControlsEnd);
+    window.addEventListener('input', this.handleVisualInput, true);
+    window.addEventListener('change', this.handleVisualInput, true);
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
     this.sensors = new Map();
+    this.sensorPickTargets = new Map();
+    this.sensorSelectionSprites = new Map();
+    this.ventilationSelectionSprites = new Map();
+    this.chartPresentationPickTargets = new Map();
+    this.interactionRouter = new SceneInteractionRouter();
     this.sensorSignature = null;
     this.edgeMeshes = new Map();
     this.nodeMeshes = new Map();
@@ -59,21 +100,70 @@ export class SceneManager {
     this.routeMaterials = new Set();
     this.routeObjects = new Map();
     this.geologyPickSources = new Map();
-    this.roadwayHighlightMaterials = new Map();
+    this.roadwaySelectionOverlay = null;
+    this.roadwaySelectionKey = '';
     this.topology = null;
     this.roadwayObject = null;
     this.roadwaySignature = null;
+    this.roadwayFieldLayers = new Map();
+    this.roadwayVisibilityOwners = new Map();
+    this.roadwayOpacityOwners = new Map();
+    this.sensorVisibilityOwners = new Map();
+    this.sensorItemVisibilityOwners = new Map();
+    this.sensorOpacityOwners = new Map();
+    this.sensorItemOpacityOwners = new Map();
     this.focusAnimationFrame = null;
+    this.viewportInsets = {
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      safeRect: { x: 0, y: 0, width: container.clientWidth, height: container.clientHeight }
+    };
     this.raycaster.params.Line = { threshold: 3 };
     this.scene.add(this.ventilationGroup);
     this.scene.add(this.airflowGroup);
     this.scene.add(this.anomalyGroup);
     this.scene.add(this.hazardGroup);
     this.scene.add(this.routeGroup);
-    this.createViewHelper();
 
-    window.addEventListener('resize', () => this.onResize());
-    this.renderer.domElement.addEventListener('pointerdown', (e) => this.onPick(e));
+    this.handleWindowResize = () => this.onResize();
+    window.addEventListener('resize', this.handleWindowResize);
+    this.resizeObserver = typeof ResizeObserver === 'function'
+      ? new ResizeObserver(() => this.onResize())
+      : null;
+    this.resizeObserver?.observe(this.container);
+    this.pickPointerStart = null;
+    this.handlePickPointerDown = (event) => {
+      if (event.button !== 0) return;
+      this.pickPointerStart = {
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        moved: false
+      };
+    };
+    this.handlePickPointerMove = (event) => {
+      if (event.buttons) this.handleVisualInput();
+      const start = this.pickPointerStart;
+      if (!start || start.pointerId !== event.pointerId || start.moved) return;
+      const dx = event.clientX - start.clientX;
+      const dy = event.clientY - start.clientY;
+      if ((dx * dx) + (dy * dy) > 16) start.moved = true;
+    };
+    this.handlePickPointerUp = (event) => {
+      const start = this.pickPointerStart;
+      this.pickPointerStart = null;
+      if (!start || start.pointerId !== event.pointerId || start.moved) return;
+      this.onPick(event);
+    };
+    this.handlePickPointerCancel = () => {
+      this.pickPointerStart = null;
+    };
+    this.renderer.domElement.addEventListener('pointerdown', this.handlePickPointerDown, true);
+    window.addEventListener('pointermove', this.handlePickPointerMove, true);
+    window.addEventListener('pointerup', this.handlePickPointerUp, true);
+    window.addEventListener('pointercancel', this.handlePickPointerCancel, true);
     this.animate();
   }
 
@@ -82,44 +172,31 @@ export class SceneManager {
     if (style.position === 'static') this.container.style.position = 'relative';
   }
 
-  createViewHelper() {
-    this.viewHelperSize = 128;
-    this.viewHelperRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    this.viewHelperRenderer.setPixelRatio(window.devicePixelRatio);
-    this.viewHelperRenderer.setSize(this.viewHelperSize, this.viewHelperSize);
-    this.viewHelperRenderer.setClearColor(0x000000, 0);
-    this.viewHelperRenderer.domElement.className = 'scene-view-helper';
-    Object.assign(this.viewHelperRenderer.domElement.style, {
-      position: 'absolute',
-      left: '14px',
-      bottom: '14px',
-      width: `${this.viewHelperSize}px`,
-      height: `${this.viewHelperSize}px`,
-      zIndex: '18',
-      borderRadius: '12px',
-      background: 'rgba(8, 12, 24, 0.34)',
-      border: '1px solid rgba(255,255,255,0.12)',
-      pointerEvents: 'auto'
-    });
-    this.container.appendChild(this.viewHelperRenderer.domElement);
-    this.viewHelper = new ViewHelper(this.camera, this.viewHelperRenderer.domElement);
-    this.viewHelperRenderer.domElement.addEventListener('pointerdown', (event) => {
-      this.viewHelper.center.copy(this.controls.target);
-      if (this.viewHelper.handleClick(event)) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    });
-  }
-
-  onResize() {
-    const w = this.container.clientWidth;
-    const h = this.container.clientHeight;
+  onResize(size = null) {
+    const w = Math.max(1, Number(size?.width) || this.container.clientWidth || 1);
+    const h = Math.max(1, Number(size?.height) || this.container.clientHeight || 1);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(w, h);
-    this.viewHelperRenderer?.setPixelRatio(window.devicePixelRatio);
-    this.viewHelperRenderer?.setSize(this.viewHelperSize, this.viewHelperSize);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_SCENE_PIXEL_RATIO));
+    this.renderer.setSize(w, h, false);
+  }
+
+  setViewportInsets(insets = {}) {
+    const width = Math.max(1, this.container.clientWidth || 1);
+    const height = Math.max(1, this.container.clientHeight || 1);
+    const safe = insets.safeRect || {};
+    this.viewportInsets = {
+      top: Math.max(0, Number(insets.top) || 0),
+      right: Math.max(0, Number(insets.right) || 0),
+      bottom: Math.max(0, Number(insets.bottom) || 0),
+      left: Math.max(0, Number(insets.left) || 0),
+      safeRect: {
+        x: Math.max(0, Number(safe.x) || 0),
+        y: Math.max(0, Number(safe.y) || 0),
+        width: Math.max(1, Math.min(width, Number(safe.width) || width)),
+        height: Math.max(1, Math.min(height, Number(safe.height) || height))
+      }
+    };
   }
 
   addLights() {
@@ -220,21 +297,25 @@ export class SceneManager {
   }
 
   disposeObjectTree(object) {
+    const materials = new Set();
     object?.traverse?.((child) => {
-      if (child.geometry?.dispose) child.geometry.dispose();
-      const materials = Array.isArray(child.material) ? child.material : child.material ? [child.material] : [];
-      materials.forEach((material) => material?.dispose?.());
+      if (child.geometry?.dispose && !child.geometry.userData?.minevisSharedObjGeometry) child.geometry.dispose();
+      const childMaterials = Array.isArray(child.material) ? child.material : child.material ? [child.material] : [];
+      childMaterials.forEach((material) => materials.add(material));
     });
+    if (object?.userData?.roadwaySharedMaterial) materials.add(object.userData.roadwaySharedMaterial);
+    if (object?.userData?.roadwayPickMaterial) materials.add(object.userData.roadwayPickMaterial);
+    materials.forEach((material) => material?.dispose?.());
   }
 
   removeRoadwayObject() {
     if (!this.roadwayObject) return;
+    this.clearRoadwaySelectionOverlay();
     this.scene.remove(this.roadwayObject);
     this.disposeObjectTree(this.roadwayObject);
     this.roadwayObject = null;
     this.roadwaySignature = null;
     this.resetRoadwayMeshIndexes();
-    this.roadwayHighlightMaterials.clear();
   }
 
   registerRoadwayMesh(type, id, mesh, edge = null) {
@@ -403,6 +484,60 @@ export class SceneManager {
     return null;
   }
 
+  createRoadwayRenderProxy(root, material) {
+    const sources = [];
+    let vertexCount = 0;
+    let indexCount = 0;
+    let hasCompleteNormals = true;
+    root?.traverse?.((mesh) => {
+      if (!mesh?.isMesh || mesh.userData?.roadwayRenderProxy) return;
+      const position = mesh.geometry?.attributes?.position;
+      if (!position?.count) return;
+      const normal = mesh.geometry?.attributes?.normal;
+      const indices = mesh.geometry?.index;
+      sources.push({ position, normal, indices });
+      vertexCount += position.count;
+      indexCount += indices?.count || position.count;
+      if (!normal || normal.count !== position.count) hasCompleteNormals = false;
+    });
+    if (!sources.length || !vertexCount || !indexCount) return null;
+
+    const positions = new Float32Array(vertexCount * 3);
+    const normals = new Float32Array(vertexCount * 3);
+    const IndexArray = vertexCount <= 65535 ? Uint16Array : Uint32Array;
+    const indices = new IndexArray(indexCount);
+    let vertexOffset = 0;
+    let indexOffset = 0;
+    for (const source of sources) {
+      positions.set(source.position.array, vertexOffset * 3);
+      if (source.normal?.array) normals.set(source.normal.array, vertexOffset * 3);
+      if (source.indices) {
+        for (let index = 0; index < source.indices.count; index += 1) {
+          indices[indexOffset + index] = source.indices.getX(index) + vertexOffset;
+        }
+        indexOffset += source.indices.count;
+      } else {
+        for (let index = 0; index < source.position.count; index += 1) {
+          indices[indexOffset + index] = vertexOffset + index;
+        }
+        indexOffset += source.position.count;
+      }
+      vertexOffset += source.position.count;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+    if (hasCompleteNormals) geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    else geometry.computeVertexNormals();
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    const proxy = new THREE.Mesh(geometry, material);
+    proxy.name = 'roadway-render-proxy';
+    proxy.userData.roadwayRenderProxy = true;
+    return proxy;
+  }
+
   /**
    * Loads an OBJ model from either a URL or inline text.
    * @param {string|null} url - Source path, when available.
@@ -413,35 +548,50 @@ export class SceneManager {
     const signature = this.roadwayModelSignature(url, text, mapping, topo, 'obj');
     if (this.roadwayObject && this.roadwaySignature === signature) {
       if (topo) this.topology = topo;
-      this.roadwayObject.visible = true;
+      this.applyRoadwayOwnerState();
       return this.roadwayObject;
     }
     if (this.roadwayObject) this.removeRoadwayObject();
-    const loader = new OBJLoader();
     let object = null;
+    let sourceLength = Number(text?.length) || 0;
+    const loadMetrics = { startedAt: performance.now(), sourceLength, parseMs: 0, configureMs: 0, uploadMs: 0 };
     if (topo) this.topology = topo;
 
     try {
+      const parseStartedAt = performance.now();
       if (url) {
-        object = await loader.loadAsync(appPath(url));
+        const sourceText = await fetchText(url);
+        sourceLength = sourceText.length;
+        object = await parseObjAsync(sourceText);
       } else if (text) {
-        object = loader.parse(text);
+        object = await parseObjAsync(text);
       }
+      loadMetrics.sourceLength = sourceLength;
+      loadMetrics.parseMs = performance.now() - parseStartedAt;
 
       if (!object) return;
 
+      const configureStartedAt = performance.now();
       const map = this.buildMeshMappingLookup(mapping);
       this.resetRoadwayMeshIndexes();
+      const roadwaySharedMaterial = new THREE.MeshStandardMaterial({
+        color: '#3a4a7a',
+        side: THREE.DoubleSide,
+        vertexColors: false,
+        roughness: 0.78,
+        metalness: 0.02
+      });
+      const roadwayPickMaterial = new THREE.MeshBasicMaterial({ visible: false });
+      roadwaySharedMaterial.needsUpdate = true;
+      object.userData.roadwaySharedMaterial = roadwaySharedMaterial;
+      object.userData.roadwayPickMaterial = roadwayPickMaterial;
 
       object.traverse((child) => {
         if (!child.isMesh) return;
-        child.material = new THREE.MeshStandardMaterial({
-          color: '#3a4a7a',
-          side: THREE.DoubleSide,
-          vertexColors: true
-        });
-        child.material.needsUpdate = true;
-
+        const previousMaterials = Array.isArray(child.material) ? child.material : [child.material];
+        previousMaterials.filter(Boolean).forEach((material) => material.dispose?.());
+        child.material = roadwayPickMaterial;
+        child.userData.roadwayPickProxy = true;
         const name = child.name || '';
         const mappingInfo = map.get(name);
         let topoId = mappingInfo?.id || name;
@@ -540,6 +690,9 @@ export class SceneManager {
         }
       });
 
+      const renderProxy = this.createRoadwayRenderProxy(object, roadwaySharedMaterial);
+      if (renderProxy) object.add(renderProxy);
+      loadMetrics.configureMs = performance.now() - configureStartedAt;
       this.scene.add(object);
       this.roadwayObject = object;
       this.roadwaySignature = signature;
@@ -551,6 +704,11 @@ export class SceneManager {
       this.controls.target.copy(center);
       this.camera.position.copy(center).addScalar(maxDim * 1.5);
       this.controls.update();
+      this.applyRoadwayOwnerState();
+      this.requestRenderBurst(100);
+      loadMetrics.totalMs = performance.now() - loadMetrics.startedAt;
+      this.performanceStats.roadwayLoads.push(loadMetrics);
+      if (this.performanceStats.roadwayLoads.length > 8) this.performanceStats.roadwayLoads.shift();
       return object;
     } catch (err) {
       console.error('Failed to load roadway model:', err);
@@ -643,27 +801,52 @@ export class SceneManager {
     const sensors = Array.from(registry || []);
     const signature = this.sensorRegistrySignature(sensors);
     if (this.sensorSignature !== signature) this.clearSensors();
-    else if (this.sensors.size) return;
+    else if (this.sensors.size) {
+      this.applySensorOwnerState();
+      return;
+    }
     const mat = new THREE.MeshStandardMaterial({ color: '#ff9f43', emissive: '#ff9f43' });
     this.configureOverlayMaterial(mat);
+    const markerGeometry = new THREE.SphereGeometry(SENSOR_MARKER_RADIUS, 16, 12);
+    const pickGeometry = new THREE.SphereGeometry(SENSOR_PICK_RADIUS, 10, 8);
+    const pickMaterial = new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      colorWrite: false,
+      visible: false
+    });
     for (const sensor of sensors) {
-      const geo = new THREE.SphereGeometry(0.75, 16, 16);
-      const mesh = new THREE.Mesh(geo, mat.clone());
+      const mesh = new THREE.Mesh(markerGeometry, mat.clone());
       this.configureOverlayObject(mesh, 72);
       mesh.position.copy(
         this.positionFromRoadwayAnchor(
           this.topology,
           { edgeId: sensor.edgeId ?? sensor.roadwayEdgeId, nodeId: sensor.nodeId ?? sensor.roadwayNodeId, ratio: sensor.ratio },
           { x: sensor.x, y: sensor.y, z: sensor.z },
-          0.8
+          SENSOR_MARKER_LIFT
         )
       );
       mesh.userData.sensorID = sensor.sensorID;
       mesh.name = `sensor-${sensor.sensorID}`;
       this.scene.add(mesh);
       this.sensors.set(sensor.sensorID, mesh);
+
+      const pickTarget = new THREE.Mesh(pickGeometry, pickMaterial);
+      pickTarget.position.copy(mesh.position);
+      pickTarget.userData.sensorID = sensor.sensorID;
+      pickTarget.name = `sensor-pick-${sensor.sensorID}`;
+      this.scene.add(pickTarget);
+      this.sensorPickTargets.set(sensor.sensorID, pickTarget);
+    }
+    mat.dispose();
+    if (!sensors.length) {
+      markerGeometry.dispose();
+      pickGeometry.dispose();
+      pickMaterial.dispose();
     }
     this.sensorSignature = signature;
+    this.applySensorOwnerState();
   }
 
   sensorRegistrySignature(sensors = []) {
@@ -680,18 +863,130 @@ export class SceneManager {
   }
 
   clearSensors() {
+    this.clearComparisonSprites(this.sensorSelectionSprites);
     this.clearSensorHighlight();
+    const geometries = new Set();
+    const materials = new Set();
     for (const mesh of this.sensors.values()) {
       this.scene.remove(mesh);
-      mesh.geometry?.dispose?.();
-      mesh.material?.dispose?.();
+      if (mesh.geometry) geometries.add(mesh.geometry);
+      if (mesh.material) materials.add(mesh.material);
     }
+    for (const mesh of this.sensorPickTargets.values()) {
+      this.scene.remove(mesh);
+      if (mesh.geometry) geometries.add(mesh.geometry);
+      if (mesh.material) materials.add(mesh.material);
+    }
+    geometries.forEach((geometry) => geometry?.dispose?.());
+    materials.forEach((material) => material?.dispose?.());
     this.sensors.clear();
+    this.sensorPickTargets.clear();
     this.sensorSignature = null;
   }
 
   getSensorObject(sensorID) {
     return this.sensors.get(sensorID);
+  }
+
+  setPrimarySensorSelection(sensorID) {
+    const next = sensorID == null ? null : this.getSensorObject(String(sensorID));
+    if (this.selected === next) return;
+    if (this.selected?.material?.emissive) {
+      this.selected.material.emissive.set('#000000');
+    }
+    this.selected = next || null;
+  }
+
+  createComparisonRingSprite(color, { primary = false, hovered = false } = {}) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 96;
+    canvas.height = 96;
+    const context = canvas.getContext('2d');
+    context.clearRect(0, 0, 96, 96);
+    context.strokeStyle = color || '#38bdf8';
+    context.shadowColor = color || '#38bdf8';
+    context.shadowBlur = hovered ? 15 : 9;
+    context.lineWidth = primary ? 7 : 5;
+    context.beginPath();
+    context.arc(48, 48, primary ? 35 : 32, 0, Math.PI * 2);
+    context.stroke();
+    if (primary) {
+      context.lineWidth = 2.5;
+      context.globalAlpha = 0.88;
+      context.beginPath();
+      context.arc(48, 48, 42, 0, Math.PI * 2);
+      context.stroke();
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const material = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.renderOrder = 98;
+    sprite.userData.comparisonTexture = texture;
+    return sprite;
+  }
+
+  clearComparisonSprites(collection) {
+    for (const sprite of collection.values()) {
+      sprite.parent?.remove(sprite);
+      sprite.userData.comparisonTexture?.dispose?.();
+      sprite.material?.dispose?.();
+    }
+    collection.clear();
+  }
+
+  setSensorSelectionState({
+    ids = [],
+    primaryId = null,
+    hoveredId = null,
+    colors = {}
+  } = {}) {
+    this.clearComparisonSprites(this.sensorSelectionSprites);
+    for (const rawId of ids) {
+      const id = String(rawId);
+      const sensor = this.sensors.get(id);
+      if (!sensor) continue;
+      const primary = id === String(primaryId || '');
+      const hovered = id === String(hoveredId || '');
+      const sprite = this.createComparisonRingSprite(colors[id], { primary, hovered });
+      sprite.name = 'sensor-comparison-' + id;
+      sprite.position.copy(sensor.position);
+      sprite.scale.setScalar(primary ? 9.5 : hovered ? 8.5 : 7.5);
+      sprite.visible = sensor.visible;
+      this.scene.add(sprite);
+      this.sensorSelectionSprites.set(id, sprite);
+    }
+  }
+
+  setVentilationBranchSelectionState({
+    ids = [],
+    primaryId = null,
+    hoveredId = null,
+    colors = {}
+  } = {}) {
+    this.clearComparisonSprites(this.ventilationSelectionSprites);
+    for (const rawId of ids) {
+      const id = String(rawId);
+      const ventilationEntry = this.ventilationBranchObjects.get(id);
+      const airflowEntry = this.airflowBranchObjects.get(id);
+      const entry = airflowEntry || ventilationEntry;
+      if (!entry?.points?.length) continue;
+      const primary = id === String(primaryId || '');
+      const hovered = id === String(hoveredId || '');
+      const sprite = this.createComparisonRingSprite(colors[id], { primary, hovered });
+      const midpoint = entry.points[Math.floor((entry.points.length - 1) * 0.5)];
+      sprite.name = 'ventilation-comparison-' + id;
+      sprite.position.copy(midpoint);
+      sprite.scale.setScalar(primary ? 10.5 : hovered ? 9.2 : 8.2);
+      (airflowEntry ? this.airflowGroup : this.ventilationGroup).add(sprite);
+      this.ventilationSelectionSprites.set(id, sprite);
+    }
   }
 
   highlightSensor(obj) {
@@ -707,15 +1002,113 @@ export class SceneManager {
     }
   }
 
+  sensorVisualOwnerIds() {
+    return new Set([
+      ...this.sensorVisibilityOwners.keys(),
+      ...this.sensorItemVisibilityOwners.keys(),
+      ...this.sensorOpacityOwners.keys(),
+      ...this.sensorItemOpacityOwners.keys()
+    ]);
+  }
+
+  sensorOwnerValue(ownerId, sensorID, ownerMap, itemMap) {
+    const perItem = itemMap.get(ownerId);
+    if (perItem?.has(String(sensorID))) return perItem.get(String(sensorID));
+    return ownerMap.get(ownerId);
+  }
+
+  applySensorOwnerState() {
+    const owners = [...this.sensorVisualOwnerIds()];
+    for (const [sensorID, mesh] of this.sensors) {
+      let hasVisibility = false;
+      let visible = false;
+      let opacity = 0;
+      for (const ownerId of owners) {
+        const ownerVisible = this.sensorOwnerValue(
+          ownerId,
+          sensorID,
+          this.sensorVisibilityOwners,
+          this.sensorItemVisibilityOwners
+        );
+        if (ownerVisible == null) continue;
+        hasVisibility = true;
+        if (!ownerVisible) continue;
+        visible = true;
+        const ownerOpacity = this.sensorOwnerValue(
+          ownerId,
+          sensorID,
+          this.sensorOpacityOwners,
+          this.sensorItemOpacityOwners
+        );
+        opacity = Math.max(opacity, Number.isFinite(Number(ownerOpacity)) ? Number(ownerOpacity) : 1);
+      }
+      if (!hasVisibility) {
+        visible = true;
+        opacity = 1;
+      }
+      mesh.visible = visible;
+      const pickTarget = this.sensorPickTargets.get(sensorID);
+      if (pickTarget) pickTarget.visible = visible;
+      const selectionSprite = this.sensorSelectionSprites.get(String(sensorID));
+      if (selectionSprite) selectionSprite.visible = visible;
+      const value = Math.max(0, Math.min(1, opacity));
+      const transparent = value < 1;
+      if (mesh.material.transparent !== transparent) {
+        mesh.material.transparent = transparent;
+        mesh.material.needsUpdate = true;
+      }
+      mesh.material.opacity = value;
+    }
+  }
+
+  setSensorsVisibleForOwner(ownerId, flag) {
+    this.sensorVisibilityOwners.set(String(ownerId), Boolean(flag));
+    this.applySensorOwnerState();
+  }
+
+  setSensorVisibleForOwner(ownerId, sensorID, flag) {
+    const key = String(ownerId);
+    if (!this.sensorItemVisibilityOwners.has(key)) this.sensorItemVisibilityOwners.set(key, new Map());
+    this.sensorItemVisibilityOwners.get(key).set(String(sensorID), Boolean(flag));
+    this.applySensorOwnerState();
+  }
+
+  setSensorOpacityForOwner(ownerId, opacity) {
+    this.sensorOpacityOwners.set(String(ownerId), Math.max(0, Math.min(1, Number(opacity))));
+    this.applySensorOwnerState();
+  }
+
+  setSingleSensorOpacityForOwner(ownerId, sensorID, opacity) {
+    const key = String(ownerId);
+    if (!this.sensorItemOpacityOwners.has(key)) this.sensorItemOpacityOwners.set(key, new Map());
+    this.sensorItemOpacityOwners.get(key).set(String(sensorID), Math.max(0, Math.min(1, Number(opacity))));
+    this.applySensorOwnerState();
+  }
+
+  clearSensorOwnerState(ownerId) {
+    const key = String(ownerId);
+    this.sensorVisibilityOwners.delete(key);
+    this.sensorItemVisibilityOwners.delete(key);
+    this.sensorOpacityOwners.delete(key);
+    this.sensorItemOpacityOwners.delete(key);
+    this.applySensorOwnerState();
+  }
+
   setSensorsVisible(flag) {
     for (const mesh of this.sensors.values()) {
       mesh.visible = flag;
     }
+    for (const mesh of this.sensorPickTargets.values()) mesh.visible = flag;
+    for (const sprite of this.sensorSelectionSprites.values()) sprite.visible = flag;
   }
 
   setSensorVisible(sensorID, flag) {
     const mesh = this.sensors.get(sensorID);
     if (mesh) mesh.visible = flag;
+    const pickTarget = this.sensorPickTargets.get(sensorID);
+    if (pickTarget) pickTarget.visible = flag;
+    const selectionSprite = this.sensorSelectionSprites.get(String(sensorID));
+    if (selectionSprite) selectionSprite.visible = flag;
   }
 
   setSensorOpacity(opacity) {
@@ -736,26 +1129,113 @@ export class SceneManager {
     mesh.material.needsUpdate = true;
   }
 
+  applyRoadwayOpacityDirect(opacity) {
+    const value = Math.max(0, Math.min(1, Number(opacity)));
+    const root = this.roadwayObject;
+    if (!root) return;
+    const materials = new Set();
+    root.traverse((mesh) => {
+      if (!mesh.isMesh || !mesh.material) return;
+      const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      list.forEach((material) => materials.add(material));
+    });
+    materials.forEach((material) => {
+      const transparent = value < 1;
+      if (material.transparent !== transparent) {
+        material.transparent = transparent;
+        material.needsUpdate = true;
+      }
+      material.opacity = value;
+    });
+  }
+
+  applyRoadwayOwnerState() {
+    if (!this.roadwayObject) return;
+    if (!this.roadwayVisibilityOwners.size) {
+      this.roadwayObject.visible = true;
+      this.applyRoadwayOpacityDirect(1);
+      return;
+    }
+    const visibleOwners = [...this.roadwayVisibilityOwners.entries()]
+      .filter(([, visible]) => visible)
+      .map(([ownerId]) => ownerId);
+    this.roadwayObject.visible = visibleOwners.length > 0;
+    if (!visibleOwners.length) return;
+    const opacity = Math.max(...visibleOwners.map((ownerId) => (
+      Number.isFinite(Number(this.roadwayOpacityOwners.get(ownerId)))
+        ? Number(this.roadwayOpacityOwners.get(ownerId))
+        : 1
+    )));
+    this.applyRoadwayOpacityDirect(opacity);
+  }
+
+  setRoadwayVisibleForOwner(ownerId, flag) {
+    this.roadwayVisibilityOwners.set(String(ownerId), Boolean(flag));
+    this.applyRoadwayOwnerState();
+  }
+
+  setRoadwayOpacityForOwner(ownerId, opacity) {
+    this.roadwayOpacityOwners.set(String(ownerId), Math.max(0, Math.min(1, Number(opacity))));
+    this.applyRoadwayOwnerState();
+  }
+
+  clearRoadwayOwnerState(ownerId) {
+    const key = String(ownerId);
+    this.roadwayVisibilityOwners.delete(key);
+    this.roadwayOpacityOwners.delete(key);
+    this.applyRoadwayOwnerState();
+  }
+
   setRoadwayVisible(flag) {
     if (this.roadwayObject) this.roadwayObject.visible = flag;
   }
 
-  setRoadwayOpacity(opacity) {
-    const value = Math.max(0, Math.min(1, Number(opacity)));
-    const root = this.roadwayObject || this.scene;
-    root.traverse((mesh) => {
-      if (!mesh.isMesh || !mesh.material) return;
-      mesh.material.transparent = value < 1;
-      mesh.material.opacity = value;
-      mesh.material.needsUpdate = true;
+  ensureRoadwayFieldLayer(ownerId, roadway, options = {}) {
+    const key = String(ownerId || 'default');
+    const existing = this.roadwayFieldLayers.get(key);
+    if (existing) return existing;
+    const root = createRoadwayFieldLayer(roadway, {
+      name: `roadway-field-${key}`,
+      sourceObject: this.roadwayObject,
+      ...options
     });
+    root.visible = true;
+    this.roadwayFieldLayers.set(key, root);
+    this.scene.add(root);
+    return root;
+  }
+
+  getRoadwayFieldLayer(ownerId) {
+    return this.roadwayFieldLayers.get(String(ownerId || 'default')) || null;
+  }
+
+  setRoadwayFieldLayerVisible(ownerId, visible) {
+    const root = this.getRoadwayFieldLayer(ownerId);
+    if (root) root.visible = Boolean(visible);
+  }
+
+  setRoadwayFieldLayerOpacity(ownerId, opacity) {
+    setRoadwayFieldLayerOpacity(this.getRoadwayFieldLayer(ownerId), opacity);
+  }
+
+  removeRoadwayFieldLayer(ownerId) {
+    const key = String(ownerId || 'default');
+    const root = this.roadwayFieldLayers.get(key);
+    if (!root) return false;
+    disposeRoadwayFieldLayer(root);
+    this.roadwayFieldLayers.delete(key);
+    return true;
+  }
+
+  setRoadwayOpacity(opacity) {
+    this.applyRoadwayOpacityDirect(opacity);
   }
 
   setRoadwayBaseColor(color = '#3a4a7a') {
     const base = new THREE.Color(color);
     const root = this.roadwayObject || this.scene;
     root.traverse((mesh) => {
-      if (!mesh?.isMesh || !mesh.material) return;
+      if (!mesh?.isMesh || !mesh.material || mesh.userData?.roadwayPickProxy) return;
       const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
       materials.forEach((material) => {
         if (!material?.color) return;
@@ -774,41 +1254,29 @@ export class SceneManager {
   highlightRoadwayEdges(edgeIds = []) {
     const activeIds = new Set((edgeIds || []).filter(Boolean).map((id) => String(id)));
     const activeNodeIds = this.nodeIdsForRoadwayEdges(activeIds);
-    const root = this.roadwayObject || this.scene;
-    root.traverse((mesh) => {
-      if (!mesh?.isMesh || !mesh.material) return;
-      const meta = mesh.userData?.heatmap;
-      const entityId = String(meta?.data?.id ?? mesh.userData?.topoID ?? '');
-      const topoId = String(meta?.data?.topoId ?? mesh.userData?.topoID ?? entityId);
-      const active =
-        meta?.type === 'Connection'
-          ? activeIds.has(entityId) || activeIds.has(topoId)
-          : meta?.type === 'Node'
-            ? activeNodeIds.has(entityId) || activeNodeIds.has(topoId)
-            : false;
-      if (!mesh.userData.roadwayHighlightMaterialUnique) {
-        mesh.material = Array.isArray(mesh.material) ? mesh.material.map((material) => material.clone()) : mesh.material.clone();
-        mesh.userData.roadwayHighlightMaterialUnique = true;
-      }
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-      for (const material of materials) {
-        if (!material) continue;
-        if (!this.roadwayHighlightMaterials.has(material.uuid)) {
-          this.roadwayHighlightMaterials.set(material.uuid, {
-            emissive: material.emissive?.clone?.() || null,
-            emissiveIntensity: material.emissiveIntensity
-          });
-        }
-        const base = this.roadwayHighlightMaterials.get(material.uuid);
-        if (material.emissive) {
-          material.emissive.copy(active ? new THREE.Color(0xffd166) : base.emissive || new THREE.Color(0x000000));
-        }
-        if (typeof material.emissiveIntensity === 'number') {
-          material.emissiveIntensity = active ? 0.85 : (base.emissiveIntensity ?? 1);
-        }
-        material.needsUpdate = true;
-      }
+    const selectionKey = [...activeIds].sort().join('|');
+    if (selectionKey === this.roadwaySelectionKey && (!selectionKey || this.roadwaySelectionOverlay)) return;
+    this.clearRoadwaySelectionOverlay();
+    this.roadwaySelectionKey = selectionKey;
+    if (!activeIds.size || !this.roadwayObject) return;
+    this.roadwaySelectionOverlay = createRoadwaySelectionOverlay(this.roadwayObject, {
+      edgeIds: [...activeIds],
+      nodeIds: [...activeNodeIds]
     });
+    if (this.roadwaySelectionOverlay) this.scene.add(this.roadwaySelectionOverlay);
+  }
+
+  clearRoadwaySelectionOverlay() {
+    if (this.roadwaySelectionOverlay) {
+      this.roadwaySelectionOverlay.geometry?.dispose?.();
+      const materials = Array.isArray(this.roadwaySelectionOverlay.material)
+        ? this.roadwaySelectionOverlay.material
+        : [this.roadwaySelectionOverlay.material];
+      materials.filter(Boolean).forEach((material) => material.dispose?.());
+      this.roadwaySelectionOverlay.removeFromParent();
+    }
+    this.roadwaySelectionOverlay = null;
+    this.roadwaySelectionKey = '';
   }
 
   setHeatmapOpacity(opacity) {
@@ -912,12 +1380,26 @@ export class SceneManager {
     return position.add(new THREE.Vector3(0, 0, lift));
   }
 
+  disposeOverlayGroup(group, materialRegistry = null) {
+    const geometries = new Set();
+    const materials = new Set(materialRegistry || []);
+    group?.traverse?.((child) => {
+      if (child.geometry) geometries.add(child.geometry);
+      const childMaterials = Array.isArray(child.material) ? child.material : child.material ? [child.material] : [];
+      childMaterials.forEach((material) => materials.add(material));
+    });
+    group?.clear?.();
+    geometries.forEach((geometry) => geometry?.dispose?.());
+    materials.forEach((material) => material?.dispose?.());
+    materialRegistry?.clear?.();
+  }
+
   clearVentilationOverlay() {
-    this.ventilationGroup.clear();
+    this.clearComparisonSprites(this.ventilationSelectionSprites);
+    this.disposeOverlayGroup(this.ventilationGroup, this.ventilationMaterials);
     this.ventilationBranchObjects.clear();
     this.ventilationFacilityObjects.clear();
     this.ventilationBoundaryObjects.clear();
-    this.ventilationMaterials.clear();
   }
 
   branchColor(branch, mode = 'type') {
@@ -1002,30 +1484,50 @@ export class SceneManager {
     return value;
   }
 
-  createSegmentTube(start, end, radius, material, userData = {}) {
+  createSegmentTubeGeometry(start, end, radius) {
     const direction = end.clone().sub(start);
     const length = direction.length();
     if (length <= 0.0001) return null;
-    this.configureOverlayMaterial(material);
     const geometry = new THREE.CylinderGeometry(radius, radius, length, 8, 1, false);
+    const midpoint = start.clone().add(end).multiplyScalar(0.5);
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      direction.normalize()
+    );
+    geometry.applyMatrix4(new THREE.Matrix4().compose(midpoint, quaternion, new THREE.Vector3(1, 1, 1)));
+    return geometry;
+  }
+
+  createSegmentTube(start, end, radius, material, userData = {}) {
+    const geometry = this.createSegmentTubeGeometry(start, end, radius);
+    if (!geometry) return null;
+    this.configureOverlayMaterial(material);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.renderOrder = userData.renderOrder ?? 40;
-    mesh.position.copy(start).add(end).multiplyScalar(0.5);
-    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
     Object.assign(mesh.userData, userData);
     return mesh;
   }
 
   addPolylineTube(group, points, radius, material, userData = {}) {
-    const tubes = [];
-    for (let i = 0; i < points.length - 1; i += 1) {
-      const tube = this.createSegmentTube(points[i], points[i + 1], radius, material, userData);
-      if (!tube) continue;
-      tube.name = `${userData.namePrefix || 'branch-segment'}-${userData.branchId}-${i}`;
-      tubes.push(tube);
-      group.add(tube);
+    const geometries = [];
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const geometry = this.createSegmentTubeGeometry(points[index], points[index + 1], radius);
+      if (geometry) geometries.push(geometry);
     }
-    return tubes;
+    if (!geometries.length) return [];
+    const geometry = geometries.length === 1 ? geometries[0] : mergeGeometries(geometries, false);
+    if (!geometry) {
+      geometries.forEach((item) => item.dispose());
+      return [];
+    }
+    if (geometries.length > 1) geometries.forEach((item) => item.dispose());
+    this.configureOverlayMaterial(material);
+    const tube = new THREE.Mesh(geometry, material);
+    tube.name = `${userData.namePrefix || 'branch-segment'}-${userData.branchId || userData.routeId || ''}`;
+    tube.renderOrder = userData.renderOrder ?? 40;
+    Object.assign(tube.userData, userData);
+    group.add(tube);
+    return [tube];
   }
 
   addDirectionArrow(group, points, color, materialSet, userData = {}, options = {}) {
@@ -1055,49 +1557,157 @@ export class SceneManager {
     return arrow;
   }
 
+  addDirectionArrowsBatch(group, entries = [], materialSet = null) {
+    const prepared = entries.map((entry) => {
+      const start = this.interpolatePath(entry.points, entry.options?.startRatio ?? 0.46);
+      const sampledEnd = this.interpolatePath(entry.points, entry.options?.endRatio ?? 0.72);
+      const direction = sampledEnd.clone().sub(start);
+      const sampledLength = direction.length();
+      if (sampledLength <= 0.0001) return null;
+      direction.normalize();
+      const length = Math.max(entry.options?.minLength ?? 10, sampledLength);
+      const headLength = Math.min(length * 0.72, entry.options?.headLength ?? 5);
+      const headWidth = entry.options?.headWidth ?? 3;
+      const end = start.clone().addScaledVector(direction, length);
+      const shaftEnd = end.clone().addScaledVector(direction, -headLength * 0.82);
+      return {
+        ...entry,
+        start,
+        direction,
+        end,
+        shaftEnd,
+        headLength,
+        headWidth,
+        color: entry.color?.isColor ? entry.color : new THREE.Color(entry.color)
+      };
+    }).filter(Boolean);
+    if (!prepared.length) return null;
+
+    const positions = new Float32Array(prepared.length * 6);
+    const colors = new Float32Array(prepared.length * 6);
+    prepared.forEach((entry, index) => {
+      positions.set(entry.start.toArray(), index * 6);
+      positions.set(entry.shaftEnd.toArray(), index * 6 + 3);
+      colors.set(entry.color.toArray(), index * 6);
+      colors.set(entry.color.toArray(), index * 6 + 3);
+    });
+    const lineGeometry = new THREE.BufferGeometry();
+    lineGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    lineGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    lineGeometry.computeBoundingSphere();
+    const opacity = prepared[0].options?.opacity ?? 0.92;
+    const lineMaterial = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      vertexColors: true,
+      transparent: true,
+      opacity,
+      toneMapped: false
+    });
+    this.configureOverlayMaterial(lineMaterial);
+    materialSet?.add?.(lineMaterial);
+    const shafts = new THREE.LineSegments(lineGeometry, lineMaterial);
+    shafts.name = 'direction-arrow-shafts';
+    shafts.renderOrder = prepared[0].options?.renderOrder ?? 42;
+    group.add(shafts);
+
+    const coneGeometry = new THREE.ConeGeometry(1, 1, 12);
+    const coneMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity,
+      toneMapped: false
+    });
+    this.configureOverlayMaterial(coneMaterial);
+    materialSet?.add?.(coneMaterial);
+    const heads = new THREE.InstancedMesh(coneGeometry, coneMaterial, prepared.length);
+    heads.name = 'direction-arrow-heads';
+    heads.renderOrder = prepared[0].options?.renderOrder ?? 42;
+    const transform = new THREE.Object3D();
+    const up = new THREE.Vector3(0, 1, 0);
+    prepared.forEach((entry, index) => {
+      transform.position.copy(entry.end).addScaledVector(entry.direction, -entry.headLength * 0.5);
+      transform.quaternion.setFromUnitVectors(up, entry.direction);
+      transform.scale.set(entry.headWidth, entry.headLength, entry.headWidth);
+      transform.updateMatrix();
+      heads.setMatrixAt(index, transform.matrix);
+      heads.setColorAt(index, entry.color);
+    });
+    heads.instanceMatrix.needsUpdate = true;
+    if (heads.instanceColor) heads.instanceColor.needsUpdate = true;
+    heads.material.needsUpdate = true;
+    heads.userData.arrowColorHexes = prepared.map((entry) => entry.color.getHex());
+    heads.computeBoundingSphere?.();
+    group.add(heads);
+    return { shafts, heads };
+  }
+
   addVentilationBranches(branches = [], options = {}) {
     this.clearVentilationOverlay();
     const showDirection = options.showDirection !== false;
     const showFacilities = options.showFacilities !== false;
     const showIntakeReturn = options.showIntakeReturn !== false;
     const colorMode = options.branchColorMode || 'type';
+    const directionEntries = [];
 
+    const branchPositions = [];
+    const branchColors = [];
     for (const branch of branches) {
       const rawPoints = this.branchPathPoints(branch, ['path', 'renderPath', '_renderPath', 'originalPath']);
       const points = this.tunnelCenterlinePathForBranch(branch, rawPoints);
       if (points.length < 2) continue;
+      const baseColor = new THREE.Color(this.branchColor(branch, colorMode));
+      const vertexOffset = branchPositions.length / 3;
+      for (let index = 1; index < points.length; index += 1) {
+        branchPositions.push(...points[index - 1].toArray(), ...points[index].toArray());
+        branchColors.push(...baseColor.toArray(), ...baseColor.toArray());
+      }
+      const vertexCount = (points.length - 1) * 2;
+
+      if (showDirection) {
+        directionEntries.push({
+          points,
+          color: baseColor.clone(),
+          userData: { ventilationType: 'branch', branchId: branch.id },
+          options: { startRatio: 0.42, endRatio: 0.68, minLength: 12, headLength: 7, headWidth: 4, opacity: options.opacity ?? 0.92, renderOrder: 34 }
+        });
+      }
+
+      this.ventilationBranchObjects.set(branch.id, {
+        branch,
+        points,
+        baseColor: baseColor.clone(),
+        vertexOffset,
+        vertexCount,
+        line: null,
+        material: null
+      });
+    }
+
+    if (branchPositions.length) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.Float32BufferAttribute(branchPositions, 3));
+      geometry.setAttribute('color', new THREE.Float32BufferAttribute(branchColors, 3));
+      geometry.computeBoundingSphere();
       const material = new THREE.LineBasicMaterial({
-        color: this.branchColor(branch, colorMode),
+        vertexColors: true,
         transparent: true,
         opacity: options.opacity ?? 0.92
       });
       this.configureOverlayMaterial(material);
       this.ventilationMaterials.add(material);
-      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), material);
+      const line = new THREE.LineSegments(geometry, material);
       line.renderOrder = 32;
-      line.name = `ventilation-branch-${branch.id}`;
-      line.userData.ventilationType = 'branch';
-      line.userData.branchId = branch.id;
-      line.userData.baseColor = material.color.clone();
+      line.name = 'ventilation-branches';
+      line.userData.ventilationType = 'branch-collection';
       this.ventilationGroup.add(line);
+      this.ventilationBranchObjects.forEach((entry) => {
+        entry.line = line;
+        entry.material = material;
+      });
+    }
 
-      const group = new THREE.Group();
-      group.name = `ventilation-branch-group-${branch.id}`;
-      group.add(line);
-
-      if (showDirection) {
-        this.addDirectionArrow(
-          group,
-          points,
-          material.color,
-          this.ventilationMaterials,
-          { ventilationType: 'branch', branchId: branch.id, namePrefix: 'ventilation-arrow', renderOrder: 34 },
-          { startRatio: 0.42, endRatio: 0.68, minLength: 12, headLength: 7, headWidth: 4, opacity: options.opacity ?? 0.92, renderOrder: 34 }
-        );
-      }
-
-      this.ventilationBranchObjects.set(branch.id, { group, line, branch, points, material });
-      this.ventilationGroup.add(group);
+    if (directionEntries.length) {
+      this.addDirectionArrowsBatch(this.ventilationGroup, directionEntries, this.ventilationMaterials);
     }
 
     if (showFacilities) {
@@ -1164,9 +1774,8 @@ export class SceneManager {
   }
 
   clearAirflowOverlay() {
-    this.airflowGroup.clear();
+    this.disposeOverlayGroup(this.airflowGroup, this.airflowMaterials);
     this.airflowBranchObjects.clear();
-    this.airflowMaterials.clear();
   }
 
   addAirflowBranches(branches = [], options = {}) {
@@ -1174,6 +1783,7 @@ export class SceneManager {
     const opacity = options.opacity ?? 0.85;
     const showDirection = options.showDirection !== false;
     const showAnomaly = options.showAnomalyHighlight !== false;
+    const directionEntries = [];
     for (const branch of branches) {
       const rawPoints = this.branchPathPoints(branch, ['renderPath', 'path', '_renderPath', 'originalPath']);
       const points = this.tunnelCenterlinePathForBranch(branch, rawPoints);
@@ -1200,13 +1810,11 @@ export class SceneManager {
       });
 
       if (showDirection) {
-        this.addDirectionArrow(
-          group,
+        directionEntries.push({
           points,
-          color,
-          this.airflowMaterials,
-          { ventilationType: 'branch', airflowType: 'branch', branchId: branch.id, namePrefix: 'airflow-arrow', renderOrder: 44 },
-          {
+          color: color.clone(),
+          userData: { ventilationType: 'branch', airflowType: 'branch', branchId: branch.id },
+          options: {
             startRatio: 0.46,
             endRatio: 0.72,
             minLength: 10,
@@ -1215,7 +1823,7 @@ export class SceneManager {
             opacity,
             renderOrder: 44
           }
-        );
+        });
       }
 
       if (branch.isAnomaly && showAnomaly) {
@@ -1240,6 +1848,9 @@ export class SceneManager {
 
       this.airflowBranchObjects.set(branch.id, { group, tube: tubes[0] || null, tubes, branch, points, material });
       this.airflowGroup.add(group);
+    }
+    if (directionEntries.length) {
+      this.addDirectionArrowsBatch(this.airflowGroup, directionEntries, this.airflowMaterials);
     }
   }
 
@@ -1266,9 +1877,8 @@ export class SceneManager {
   }
 
   clearAnomalyOverlay() {
-    this.anomalyGroup.clear();
+    this.disposeOverlayGroup(this.anomalyGroup, this.anomalyMaterials);
     this.anomalyBranchObjects.clear();
-    this.anomalyMaterials.clear();
   }
 
   addAnomalyBranches(branches = [], options = {}) {
@@ -1558,6 +2168,8 @@ export class SceneManager {
   }
 
   clearHazardOverlay() {
+    this.hazardGroup.traverse((child) => child.geometry?.dispose?.());
+    this.hazardMaterials.forEach((material) => material?.dispose?.());
     this.hazardGroup.clear();
     this.hazardMaterials.clear();
     this.resetRoadwayHazardColoring();
@@ -1565,11 +2177,63 @@ export class SceneManager {
 
   addHazardEdges(roadway, states = [], options = {}) {
     this.clearHazardOverlay();
-    const opacity = options.opacity ?? 0.65;
+    const opacity = Math.max(0, Math.min(1, Number(options.opacity ?? 0.65)));
     this.hazardColorOpacity = opacity;
     this.hazardVisualStyle = options.hazardStyle || 'water';
     this.lastHazardColoring = { roadway, states };
-    this.applyRoadwayHazardColoring(roadway, states);
+    const materialCache = new Map();
+    const materialFor = (color) => {
+      const key = color.getHexString();
+      if (materialCache.has(key)) return materialCache.get(key);
+      const material = new THREE.MeshStandardMaterial({
+        color,
+        emissive: color.clone().multiplyScalar(0.28),
+        emissiveIntensity: 0.72,
+        transparent: opacity < 1,
+        opacity,
+        roughness: 0.62,
+        metalness: 0.02,
+        depthWrite: opacity >= 0.98
+      });
+      this.configureOverlayMaterial(material);
+      this.hazardMaterials.add(material);
+      materialCache.set(key, material);
+      return material;
+    };
+    for (const state of states || []) {
+      const edgeId = state?.roadwayEdgeId ?? state?.edgeId;
+      if (!edgeId || Number(state.hazardValue ?? state.maxFillRatio ?? 0) <= 0) continue;
+      const points = this.edgePathPointsFromRoadway(roadway, edgeId);
+      if (points.length < 2) continue;
+      const segments = Array.isArray(state.wetSegments) && state.wetSegments.length
+        ? state.wetSegments
+        : [{ s0Ratio: 0, s1Ratio: 1, fillRatio: state.maxFillRatio ?? state.hazardValue, depth: state.maxDepth, flowRegime: state.flowRegime }];
+      for (const segment of segments) {
+        const fillRatio = Number(segment.fillRatio ?? state.maxFillRatio ?? state.hazardValue ?? 0);
+        if (!(fillRatio > 0)) continue;
+        const segmentPoints = this.slicePathByRatio(points, segment.s0Ratio ?? 0, segment.s1Ratio ?? 1);
+        if (segmentPoints.length < 2) continue;
+        const color = this.hazardColorForRatio(
+          fillRatio,
+          state.passability,
+          segment.flowRegime || state.flowRegime,
+          state.hazardType === 'fire_smoke' ? 'fire_smoke' : this.hazardVisualStyle
+        );
+        const curve = new THREE.CatmullRomCurve3(segmentPoints, false, 'centripetal');
+        const tubularSegments = Math.max(2, Math.min(40, (segmentPoints.length - 1) * 5));
+        const radius = Math.max(1.35, Math.min(2.8, 1.55 + fillRatio * 1.05));
+        const mesh = new THREE.Mesh(
+          new THREE.TubeGeometry(curve, tubularSegments, radius, 6, false),
+          materialFor(color)
+        );
+        mesh.renderOrder = 62;
+        mesh.name = `hazard-${edgeId}`;
+        mesh.userData.roadwayHazardType = state.hazardType || this.hazardVisualStyle;
+        mesh.userData.roadwayEdgeId = String(edgeId);
+        mesh.userData.hazardState = state;
+        this.hazardGroup.add(mesh);
+      }
+    }
     const source =
       (states || []).find((state) => state?.sourceId) ||
       (options.sourceEdgeId ? { sourceId: options.sourceEdgeId, sourceRatio: options.sourceRatio ?? 0.5 } : null);
@@ -1585,41 +2249,32 @@ export class SceneManager {
         });
         this.configureOverlayMaterial(sourceMaterial);
         this.hazardMaterials.add(sourceMaterial);
-        const marker = new THREE.Mesh(new THREE.SphereGeometry(3.0, 24, 24), sourceMaterial);
+        const marker = new THREE.Mesh(new THREE.SphereGeometry(3.0, 16, 16), sourceMaterial);
         marker.renderOrder = 64;
         marker.position.copy(this.pointAtPathRatio(points, source.sourceRatio ?? 0.5).add(new THREE.Vector3(0, 0, 1.2)));
-        marker.name = `water-source-${source.sourceId}`;
+        marker.name = `hazard-source-${source.sourceId}`;
         marker.userData.roadwayHazardType = 'source';
         marker.userData.roadwayEdgeId = source.sourceId;
         this.hazardGroup.add(marker);
       }
     }
+    this.requestRenderBurst?.(120);
   }
 
   setHazardOverlayVisible(flag) {
-    this.hazardGroup.visible = flag;
-    if (!flag) {
-      this.resetRoadwayHazardColoring();
-      return;
-    }
-    if (this.lastHazardColoring) {
-      this.applyRoadwayHazardColoring(this.lastHazardColoring.roadway, this.lastHazardColoring.states);
-    }
+    this.hazardGroup.visible = Boolean(flag);
+    this.requestRenderBurst?.(80);
   }
 
   setHazardOverlayOpacity(opacity) {
     const value = Math.max(0, Math.min(1, Number(opacity)));
     this.hazardColorOpacity = value;
-    if (this.lastHazardColoring && this.hazardGroup.visible) {
-      this.resetRoadwayHazardColoring();
-      this.applyRoadwayHazardColoring(this.lastHazardColoring.roadway, this.lastHazardColoring.states);
-    }
     this.setOverlayMaterialsOpacity(this.hazardMaterials, value);
+    this.requestRenderBurst?.(80);
   }
 
   clearSafeRouteOverlay() {
-    this.routeGroup.clear();
-    this.routeMaterials.clear();
+    this.disposeOverlayGroup(this.routeGroup, this.routeMaterials);
     this.routeObjects.clear();
   }
 
@@ -1627,6 +2282,73 @@ export class SceneManager {
     if (status === 'noRoute') return 0xff4d4d;
     if (status === 'risky') return 0xf2a51a;
     return 0x4ade80;
+  }
+
+  addEmergencyPersonMarkers(roadway, people = []) {
+    if (!people.length) return;
+    const geometry = new THREE.SphereGeometry(3.9, 16, 12);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.22,
+      transparent: true,
+      opacity: 0.96
+    });
+    this.configureOverlayMaterial(material);
+    this.routeMaterials.add(material);
+    const mesh = new THREE.InstancedMesh(geometry, material, people.length);
+    mesh.name = 'person-markers';
+    mesh.renderOrder = 72;
+    mesh.userData.emergencyInstances = [];
+    const matrix = new THREE.Matrix4();
+    people.forEach((person, index) => {
+      const color = new THREE.Color(
+        person.routeStatus === 'noRoute'
+          ? 0xff4d4d
+          : person.routeStatus === 'risky'
+            ? 0xf2a51a
+            : 0x4ade80
+      );
+      const position = this.positionFromRoadwayAnchor(roadway, person.roadwayAnchor, person.position, 1.8);
+      matrix.makeTranslation(position.x, position.y, position.z);
+      mesh.setMatrixAt(index, matrix);
+      mesh.setColorAt(index, color);
+      mesh.userData.emergencyInstances[index] = { type: 'person', id: person.personId };
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    this.routeGroup.add(mesh);
+  }
+
+  addEmergencyResourceMarkers(roadway, resources = []) {
+    if (!resources.length) return;
+    const geometry = new THREE.ConeGeometry(4.2, 9, 18);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.2,
+      transparent: true,
+      opacity: 0.98
+    });
+    this.configureOverlayMaterial(material);
+    this.routeMaterials.add(material);
+    const mesh = new THREE.InstancedMesh(geometry, material, resources.length);
+    mesh.name = 'emergency-resource-markers';
+    mesh.renderOrder = 72;
+    mesh.userData.emergencyInstances = [];
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI, 0, 0));
+    const scale = new THREE.Vector3(1, 1, 1);
+    resources.forEach((resource, index) => {
+      const position = this.positionFromRoadwayAnchor(roadway, resource.roadwayAnchor, resource.position, 4.2);
+      matrix.compose(position, quaternion, scale);
+      mesh.setMatrixAt(index, matrix);
+      mesh.setColorAt(index, new THREE.Color(0x42d392));
+      mesh.userData.emergencyInstances[index] = { type: 'resource', id: resource.resourceId };
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    this.routeGroup.add(mesh);
   }
 
   addSafeRoutes({ roadway, routes = [], people = [], resources = [], selectedRouteId = null, opacity = 0.95 } = {}) {
@@ -1679,31 +2401,8 @@ export class SceneManager {
       this.routeGroup.add(group);
     }
 
-    for (const person of people || []) {
-      const color = person.routeStatus === 'noRoute' ? 0xff4d4d : person.routeStatus === 'risky' ? 0xf2a51a : 0x4ade80;
-      const material = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.28, transparent: true, opacity: 0.96 });
-      this.configureOverlayMaterial(material);
-      this.routeMaterials.add(material);
-      const marker = new THREE.Mesh(new THREE.SphereGeometry(3.9, 20, 20), material);
-      marker.renderOrder = 72;
-      marker.position.copy(this.positionFromRoadwayAnchor(roadway, person.roadwayAnchor, person.position, 1.8));
-      marker.name = `person-marker-${person.personId}`;
-      marker.userData.personId = person.personId;
-      this.routeGroup.add(marker);
-    }
-
-    for (const resource of resources || []) {
-      const material = new THREE.MeshStandardMaterial({ color: 0x42d392, emissive: 0x42d392, emissiveIntensity: 0.22, transparent: true, opacity: 0.98 });
-      this.configureOverlayMaterial(material);
-      this.routeMaterials.add(material);
-      const marker = new THREE.Mesh(new THREE.ConeGeometry(4.2, 9, 24), material);
-      marker.renderOrder = 72;
-      marker.position.copy(this.positionFromRoadwayAnchor(roadway, resource.roadwayAnchor, resource.position, 4.2));
-      marker.rotation.x = Math.PI;
-      marker.name = `resource-marker-${resource.resourceId}`;
-      marker.userData.resourceId = resource.resourceId;
-      this.routeGroup.add(marker);
-    }
+    this.addEmergencyPersonMarkers(roadway, people || []);
+    this.addEmergencyResourceMarkers(roadway, resources || []);
   }
 
   setSafeRouteOverlayVisible(flag) {
@@ -1719,6 +2418,10 @@ export class SceneManager {
     const hits = this.raycaster.intersectObjects(this.routeGroup.children, true);
     if (!hits.length) return null;
     for (const hit of hits) {
+      const instance = Number.isInteger(hit.instanceId)
+        ? hit.object?.userData?.emergencyInstances?.[hit.instanceId]
+        : null;
+      if (instance) return instance;
       let object = hit.object;
       while (object) {
         const data = object.userData || {};
@@ -1768,8 +2471,9 @@ export class SceneManager {
           handler = source.handler;
         }
       });
+      const resolvedPick = object.userData.resolveGeologyPick?.(hit) || object.userData.geologyPick;
       candidates.push({
-        ...object.userData.geologyPick,
+        ...resolvedPick,
         ownerId,
         object,
         index: hit.instanceId ?? hit.index,
@@ -1786,12 +2490,20 @@ export class SceneManager {
   }
 
   highlightVentilationBranch(branchId) {
+    const first = this.ventilationBranchObjects.values().next().value;
+    const colorAttribute = first?.line?.geometry?.attributes?.color;
+    if (!colorAttribute) return;
+    const hasSelection = branchId != null && branchId !== '';
     for (const [id, entry] of this.ventilationBranchObjects) {
-      const active = String(id) === String(branchId);
-      entry.material.color.copy(active ? new THREE.Color(0xffffff) : entry.line.userData.baseColor);
-      entry.material.opacity = active ? 1 : 0.55;
-      entry.material.needsUpdate = true;
+      const active = hasSelection && String(id) === String(branchId);
+      const color = active
+        ? new THREE.Color(0xffffff)
+        : entry.baseColor.clone().multiplyScalar(hasSelection ? 0.55 : 1);
+      for (let index = 0; index < entry.vertexCount; index += 1) {
+        colorAttribute.setXYZ(entry.vertexOffset + index, color.r, color.g, color.b);
+      }
     }
+    colorAttribute.needsUpdate = true;
   }
 
   highlightVentilationFacility(facilityId) {
@@ -1804,12 +2516,36 @@ export class SceneManager {
 
   focusVentilationBranch(branchId) {
     const entry = this.ventilationBranchObjects.get(branchId);
-    if (entry?.group) this.focusOnObject(entry.group);
+    if (!entry?.points?.length) return;
+    const box = new THREE.Box3().setFromPoints(entry.points);
+    const target = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z, 1);
+    const direction = new THREE.Vector3().subVectors(this.camera.position, this.controls.target);
+    if (direction.lengthSq() < 0.0001) direction.set(1, 1, 1);
+    const distance = maxDim * 1.45;
+    const framedTarget = this.frameTargetForViewport(target, distance);
+    this.animateCameraTo(framedTarget, framedTarget.clone().add(direction.setLength(distance)), 0.5);
   }
 
   focusVentilationFacility(facilityId) {
     const mesh = this.ventilationFacilityObjects.get(facilityId);
     if (mesh) this.focusOn(mesh);
+  }
+
+  frameTargetForViewport(target, distance) {
+    const width = Math.max(1, this.container.clientWidth || 1);
+    const height = Math.max(1, this.container.clientHeight || 1);
+    const safe = this.viewportInsets?.safeRect || { x: 0, y: 0, width, height };
+    const offsetX = safe.x + safe.width / 2 - width / 2;
+    const offsetY = safe.y + safe.height / 2 - height / 2;
+    if (Math.abs(offsetX) < 0.5 && Math.abs(offsetY) < 0.5) return target.clone();
+    const worldPerPixel = (2 * Math.max(0.1, distance) * Math.tan(THREE.MathUtils.degToRad(this.camera.fov * 0.5))) / height;
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion).normalize();
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion).normalize();
+    return target.clone()
+      .addScaledVector(right, -offsetX * worldPerPixel)
+      .addScaledVector(up, offsetY * worldPerPixel);
   }
 
   focusOnObject(obj) {
@@ -1825,8 +2561,10 @@ export class SceneManager {
     const camStart = this.camera.position.clone();
     const direction = new THREE.Vector3().subVectors(camStart, this.controls.target);
     if (direction.lengthSq() < 0.0001) direction.set(1, 1, 1);
-    const camEnd = target.clone().add(direction.setLength(maxDim * 1.45));
-    this.animateCameraTo(target, camEnd, 0.5);
+    const distance = maxDim * 1.45;
+    const framedTarget = this.frameTargetForViewport(target, distance);
+    const camEnd = framedTarget.clone().add(direction.setLength(distance));
+    this.animateCameraTo(framedTarget, camEnd, 0.5);
   }
 
   focusOnRoadway() {
@@ -1835,17 +2573,18 @@ export class SceneManager {
 
   focusOnSensor(sensorID) {
     const sensor = this.getSensorObject(sensorID);
-    if (sensor) this.focusOn(sensor);
+    if (sensor) this.focusOn(sensor, SENSOR_FOCUS_DISTANCE);
   }
 
-  focusOn(obj) {
+  focusOn(obj, distance = 8) {
     if (!obj) return;
     const target = obj.getWorldPosition ? obj.getWorldPosition(new THREE.Vector3()) : obj.position.clone();
     const camStart = this.camera.position.clone();
     const dir = new THREE.Vector3().subVectors(camStart, this.controls.target);
     if (dir.lengthSq() < 0.0001) dir.set(1, 1, 1);
-    const camEnd = target.clone().add(dir.setLength(8));
-    this.animateCameraTo(target, camEnd, 0.5);
+    const framedTarget = this.frameTargetForViewport(target, distance);
+    const camEnd = framedTarget.clone().add(dir.setLength(distance));
+    this.animateCameraTo(framedTarget, camEnd, 0.5);
   }
 
   animateCameraTo(target, cameraPosition, duration = 0.5) {
@@ -1896,26 +2635,76 @@ export class SceneManager {
     ];
   }
 
+  registerChartPresentationPick(ownerId, objects, handler) {
+    this.chartPresentationPickTargets.set(String(ownerId), {
+      objects: (Array.isArray(objects) ? objects : [objects]).filter(Boolean),
+      handler
+    });
+  }
+
+  unregisterChartPresentationPick(ownerId) {
+    this.chartPresentationPickTargets.delete(String(ownerId));
+  }
+
+  registerInteractionHandler(type, ownerId, handler, options = {}) {
+    return this.interactionRouter.register(type, ownerId, handler, options);
+  }
+
+  setActiveInteractionOwner(ownerId) {
+    this.interactionRouter.setActiveOwner(ownerId);
+  }
+
+  clearInteractionOwner(ownerId) {
+    this.interactionRouter.clearOwner(ownerId);
+  }
+
+  dispatchInteraction(type, legacyHandler, ...args) {
+    if (this.interactionRouter.dispatch(type, ...args)) return true;
+    legacyHandler?.(...args);
+    return typeof legacyHandler === 'function';
+  }
+
+  pickChartPresentation() {
+    const candidates = [];
+    for (const entry of this.chartPresentationPickTargets.values()) {
+      const visibleObjects = entry.objects.filter((object) => object?.visible);
+      if (!visibleObjects.length) continue;
+      const hit = this.raycaster.intersectObjects(visibleObjects, true)[0];
+      if (hit) candidates.push({ ...entry, hit });
+    }
+    candidates.sort((left, right) => left.hit.distance - right.hit.distance);
+    return candidates[0] || null;
+  }
+
   onPick(event) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.mouse, this.camera);
+    const chartPresentation = this.pickChartPresentation();
+    if (chartPresentation) {
+      chartPresentation.handler?.(chartPresentation.hit, event);
+      return;
+    }
     const facilityId = this.pickVentilationFacilityMarker();
     if (facilityId) {
-      this.onVentilationFacilityPick?.(facilityId);
+      this.dispatchInteraction('ventilation-facility', this.onVentilationFacilityPick, facilityId, event);
       return;
     }
     const branchId = this.pickVentilationBranchFromRoadway();
     if (branchId) {
-      this.onVentilationBranchPick?.(branchId);
+      this.dispatchInteraction('ventilation-branch', this.onVentilationBranchPick, branchId, event);
       return;
     }
     const emergencyObject = this.pickEmergencyResponseObject();
     if (emergencyObject) {
-      if (emergencyObject.type === 'person') this.onPersonPick?.(emergencyObject.id);
-      else if (emergencyObject.type === 'resource') this.onEmergencyResourcePick?.(emergencyObject.id);
-      else if (emergencyObject.type === 'route') this.onSafeRoutePick?.(emergencyObject.id, emergencyObject.personId);
+      if (emergencyObject.type === 'person') {
+        this.dispatchInteraction('person', this.onPersonPick, emergencyObject.id);
+      } else if (emergencyObject.type === 'resource') {
+        this.dispatchInteraction('emergency-resource', this.onEmergencyResourcePick, emergencyObject.id);
+      } else if (emergencyObject.type === 'route') {
+        this.dispatchInteraction('safe-route', this.onSafeRoutePick, emergencyObject.id, emergencyObject.personId);
+      }
       return;
     }
     const geologicalObject = this.pickGeologicalObject();
@@ -1925,31 +2714,70 @@ export class SceneManager {
       return;
     }
     const roadwayEntity = this.pickRoadwayEntity();
-    if (roadwayEntity && this.onRoadwayPick) {
-      this.onRoadwayPick(roadwayEntity);
+    if (roadwayEntity && this.dispatchInteraction('roadway', this.onRoadwayPick, roadwayEntity, event)) {
       return;
     }
-    const intersects = this.raycaster.intersectObjects(Array.from(this.sensors.values()));
+    const sensorPickObjects = this.sensorPickTargets.size
+      ? Array.from(this.sensorPickTargets.values())
+      : Array.from(this.sensors.values());
+    const intersects = this.raycaster.intersectObjects(sensorPickObjects);
     if (intersects.length > 0) {
       const sensorID = intersects[0].object.userData.sensorID;
-      this.onSensorPick?.(sensorID);
+      this.dispatchInteraction('sensor', this.onSensorPick, sensorID, event);
       return;
     }
     this.onBlankPick?.({ event });
   }
 
-  animate() {
-    requestAnimationFrame(() => this.animate());
-    const delta = this.clock.getDelta();
-    if (this.viewHelper?.animating) {
-      this.viewHelper.center.copy(this.controls.target);
-      this.viewHelper.update(delta);
-    }
+  requestRenderBurst(durationMs = 250) {
+    this.interactiveRenderUntil = Math.max(this.interactiveRenderUntil, performance.now() + Math.max(0, Number(durationMs) || 0));
+  }
+
+  animate(timestamp = performance.now()) {
+    this.animationFrame = requestAnimationFrame((nextTimestamp) => this.animate(nextTimestamp));
+    if (document.hidden) return;
+    const active = this.controlsInteracting ||
+      Boolean(this.focusAnimationFrame) ||
+      timestamp < this.interactiveRenderUntil;
+    if (!active && timestamp - this.lastRenderAt < IDLE_RENDER_INTERVAL_MS) return;
     this.controls.update();
+    const renderStartedAt = performance.now();
     this.renderer.render(this.scene, this.camera);
-    if (this.viewHelper && this.viewHelperRenderer) {
-      this.viewHelper.center.copy(this.controls.target);
-      this.viewHelper.render(this.viewHelperRenderer);
+    const renderDurationMs = performance.now() - renderStartedAt;
+    this.performanceStats.totalFrames += 1;
+    this.performanceStats.maxRenderMs = Math.max(this.performanceStats.maxRenderMs, renderDurationMs);
+    if (renderDurationMs >= 40) {
+      this.performanceStats.renderSamples.push({
+        startedAt: renderStartedAt,
+        durationMs: renderDurationMs,
+        triangles: this.renderer.info.render.triangles,
+        calls: this.renderer.info.render.calls
+      });
+      if (this.performanceStats.renderSamples.length > 60) this.performanceStats.renderSamples.shift();
     }
+    this.lastRenderAt = performance.now();
+  }
+
+  dispose() {
+    if (this.animationFrame) cancelAnimationFrame(this.animationFrame);
+    this.clearComparisonSprites(this.sensorSelectionSprites);
+    this.clearComparisonSprites(this.ventilationSelectionSprites);
+    for (const ownerId of [...this.roadwayFieldLayers.keys()]) this.removeRoadwayFieldLayer(ownerId);
+    this.clearRoadwaySelectionOverlay();
+    this.chartPresentationPickTargets.clear();
+    this.interactionRouter.clear();
+    this.resizeObserver?.disconnect();
+    window.removeEventListener('resize', this.handleWindowResize);
+    this.renderer.domElement.removeEventListener('pointerdown', this.handlePickPointerDown, true);
+    window.removeEventListener('pointermove', this.handlePickPointerMove, true);
+    window.removeEventListener('pointerup', this.handlePickPointerUp, true);
+    window.removeEventListener('pointercancel', this.handlePickPointerCancel, true);
+    this.controls.removeEventListener('start', this.handleControlsStart);
+    this.controls.removeEventListener('change', this.handleControlsChange);
+    this.controls.removeEventListener('end', this.handleControlsEnd);
+    window.removeEventListener('input', this.handleVisualInput, true);
+    window.removeEventListener('change', this.handleVisualInput, true);
+    this.controls.dispose();
+    this.renderer.dispose();
   }
 }

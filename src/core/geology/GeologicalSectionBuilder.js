@@ -157,8 +157,8 @@ function fallbackSlabPolyline(sectionFrame, mesh, limit = 600) {
   return segments;
 }
 
-function buildSurfaceIntersections({ geologicalBody, sectionFrame, objText }) {
-  const object = parseObj(objText);
+function buildSurfaceIntersections({ geologicalBody, sectionFrame, objText, object: sourceObject = null }) {
+  const object = sourceObject || parseObj(objText);
   const surfaces = geologicalBody?.listSurfaces?.() || [];
   if (!object) return [];
   const byMesh = surfaceKeyMap(surfaces);
@@ -360,7 +360,7 @@ function geometryPoints(value) {
   return [];
 }
 
-function buildStructureProjections({ geologicalStructure, sectionFrame, objText }) {
+function buildStructureProjections({ geologicalStructure, sectionFrame, objText, object: sourceObject = null }) {
   const structures = geologicalStructure?.listStructures?.() || [];
   const result = [];
   structures.forEach((structure) => {
@@ -377,7 +377,7 @@ function buildStructureProjections({ geologicalStructure, sectionFrame, objText 
       });
     }
   });
-  const object = parseObj(objText);
+  const object = sourceObject || parseObj(objText);
   if (!object) return result;
   const byMesh = structureKeyMap(structures);
   let fallbackIndex = 0;
@@ -439,9 +439,11 @@ export function buildGeologicalSectionResult({
   activeAttribute = null,
   maxRenderedBlocksInSection = 5000,
   geologicalBodyObjText = '',
-  structureObjText = ''
+  structureObjText = '',
+  geologicalBodyObject = null,
+  structureObject = null
 } = {}) {
-  const geologicalIntersections = buildSurfaceIntersections({ geologicalBody, sectionFrame, objText: geologicalBodyObjText });
+  const geologicalIntersections = buildSurfaceIntersections({ geologicalBody, sectionFrame, objText: geologicalBodyObjText, object: geologicalBodyObject });
   const blockSliceElements = buildBlockSlice({
     attributeModel,
     geologicalBody,
@@ -450,7 +452,7 @@ export function buildGeologicalSectionResult({
     maxRenderedBlocksInSection: Math.max(1, Number(maxRenderedBlocksInSection) || 5000)
   });
   const boreholeProjections = buildBoreholeProjections({ borehole, sectionFrame });
-  const structureIntersections = buildStructureProjections({ geologicalStructure, sectionFrame, objText: structureObjText });
+  const structureIntersections = buildStructureProjections({ geologicalStructure, sectionFrame, objText: structureObjText, object: structureObject });
   const roadwayProjections = buildRoadwayProjections({ roadway, sectionFrame });
   return {
     frame: sectionFrame.toPlainObject(),

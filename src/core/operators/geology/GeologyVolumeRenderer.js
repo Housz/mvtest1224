@@ -4,12 +4,13 @@ import { sampleColor } from '../../../utils/colors.js';
 function numericRange(values = []) {
   let min = Infinity;
   let max = -Infinity;
-  Array.from(values || []).forEach((value) => {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) return;
+  const source = values || [];
+  for (let index = 0; index < source.length; index += 1) {
+    const numeric = Number(source[index]);
+    if (!Number.isFinite(numeric)) continue;
     if (numeric < min) min = numeric;
     if (numeric > max) max = numeric;
-  });
+  }
   return min === Infinity ? { min: 0, max: 1 } : { min, max };
 }
 
@@ -95,6 +96,8 @@ export function volumeAttributeRange(dataset, active, fallbackValues = []) {
     [attribute.attributeName, attribute.name, attribute.key].some((value) => String(value ?? '').toLowerCase() === String(active).toLowerCase())
   );
   if (Number.isFinite(Number(schema?.min)) && Number.isFinite(Number(schema?.max))) return { min: Number(schema.min), max: Number(schema.max) };
+  const cached = dataset?.getNumericRange?.(active, fallbackValues);
+  if (cached) return cached;
   return numericRange(fallbackValues);
 }
 

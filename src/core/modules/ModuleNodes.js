@@ -1,3 +1,9 @@
+import {
+  DefaultModuleManifest,
+  ModuleDefinitionRegistry,
+  registerModuleDefinitions
+} from './ModuleDefinitionRegistry.js';
+
 function nextFunctionId(functions = []) {
   const used = new Set(functions.map((fn) => fn.id));
   let index = 1;
@@ -66,13 +72,14 @@ export function syncModuleFunctionSlots(nodeModel, { edges = [], nodes = [] } = 
   return functionSlots;
 }
 
-export const ModuleNodeDefinitions = [
+const moduleNodeDefinitions = [
   {
     typeId: 'ModuleNode',
     label: 'Workspace',
     kind: 'module',
     category: 'Module',
     color: '#2faa64',
+    moduleManifest: DefaultModuleManifest,
     buildPorts: buildModuleFunctionPorts,
     defaultParams: {
       workspaceName: 'Workspace',
@@ -110,3 +117,7 @@ export const ModuleNodeDefinitions = [
     }
   }
 ];
+
+
+export const ModuleNodeDefinitions = registerModuleDefinitions(moduleNodeDefinitions);
+export { ModuleDefinitionRegistry };

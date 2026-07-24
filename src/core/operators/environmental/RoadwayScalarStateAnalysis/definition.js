@@ -12,7 +12,13 @@ export function buildParamSchema(preset) {
     { key: 'colormap', label: 'Color map', type: 'select', options: ['rainbow', 'viridis', 'heat'] },
     { key: 'toleranceMinutes', label: 'Tolerance minutes', type: 'number' },
     { key: 'showSensors', label: 'Show sensors', type: 'boolean' },
-    { key: 'chartMode', label: 'Chart mode', type: 'select', options: ['overlay', 'billboard'] }
+    { key: 'chartPresentation', label: 'Chart presentation', type: 'select', options: ['docked', 'scene-callout', 'world-billboard', 'world-plane'] },
+    { key: 'comparisonLayout', label: 'Comparison layout', type: 'select', options: ['auto', 'superimposed', 'small-multiples'] },
+    { key: 'selectionMode', label: 'Selection mode', type: 'select', options: ['multiple', 'single'] },
+    { key: 'maxComparedItems', label: 'Max compared items', type: 'number' },
+    { key: 'chartAnchor', label: 'Chart anchor', type: 'select', options: ['primary-selection'] },
+    { key: 'worldChartScale', label: 'World chart scale', type: 'number' },
+    { key: 'worldChartOcclusion', label: 'World chart occlusion', type: 'select', options: ['depth-aware', 'always-visible'] }
   ];
   if (preset.warningThreshold != null) {
     schema.splice(5, 0, { key: 'warningThreshold', label: 'Warning threshold', type: 'number' });
@@ -53,7 +59,9 @@ export function createRoadwayScalarAnalysisDefinition(preset) {
         ]
       },
       { type: 'colormap', key: 'colormap', label: 'Color map', options: ['rainbow', 'viridis', 'heat'] },
-      { type: 'checkbox', key: 'showSensors', label: 'Show sensors' }
+      { type: 'checkbox', key: 'showSensors', label: 'Show sensors' },
+      { type: 'select', key: 'chartPresentation', label: 'Chart', options: ['docked', 'scene-callout', 'world-billboard', 'world-plane'] },
+      { type: 'select', key: 'comparisonLayout', label: 'Compare', options: ['auto', 'superimposed', 'small-multiples'] }
     ]
   });
 }

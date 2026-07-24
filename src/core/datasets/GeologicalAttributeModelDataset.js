@@ -1,3 +1,5 @@
+import { BaseSemanticDataset } from '../semantics/BaseSemanticDataset.js';
+
 const asArray = (value) => (Array.isArray(value) ? value : value == null ? [] : [value]);
 
 function normalizeElement(row = {}, index = 0) {
@@ -141,7 +143,7 @@ function isNumericAttributeColumn(key, value) {
   return Number.isFinite(Number(value));
 }
 
-export class GeologicalAttributeModelDataset {
+export class GeologicalAttributeModelDataset extends BaseSemanticDataset {
   constructor({
     representationProfile = 'generic',
     modelId = 'geological_attribute_model',
@@ -157,31 +159,61 @@ export class GeologicalAttributeModelDataset {
     templates = null,
     roleMapping = {},
     validation = null,
-    adaptorResults = null
+    adaptorResults = null,
+    normalizedElements = false,
+    attributeNames = null
   } = {}) {
-    this.type = 'GeologicalAttributeModelDataset';
-    this.contract = contract;
-    this.semanticClass = contract?.class ?? 'GeologicalAttributeModel';
+    super({
+      type: 'GeologicalAttributeModelDataset',
+      semanticClass: contract?.class ?? 'GeologicalAttributeModel',
+      taxonomyId: 'geology-resources',
+      contract,
+      templates,
+      roleMapping,
+      validation,
+      adaptorResults,
+      source,
+      metadata
+    });
     this.taxonomyClass = contract?.taxonomyClass ?? 'Geology & Resource Datasets';
     this.representationProfile = representationProfile;
     this.modelId = modelId;
-    this.templates = templates ?? {};
-    this.roleMapping = roleMapping;
-    this.validation = validation ?? { valid: true, warnings: [], errors: [], summary: {} };
-    this.adaptorResults = adaptorResults;
-    this.source = source;
-    this.metadata = metadata;
-    this.elements = asArray(elements).map(normalizeElement);
-    this.blocks = asArray(blocks.length ? blocks : elements).map(normalizeElement);
+    const sourceElements = asArray(elements);
+    const sourceBlocks = asArray(asArray(blocks).length ? blocks : elements);
+    const normalizedBySource = new WeakMap();
+    this.elements = normalizedElements
+      ? sourceElements
+      : sourceElements.map((element, index) => {
+        const normalized = normalizeElement(element, index);
+        if (element && typeof element === 'object') normalizedBySource.set(element, normalized);
+        return normalized;
+      });
+    if (sourceBlocks === sourceElements) {
+      this.blocks = this.elements;
+    } else if (normalizedElements) {
+      this.blocks = sourceBlocks;
+    } else {
+      this.blocks = sourceBlocks.map((block, index) =>
+        (block && typeof block === 'object' && normalizedBySource.get(block)) || normalizeElement(block, index)
+      );
+    }
     this.attributes = asArray(attributes);
     this.relations = asArray(relations);
     this.grid = grid;
     this.binaryAttributes = binaryAttributes || {};
-    this.elementMap = new Map(this.elements.map((element) => [element.elementId, element]));
-    this.blockMap = new Map(this.blocks.map((block) => [String(block.blockId ?? block.elementId), block]));
+    this.elementMap = new Map();
+    this.elements.forEach((element) => this.elementMap.set(element.elementId, element));
+    this.blockMap = new Map();
+    this.blocks.forEach((block) => this.blockMap.set(String(block.blockId ?? block.elementId), block));
+    this.attributeNamesCache = Array.isArray(attributeNames)
+      ? [...new Set(attributeNames.filter(Boolean))]
+      : null;
+    this.summaryCache = new Map();
+    this.numericRangeCache = new Map();
   }
 
   listAttributes() {
+    if (this.attributeNamesCache) return [...this.attributeNamesCache];
     const names = new Set(this.attributes.map((attribute) => attribute.attributeName ?? attribute.name).filter(Boolean));
     Object.keys(this.binaryAttributes || {}).forEach((name) => names.add(name));
     this.elements.forEach((element) => {
@@ -194,7 +226,8 @@ export class GeologicalAttributeModelDataset {
         if (isNumericAttributeColumn(key, value)) names.add(key);
       });
     });
-    return [...names];
+    this.attributeNamesCache = [...names];
+    return [...this.attributeNamesCache];
   }
 
   getPrimaryAttribute() {
@@ -283,6 +316,9 @@ export class GeologicalAttributeModelDataset {
   }
 
   getSummary(attributeName = this.getPrimaryAttribute()) {
+    const cacheKey = String(attributeName ?? '');
+    const cached = this.summaryCache.get(cacheKey);
+    if (cached) return cached;
     let min = Infinity;
     let max = -Infinity;
     let count = 0;
@@ -293,7 +329,7 @@ export class GeologicalAttributeModelDataset {
       if (value > max) max = value;
       count += 1;
     });
-    return {
+    const summary = {
       representationProfile: this.representationProfile,
       elementCount: this.elements.length,
       blockCount: this.blocks.length,
@@ -302,6 +338,27 @@ export class GeologicalAttributeModelDataset {
       primaryAttribute: attributeName,
       valueRange: count ? { min, max } : null
     };
+    this.summaryCache.set(cacheKey, summary);
+    return summary;
+  }
+
+  getNumericRange(attributeName = this.getPrimaryAttribute(), values = null) {
+    const cacheKey = String(attributeName ?? '');
+    const cached = this.numericRangeCache.get(cacheKey);
+    if (cached) return cached;
+    const source = values ?? this.binaryAttributes?.[attributeName];
+    if (!source?.length) return this.getSummary(attributeName)?.valueRange ?? null;
+    let min = Infinity;
+    let max = -Infinity;
+    for (let index = 0; index < source.length; index += 1) {
+      const numeric = Number(source[index]);
+      if (!Number.isFinite(numeric)) continue;
+      if (numeric < min) min = numeric;
+      if (numeric > max) max = numeric;
+    }
+    const range = min === Infinity ? { min: 0, max: 1 } : { min, max };
+    this.numericRangeCache.set(cacheKey, range);
+    return range;
   }
 
   listBlocks() {

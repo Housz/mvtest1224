@@ -1,3 +1,5 @@
+import { BaseSemanticDataset } from '../semantics/BaseSemanticDataset.js';
+
 const asArray = (value) => (Array.isArray(value) ? value : value == null ? [] : [value]);
 
 function normalizeId(value, fallback) {
@@ -58,7 +60,7 @@ function normalizeBlock(row = {}, index = 0) {
   };
 }
 
-export class GeologicalBodyDataset {
+export class GeologicalBodyDataset extends BaseSemanticDataset {
   constructor({
     representationProfile = 'generic',
     units = [],
@@ -76,17 +78,20 @@ export class GeologicalBodyDataset {
     validation = null,
     adaptorResults = null
   } = {}) {
-    this.type = 'GeologicalBodyDataset';
-    this.contract = contract;
-    this.semanticClass = contract?.class ?? 'GeologicalBody';
+    super({
+      type: 'GeologicalBodyDataset',
+      semanticClass: contract?.class ?? 'GeologicalBody',
+      taxonomyId: 'geology-resources',
+      contract,
+      templates,
+      roleMapping,
+      validation,
+      adaptorResults,
+      source,
+      metadata
+    });
     this.taxonomyClass = contract?.taxonomyClass ?? 'Geology & Resource Datasets';
     this.representationProfile = representationProfile;
-    this.templates = templates ?? {};
-    this.roleMapping = roleMapping;
-    this.validation = validation ?? { valid: true, warnings: [], errors: [], summary: {} };
-    this.adaptorResults = adaptorResults;
-    this.source = source;
-    this.metadata = metadata;
     this.units = asArray(units).map(normalizeUnit);
     this.bodies = asArray(bodies).map(normalizeBody);
     this.surfaces = asArray(surfaces).map(normalizeSurface);
@@ -138,12 +143,22 @@ export class GeologicalBodyDataset {
     return this.geometrySupport;
   }
 
-  getRenderableGeometries() {
+  getRenderSupport() {
+    const geometryTemplate = this.getTemplate('geometry');
     return {
+      profile: this.representationProfile,
       surfaces: this.surfaces,
       blocks: this.blocks,
-      profile: this.representationProfile
+      units: this.units,
+      bodies: this.bodies,
+      meshParts: this.geometrySupport?.meshParts || geometryTemplate?.data?.meshParts || [],
+      objText: this.geometrySupport?.objText || geometryTemplate?.data?.objText || '',
+      modelPath: this.geometrySupport?.modelPath || geometryTemplate?.data?.modelPath || ''
     };
+  }
+
+  getRenderableGeometries() {
+    return this.getRenderSupport();
   }
 
   getUnit(id) {

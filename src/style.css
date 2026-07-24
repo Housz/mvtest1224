@@ -433,6 +433,22 @@ button:hover {
   pointer-events: stroke;
 }
 
+.node-active-edge-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.node-edge-active-overlay {
+  pointer-events: none !important;
+}
+
+
 #node-canvas {
   position: absolute;
   inset: 0;
@@ -440,6 +456,7 @@ button:hover {
 
 .node {
   position: absolute;
+  z-index: 0;
   --node-accent: #6f7f96;
   --node-header-bg: #242a33;
   --node-bg: #1b2028;
@@ -462,6 +479,7 @@ button:hover {
 }
 
 .node.selected {
+  z-index: 2;
   border-color: var(--node-accent);
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--node-accent) 65%, transparent),
@@ -512,6 +530,7 @@ button:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: default;
 }
 
 .node-title-input {
@@ -522,7 +541,6 @@ button:hover {
   font-size: 12px;
 }
 
-.node-rename-toggle,
 .node-collapse-toggle {
   width: 22px;
   height: 22px;
@@ -538,14 +556,6 @@ button:hover {
   font-size: 13px;
 }
 
-.node-rename-toggle {
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-
-.node-header:hover .node-rename-toggle {
-  opacity: 1;
-}
 
 .node-header::before {
   content: '';
@@ -4154,33 +4164,8 @@ button:hover {
   cursor: crosshair;
 }
 
-.runtime-shell .geological-section-tooltip {
-  position: fixed;
-  z-index: 999;
-  display: none;
-  min-width: 150px;
-  padding: 7px 9px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(5, 10, 18, 0.92);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
-  color: #eaf2ff;
-  font-size: 11px;
-  pointer-events: none;
-}
-
-.runtime-shell .geological-section-tooltip div {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.runtime-shell .geological-section-tooltip span {
-  color: var(--muted);
-}
-
-#editor[data-node-lod='compact'] .node-inline-controls,
-#editor[data-node-lod='overview'] .node-inline-controls {
+#editor[data-node-lod='compact'] .node[data-node-expansion='auto'] .node-inline-controls,
+#editor[data-node-lod='overview'] .node[data-node-expansion='auto'] .node-inline-controls {
   display: none;
 }
 
@@ -4192,9 +4177,15 @@ button:hover {
   padding-block: 5px;
 }
 
-#editor[data-node-lod='overview'] .node-header button,
 #editor[data-node-lod='overview'] .port .label {
   display: none;
+}
+
+#editor[data-node-lod='overview'] .node-collapse-toggle {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
 }
 
 #editor[data-node-lod='overview'] .node-body {

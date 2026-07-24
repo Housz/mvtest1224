@@ -4,8 +4,6 @@ import {
   renderRoadwayHazardViewPair
 } from '../../../ui/RoadwayHazardViews.js';
 import { sampleColor } from '../../../utils/colors.js';
-import { SemanticContractRegistry } from '../../semantics/SemanticContractRegistry.js';
-import { materializeDataset } from '../../semantics/DatasetMaterializers.js';
 
 export const formatTime = (value) => {
   if (value == null) return '-';
@@ -89,27 +87,18 @@ export const formatScalar = (value, digits = 2) => {
 };
 
 
-export function createRoadwayHazardDataset(rows, metadata = {}) {
-  const contract = SemanticContractRegistry.get('RoadwayHazardStateContract');
-  const dataset = materializeDataset({
-    datasetType: 'RoadwayHazardState',
-    contract,
-    adaptorResults: { state: { rows } },
-    roleMapping: {
-      time: 'time',
-      roadwayEdgeId: 'roadwayEdgeId',
-      roadwayNodeId: 'roadwayNodeId',
-      hazardType: 'hazardType',
-      hazardValue: 'hazardValue',
-      severity: 'severity',
-      passability: 'passability',
-      arrivalTime: 'arrivalTime',
-      scenarioId: 'scenarioId'
-    },
-    sources: { state: { path: metadata.sourcePath || '' } }
-  });
-  dataset.metadata = { generatedAt: new Date().toISOString(), ...metadata };
-  return dataset;
+export async function loadRoadwayDataset(sceneManager, roadway) {
+  if (!sceneManager || !roadway) return;
+  const support = roadway.getRenderableSupport?.() || {};
+  const geometry = support.geometry || roadway.getGeometry?.() || {};
+  const mapping = geometry.meshPartsMapping || roadway.getMeshPartsMapping?.();
+  if (geometry.objText) {
+    await sceneManager.loadRoadwayModel(null, geometry.objText, mapping, roadway);
+  } else if (geometry.modelPath) {
+    await sceneManager.loadRoadwayModel(geometry.modelPath, null, mapping, roadway);
+  } else {
+    sceneManager.buildRoadway?.(support.topology || roadway);
+  }
 }
 
 export function edgeLength(roadway, edge) {
@@ -401,12 +390,6 @@ export function updateHazardRoadwayViews(runtime, states = null, style = 'water'
   });
 }
 
-export function downloadDataset(dataset, format, filename) {
-  if (!dataset) return;
-  if (format === 'json') dataset.downloadJSON?.(filename);
-  else dataset.downloadCSV?.(filename);
-}
-
 export const GEOLOGY_PALETTE = [
   '#6aa6ff',
   '#f4c95d',
@@ -462,7 +445,7 @@ export function geologyPoint(value = {}) {
 
 export function disposeThreeObject(object) {
   object?.traverse?.((child) => {
-    if (child.geometry) child.geometry.dispose?.();
+    if (child.geometry && !child.geometry.userData?.minevisSharedObjGeometry) child.geometry.dispose?.();
     const materials = Array.isArray(child.material) ? child.material : [child.material].filter(Boolean);
     materials.forEach((material) => {
       Object.values(material?.uniforms || {}).forEach((uniform) => {

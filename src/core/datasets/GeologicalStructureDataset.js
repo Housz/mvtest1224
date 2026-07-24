@@ -1,3 +1,5 @@
+import { BaseSemanticDataset } from '../semantics/BaseSemanticDataset.js';
+
 const asArray = (value) => (Array.isArray(value) ? value : value == null ? [] : [value]);
 
 function normalizeStructure(row = {}, index = 0) {
@@ -13,10 +15,11 @@ function normalizeStructure(row = {}, index = 0) {
   };
 }
 
-export class GeologicalStructureDataset {
+export class GeologicalStructureDataset extends BaseSemanticDataset {
   constructor({
     structures = [],
     relations = [],
+    geometrySupport = null,
     source = null,
     metadata = {},
     contract = null,
@@ -25,19 +28,38 @@ export class GeologicalStructureDataset {
     validation = null,
     adaptorResults = null
   } = {}) {
-    this.type = 'GeologicalStructureDataset';
-    this.contract = contract;
-    this.semanticClass = contract?.class ?? 'GeologicalStructure';
+    super({
+      type: 'GeologicalStructureDataset',
+      semanticClass: contract?.class ?? 'GeologicalStructure',
+      taxonomyId: 'geology-resources',
+      contract,
+      templates,
+      roleMapping,
+      validation,
+      adaptorResults,
+      source,
+      metadata
+    });
     this.taxonomyClass = contract?.taxonomyClass ?? 'Geology & Resource Datasets';
-    this.templates = templates ?? {};
-    this.roleMapping = roleMapping;
-    this.validation = validation ?? { valid: true, warnings: [], errors: [], summary: {} };
-    this.adaptorResults = adaptorResults;
-    this.source = source;
-    this.metadata = metadata;
     this.structures = asArray(structures).map(normalizeStructure);
     this.relations = asArray(relations);
+    this.geometrySupport = geometrySupport || {
+      form: 'Trace / Surface / Zone',
+      structures: this.structures,
+      traces: []
+    };
     this.structureMap = new Map(this.structures.map((structure) => [structure.structureId, structure]));
+  }
+
+  getRenderSupport() {
+    const geometryTemplate = this.getTemplate('geometry');
+    return {
+      ...this.geometrySupport,
+      structures: this.structures,
+      meshParts: this.geometrySupport?.meshParts || geometryTemplate?.data?.meshParts || [],
+      objText: this.geometrySupport?.objText || geometryTemplate?.data?.objText || '',
+      modelPath: this.geometrySupport?.modelPath || geometryTemplate?.data?.modelPath || ''
+    };
   }
 
   listStructures() {

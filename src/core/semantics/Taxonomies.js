@@ -1,70 +1,73 @@
 export const DatasetTaxonomy = [
   {
+    id: 'roadways-infrastructure',
     class: 'Roadways & Infrastructure',
+    aliases: [],
     representativeDatasets: ['Roadway', 'Roadway Segment', 'Support Structure', 'Underground Facility'],
     objectSystemFocus: 'Built underground structures'
   },
   {
+    id: 'geology-resources',
     class: 'Geology & Resources',
-    representativeDatasets: ['Geological Body', 'Seam Surface', 'Fault Structure', 'Resource Model'],
-    objectSystemFocus: 'Geological and resource context'
-  },
-  {
-    class: 'Geology & Resource Datasets',
+    aliases: ['Geology & Resource Datasets'],
     representativeDatasets: [
       'Geological Body',
-      'Layered / Surface Geological Body',
-      'Volumetric / Block Geological Body',
       'Borehole',
       'Geological Structure',
-      'Resource Block Model',
-      'Coal Seam Attribute Model',
-      'Geological Risk / Uncertainty Model',
-      'Generic Geological Attribute Model'
+      'Geological Attribute Model',
+      'Resource Block Model'
     ],
-    objectSystemFocus: 'Geological bodies, structures, boreholes, and spatial resource fields'
+    objectSystemFocus: 'Geological bodies, structures, evidence, and resource fields'
   },
   {
+    id: 'monitoring-sensing',
     class: 'Monitoring & Sensing',
+    aliases: [],
     representativeDatasets: ['Sensor Registry', 'Sensor Readings', 'Monitoring Field', 'Warning State'],
     objectSystemFocus: 'Observed conditions and measurements'
   },
   {
+    id: 'production-operations',
     class: 'Production & Operations',
+    aliases: [],
     representativeDatasets: ['Working Face', 'Production Unit', 'Operation State', 'Process Record'],
     objectSystemFocus: 'Mining production activities'
   },
   {
-    class: 'Ventilation & Utility Network',
+    id: 'ventilation',
+    class: 'Ventilation & Utility Networks',
+    aliases: ['Ventilation & Utility Network'],
     representativeDatasets: ['Ventilation Network', 'Airflow State', 'Ventilation Facility'],
-    objectSystemFocus: 'Air circulation systems'
+    objectSystemFocus: 'Air circulation and utility networks'
   },
   {
-    class: 'People & Vehicles',
-    representativeDatasets: ['Personnel Registry', 'Mobility Trace', 'Vehicle State'],
-    objectSystemFocus: 'Human and transport presence'
-  },
-  {
-    class: 'Equipment, People & Mobile Asset',
+    id: 'people-vehicles',
+    class: 'People, Vehicles & Mobile Assets',
+    aliases: ['People & Vehicles', 'Equipment, People & Mobile Asset'],
     representativeDatasets: ['People', 'Personnel Registry', 'Mobility Trace', 'Vehicle State'],
-    objectSystemFocus: 'Human, equipment, and mobile asset presence'
+    objectSystemFocus: 'Human and mobile asset presence'
   },
   {
+    id: 'robots-equipment',
     class: 'Robots & Equipment',
+    aliases: [],
     representativeDatasets: ['Equipment Registry', 'Robot Model', 'Equipment State'],
     objectSystemFocus: 'Mining machinery and robots'
   },
   {
+    id: 'safety-emergency',
     class: 'Safety & Emergency',
-    representativeDatasets: ['Hazard Source', 'Hazard Field', 'Hazard Region', 'Emergency Resource'],
-    objectSystemFocus: 'Risk and response scenarios'
-  },
-  {
-    class: 'Safety, Hazard & Emergency',
+    aliases: ['Safety, Hazard & Emergency'],
     representativeDatasets: ['Emergency Resources', 'Roadway Hazard State', 'Hazard Field', 'Hazard Region'],
-    objectSystemFocus: 'Risk, emergency resources, and response scenarios'
+    objectSystemFocus: 'Risk and emergency response scenarios'
   }
 ];
+
+export function resolveDatasetTaxonomy(value) {
+  return DatasetTaxonomy.find((item) => (
+    item.id === value || item.class === value || item.aliases.includes(value)
+  )) || null;
+}
 
 export const DataTemplateTaxonomy = {
   Geometry: {

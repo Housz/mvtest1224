@@ -15,3 +15,5 @@
 !/DataGenerator/misc/GeoVolume/viewer_multi_attri_with_fault.html
 /dist/
 /.vscode/
+/test-results/
+/playwright-report/

@@ -3,20 +3,13 @@ import { DataNodeDefinitions } from './core/nodes/DataNodes.js';
 import { OperatorNodeDefinitions } from './core/operators/OperatorNodes.js';
 import { ModuleNodeDefinitions } from './core/modules/ModuleNodes.js';
 import { NodeDefinitionRegistry } from './core/graph/NodeDefinitionRegistry.js';
-import { GraphModel } from './core/graph/GraphModel.js';
+import { GRAPH_SCHEMA_VERSION, GraphModel } from './core/graph/GraphModel.js';
+import { listBuiltInGraphs } from './core/graph/BuiltInGraphRegistry.js';
 import { NodeEditor } from './ui/NodeEditor.js';
 import { Inspector } from './ui/Inspector.js';
 import { appPagePath } from './utils/appPath.js';
 import mineVisLogoUrl from './assets/MineVisLogo.png';
-import {
-  Box,
-  ChevronsDown,
-  ChevronsUp,
-  ExternalLink,
-  FolderOpen,
-  Save,
-  createIcons
-} from 'lucide';
+import { renderLucideIcons } from './ui/LucideIcons.js';
 
 const app = document.querySelector('#app');
 app.innerHTML = `
@@ -47,9 +40,15 @@ app.innerHTML = `
             <i data-lucide="save" aria-hidden="true"></i>
             <span>Save graph</span>
           </button>
-          <button id="btn-load" class="toolbar-button" type="button">
+          <label class="toolbar-select toolbar-graph-select">
+            <span>Built-in graph</span>
+            <select id="built-in-graph-select" aria-label="Load built-in graph">
+              <option value="">Load built-in graph...</option>
+            </select>
+          </label>
+          <button id="btn-load-json" class="toolbar-button" type="button">
             <i data-lucide="folder-open" aria-hidden="true"></i>
-            <span>Load graph</span>
+            <span>Load JSON</span>
           </button>
           <input id="graph-file-input" type="file" accept=".json,application/json" hidden />
         </div>
@@ -80,11 +79,26 @@ app.innerHTML = `
       </section>
     </main>
   </div>
+  <dialog
+    id="graph-replace-dialog"
+    class="graph-replace-dialog"
+    aria-labelledby="graph-replace-dialog-title"
+    aria-describedby="graph-replace-dialog-message"
+  >
+    <form method="dialog" class="graph-replace-dialog-card">
+      <h2 id="graph-replace-dialog-title">Replace current graph?</h2>
+      <p id="graph-replace-dialog-message"></p>
+      <div class="graph-replace-dialog-actions">
+        <button class="graph-dialog-button" type="submit" value="cancel" autofocus>Cancel</button>
+        <button class="graph-dialog-button graph-dialog-destructive" type="submit" value="confirm">
+          Discard and load
+        </button>
+      </div>
+    </form>
+  </dialog>
 `;
 
-createIcons({
-  icons: { Box, ChevronsDown, ChevronsUp, ExternalLink, FolderOpen, Save }
-});
+renderLucideIcons(app);
 
 const DataCategories = [
   'Roadways & Infrastructure',
@@ -120,7 +134,48 @@ function seedGraph() {
   graph.connect({ nodeId: operator.id, portId: 'operator' }, { nodeId: moduleNode.id, portId: 'function-1' });
 }
 
-seedGraph();
+const builtInGraphs = listBuiltInGraphs();
+let cleanGraphSnapshot = '';
+
+function validateGraphDocument(document, sourceName = 'graph.json') {
+  if (!document || typeof document !== 'object' || Array.isArray(document)) {
+    throw new Error(`${sourceName} does not contain a graph document.`);
+  }
+  if (!Array.isArray(document.nodes) || !Array.isArray(document.edges)) {
+    throw new Error(`${sourceName} is not a MineVis graph export.`);
+  }
+  const schemaVersion = Number(document.schemaVersion || 0);
+  if (!Number.isFinite(schemaVersion) || schemaVersion < 0) {
+    throw new Error(`${sourceName} has an invalid graph schema version.`);
+  }
+  if (schemaVersion > GRAPH_SCHEMA_VERSION) {
+    throw new Error(
+      `${sourceName} uses graph schema version ${schemaVersion}; this Editor supports version ${GRAPH_SCHEMA_VERSION}.`
+    );
+  }
+  return document;
+}
+
+function markGraphClean() {
+  cleanGraphSnapshot = graphFingerprint();
+  localStorage.setItem('minevis.graph', graph.serialize());
+}
+
+function initializeGraph() {
+  for (const preset of builtInGraphs) {
+    try {
+      graph.load(validateGraphDocument(preset.document, preset.name));
+      markGraphClean();
+      return;
+    } catch (error) {
+      console.error(`Failed to load built-in graph ${preset.name}:`, error);
+    }
+  }
+  seedGraph();
+  markGraphClean();
+}
+
+initializeGraph();
 
 const editor = new NodeEditor(document.querySelector('#editor'), graph);
 const inspector = new Inspector(document.querySelector('#inspector'));
@@ -444,6 +499,76 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeContextMenu();
 });
 
+const builtInGraphSelect = document.querySelector('#built-in-graph-select');
+const builtInGraphByName = new Map(builtInGraphs.map((preset) => [preset.name, preset]));
+const builtInGraphPlaceholder = builtInGraphSelect.options[0];
+
+if (!builtInGraphs.length) {
+  builtInGraphPlaceholder.textContent = 'No built-in graphs';
+  builtInGraphSelect.disabled = true;
+} else {
+  builtInGraphs.forEach((preset) => {
+    const option = document.createElement('option');
+    option.value = preset.name;
+    option.textContent = preset.name;
+    builtInGraphSelect.appendChild(option);
+  });
+}
+
+const graphReplaceDialog = document.querySelector('#graph-replace-dialog');
+const graphReplaceDialogMessage = document.querySelector('#graph-replace-dialog-message');
+const graphReplaceCancelButton = graphReplaceDialog.querySelector('[value="cancel"]');
+
+function graphFingerprint() {
+  const document = JSON.parse(graph.serialize());
+  document.nodes.forEach((node) => {
+    if (!node.params) return;
+    delete node.params.semanticStatus;
+    delete node.params.detectedRange;
+  });
+  return JSON.stringify(document);
+}
+
+function graphIsDirty() {
+  return graphFingerprint() !== cleanGraphSnapshot;
+}
+
+function confirmGraphReplacement(sourceName) {
+  const message = `Unsaved changes will be discarded before loading "${sourceName}".`;
+  if (typeof graphReplaceDialog.showModal !== 'function') {
+    return Promise.resolve(window.confirm(`${message}\n\nContinue?`));
+  }
+
+  graphReplaceDialogMessage.textContent = message;
+  graphReplaceDialog.returnValue = 'cancel';
+  return new Promise((resolve) => {
+    graphReplaceDialog.addEventListener(
+      'close',
+      () => resolve(graphReplaceDialog.returnValue === 'confirm'),
+      { once: true }
+    );
+    graphReplaceDialog.showModal();
+    requestAnimationFrame(() => graphReplaceCancelButton.focus());
+  });
+}
+
+function reportGraphLoadError(sourceName, error) {
+  console.error(`Failed to load ${sourceName}:`, error);
+  alert(`Failed to load ${sourceName}: ${error.message || error}`);
+}
+
+async function loadGraphDocument(document, sourceName) {
+  const validated = validateGraphDocument(document, sourceName);
+  if (graphIsDirty() && !(await confirmGraphReplacement(sourceName))) return false;
+
+  graph.load(validated);
+  editor.setSelectedNode(null, { notify: false });
+  inspector.showNode(null);
+  markGraphClean();
+  updateCollapseNodesButton();
+  return true;
+}
+
 document.querySelector('#btn-save').addEventListener('click', () => {
   const json = graph.serialize();
   const blob = new Blob([json], { type: 'application/json' });
@@ -453,10 +578,24 @@ document.querySelector('#btn-save').addEventListener('click', () => {
   anchor.download = 'graph.json';
   anchor.click();
   URL.revokeObjectURL(url);
+  markGraphClean();
+});
+
+builtInGraphSelect.addEventListener('change', async () => {
+  const presetName = builtInGraphSelect.value;
+  builtInGraphSelect.value = '';
+  if (!presetName) return;
+  const preset = builtInGraphByName.get(presetName);
+  if (!preset) return;
+  try {
+    await loadGraphDocument(preset.document, preset.name);
+  } catch (error) {
+    reportGraphLoadError(preset.name, error);
+  }
 });
 
 const graphFileInput = document.querySelector('#graph-file-input');
-document.querySelector('#btn-load').addEventListener('click', () => {
+document.querySelector('#btn-load-json').addEventListener('click', () => {
   graphFileInput.value = '';
   graphFileInput.click();
 });
@@ -465,21 +604,14 @@ graphFileInput.addEventListener('change', async () => {
   const file = graphFileInput.files?.[0];
   if (!file) return;
   try {
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
-      throw new Error('The selected file is not a MineVis graph export.');
-    }
-    editor.setSelectedNode(null, { notify: false });
-    graph.load(parsed);
-    inspector.showNode(null);
-    localStorage.setItem('minevis.graph', graph.serialize());
+    const parsed = JSON.parse(await file.text());
+    await loadGraphDocument(parsed, file.name || 'graph.json');
   } catch (error) {
-    console.error('Failed to load graph.json:', error);
-    alert(`Failed to load graph.json: ${error.message}`);
+    reportGraphLoadError(file.name || 'graph.json', error);
+  } finally {
+    graphFileInput.value = '';
   }
 });
-
 document.querySelector('#btn-open-preview').addEventListener('click', () => {
   const json = graph.serialize();
   localStorage.setItem('minevis.graph', json);

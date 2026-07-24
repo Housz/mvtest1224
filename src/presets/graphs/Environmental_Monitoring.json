@@ -1,0 +1,1072 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "env-roadway",
+      "typeId": "RoadwayDataNode",
+      "kind": "data",
+      "label": "Roadway",
+      "position": {
+        "x": 235.20449924069703,
+        "y": 24.882386609454947
+      },
+      "params": {
+        "datasetType": "Roadway",
+        "contractId": "RoadwayContract",
+        "sources": {
+          "topology": {
+            "label": "Topology JSON",
+            "path": "/data/roadway_topo.json",
+            "adaptor": "JSONGraphAdaptor"
+          },
+          "geometry": {
+            "label": "Roadway OBJ",
+            "path": "/data/roadway_model.obj",
+            "adaptor": "OBJGeometryAdaptor"
+          }
+        },
+        "roleMapping": {
+          "graph.nodeId": "nodes.id",
+          "graph.nodePosition": "nodes.position",
+          "graph.edgeId": "edges.id",
+          "graph.fromNode": "edges.source",
+          "graph.toNode": "edges.target",
+          "graph.path": "edges.path",
+          "geometry.meshPartId": "meshParts.name",
+          "relation.geometryTarget": "meshParts.name"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "nodeCount": 63,
+            "edgeCount": 81,
+            "meshPartCount": 144,
+            "templates": [
+              {
+                "id": "graph",
+                "type": "Graph",
+                "kind": "Graph",
+                "label": "Roadway graph",
+                "role": "networkStructure",
+                "form": "DirectedGraph",
+                "schemaVersion": 1,
+                "nodeCount": 63,
+                "edgeCount": 81
+              },
+              {
+                "id": "geometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Roadway geometry",
+                "role": "spatialSupport",
+                "form": "MeshSurface",
+                "schemaVersion": 1,
+                "meshPartCount": 144,
+                "modelPath": "/data/roadway_model.obj"
+              },
+              {
+                "id": "geometryToGraph",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Geometry to roadway graph",
+                "role": "constitutiveCorrespondence",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "geometry.meshPartId",
+                "target": "graph.edgeId / graph.nodeId",
+                "relation": "geometry parts are attached to roadway graph entities by id/name correspondence",
+                "relationCount": 144
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        }
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Roadway",
+          "direction": "out",
+          "type": "RoadwayDataset"
+        }
+      ]
+    },
+    {
+      "id": "env-registry",
+      "typeId": "SensorRegistryDataNode",
+      "kind": "data",
+      "label": "Sensor Registry",
+      "position": {
+        "x": 154.6188803336446,
+        "y": 134.5038946799158
+      },
+      "params": {
+        "datasetType": "SensorRegistry",
+        "contractId": "SensorRegistryContract",
+        "sources": {
+          "registry": {
+            "label": "Registry CSV",
+            "path": "/data/Temperature_sensors_location.csv",
+            "adaptor": "CSVTableAdaptor",
+            "name": "Temperature_sensors_location.csv"
+          }
+        },
+        "roleMapping": {
+          "sensorIdentity": "sensorID",
+          "sensorType": "type",
+          "positionX": "x",
+          "positionY": "y",
+          "positionZ": "z",
+          "roadwayAnchor": "roadwayID",
+          "ratio": "ratio"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "sensorCount": 40,
+            "anchoredSensorCount": 40,
+            "templates": [
+              {
+                "id": "registry",
+                "type": "Registry",
+                "kind": "Registry",
+                "label": "Sensor registry",
+                "role": "entityIdentity",
+                "form": "EntityRegistry",
+                "schemaVersion": 1,
+                "entityCount": 40,
+                "keyRole": "sensorIdentity"
+              },
+              {
+                "id": "pointGeometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Sensor point geometry",
+                "role": "sensorPosition",
+                "form": "PointSet",
+                "schemaVersion": 1,
+                "pointCount": 40
+              },
+              {
+                "id": "mountedOnRoadway",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Mounted on roadway",
+                "role": "roadwayMountRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "registry.sensorIdentity",
+                "target": "Roadway.graph.edgeId / nodeId",
+                "relation": "sensors are mounted onto roadway graph entities",
+                "relationCount": 40
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        }
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Sensor Registry",
+          "direction": "out",
+          "type": "SensorRegistryDataset"
+        }
+      ]
+    },
+    {
+      "id": "env-temperature",
+      "typeId": "RoadwayTemperatureAnalysisOperator",
+      "kind": "operator",
+      "label": "Roadway Temperature Analysis",
+      "position": {
+        "x": 809.0258556294211,
+        "y": 24.14337071608603
+      },
+      "params": {
+        "presetId": "temperature",
+        "variable": "temperature",
+        "unit": "degC",
+        "legendLabel": "Temperature",
+        "minValue": 18,
+        "maxValue": 38,
+        "colormap": "rainbow",
+        "toleranceMinutes": 60,
+        "showSensors": true,
+        "chartPresentation": "docked",
+        "comparisonLayout": "auto",
+        "selectionMode": "multiple",
+        "maxComparedItems": 8,
+        "chartAnchor": "primary-selection",
+        "worldChartScale": 1,
+        "worldChartOcclusion": "depth-aware"
+      },
+      "ports": [
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset"
+        },
+        {
+          "id": "sensorRegistry",
+          "name": "Sensor Registry",
+          "direction": "in",
+          "type": "SensorRegistryDataset"
+        },
+        {
+          "id": "sensorReadings",
+          "name": "Sensor Readings",
+          "direction": "in",
+          "type": "SensorReadingsDataset"
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "env-workspace",
+      "typeId": "ModuleNode",
+      "kind": "module",
+      "label": "Environmental Monitoring",
+      "position": {
+        "x": 1301.3369310115954,
+        "y": 227.32643232671597
+      },
+      "params": {
+        "workspaceName": "Environmental Monitoring",
+        "functions": [
+          {
+            "id": "function-1",
+            "label": "Roadway Temperature Analysis",
+            "operatorNodeId": "env-temperature",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-2",
+            "label": "Roadway Humidity Analysis",
+            "operatorNodeId": "b3269b94-917c-4f79-a17b-b79259cf636c",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-3",
+            "label": "Roadway CH4 Concentration Analysis",
+            "operatorNodeId": "53ba36cc-66f5-423b-adb3-e050aaab9df2",
+            "customLabel": false,
+            "placeholder": false
+          },
+          {
+            "id": "function-4",
+            "label": "(Add Function)",
+            "placeholder": true
+          }
+        ],
+        "context": {
+          "time": true,
+          "selection": true
+        }
+      },
+      "ports": [
+        {
+          "id": "function-1",
+          "name": "Roadway Temperature Analysis",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-2",
+          "name": "Roadway Humidity Analysis",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-3",
+          "name": "Roadway CH4 Concentration Analysis",
+          "direction": "in",
+          "type": "OperatorRef"
+        },
+        {
+          "id": "function-4",
+          "name": "(Add Function)",
+          "direction": "in",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "53ba36cc-66f5-423b-adb3-e050aaab9df2",
+      "typeId": "RoadwayCH4ConcentrationAnalysisOperator",
+      "kind": "operator",
+      "label": "Roadway CH4 Concentration Analysis",
+      "position": {
+        "x": 808.5900415878216,
+        "y": 425.5469137676023
+      },
+      "params": {
+        "presetId": "CH4",
+        "variable": "CH4",
+        "unit": "%",
+        "legendLabel": "CH4 concentration",
+        "minValue": 0,
+        "maxValue": 2,
+        "colormap": "heat",
+        "toleranceMinutes": 60,
+        "showSensors": true,
+        "chartPresentation": "docked",
+        "comparisonLayout": "auto",
+        "selectionMode": "multiple",
+        "maxComparedItems": 8,
+        "chartAnchor": "primary-selection",
+        "worldChartScale": 1,
+        "worldChartOcclusion": "depth-aware",
+        "warningThreshold": 1
+      },
+      "ports": [
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset"
+        },
+        {
+          "id": "sensorRegistry",
+          "name": "Sensor Registry",
+          "direction": "in",
+          "type": "SensorRegistryDataset"
+        },
+        {
+          "id": "sensorReadings",
+          "name": "Sensor Readings",
+          "direction": "in",
+          "type": "SensorReadingsDataset"
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "b3269b94-917c-4f79-a17b-b79259cf636c",
+      "typeId": "RoadwayHumidityAnalysisOperator",
+      "kind": "operator",
+      "label": "Roadway Humidity Analysis",
+      "position": {
+        "x": 807.9897838919754,
+        "y": 224.9712170816131
+      },
+      "params": {
+        "presetId": "humidity",
+        "variable": "humidity",
+        "unit": "%",
+        "legendLabel": "Humidity",
+        "minValue": 20,
+        "maxValue": 100,
+        "colormap": "viridis",
+        "toleranceMinutes": 60,
+        "showSensors": true,
+        "chartPresentation": "docked",
+        "comparisonLayout": "auto",
+        "selectionMode": "multiple",
+        "maxComparedItems": 8,
+        "chartAnchor": "primary-selection",
+        "worldChartScale": 1,
+        "worldChartOcclusion": "depth-aware"
+      },
+      "ports": [
+        {
+          "id": "roadway",
+          "name": "Roadway",
+          "direction": "in",
+          "type": "RoadwayDataset"
+        },
+        {
+          "id": "sensorRegistry",
+          "name": "Sensor Registry",
+          "direction": "in",
+          "type": "SensorRegistryDataset"
+        },
+        {
+          "id": "sensorReadings",
+          "name": "Sensor Readings",
+          "direction": "in",
+          "type": "SensorReadingsDataset"
+        },
+        {
+          "id": "operator",
+          "name": "Function",
+          "direction": "out",
+          "type": "OperatorRef"
+        }
+      ]
+    },
+    {
+      "id": "565d3efb-35a2-4ce5-ba78-d66d0ac4ac1b",
+      "typeId": "SensorRegistryDataNode",
+      "kind": "data",
+      "label": "Sensor Registry",
+      "position": {
+        "x": 156.36253722646637,
+        "y": 464.57918333506717
+      },
+      "params": {
+        "datasetType": "SensorRegistry",
+        "contractId": "SensorRegistryContract",
+        "sources": {
+          "registry": {
+            "label": "Registry CSV",
+            "path": "/data/CH4_sensors_location.csv",
+            "adaptor": "CSVTableAdaptor",
+            "name": "CH4_sensors_location.csv"
+          }
+        },
+        "roleMapping": {
+          "sensorIdentity": "sensorID",
+          "sensorType": "type",
+          "positionX": "x",
+          "positionY": "y",
+          "positionZ": "z",
+          "roadwayAnchor": "roadwayID",
+          "ratio": "ratio"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "sensorCount": 41,
+            "anchoredSensorCount": 41,
+            "templates": [
+              {
+                "id": "registry",
+                "type": "Registry",
+                "kind": "Registry",
+                "label": "Sensor registry",
+                "role": "entityIdentity",
+                "form": "EntityRegistry",
+                "schemaVersion": 1,
+                "entityCount": 41,
+                "keyRole": "sensorIdentity"
+              },
+              {
+                "id": "pointGeometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Sensor point geometry",
+                "role": "sensorPosition",
+                "form": "PointSet",
+                "schemaVersion": 1,
+                "pointCount": 41
+              },
+              {
+                "id": "mountedOnRoadway",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Mounted on roadway",
+                "role": "roadwayMountRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "registry.sensorIdentity",
+                "target": "Roadway.graph.edgeId / nodeId",
+                "relation": "sensors are mounted onto roadway graph entities",
+                "relationCount": 41
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        }
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Sensor Registry",
+          "direction": "out",
+          "type": "SensorRegistryDataset"
+        }
+      ]
+    },
+    {
+      "id": "5fd73361-7586-4176-8712-d83bf3e75217",
+      "typeId": "CH4SensorReadingsDataNode",
+      "kind": "data",
+      "label": "CH4 Sensor Readings",
+      "position": {
+        "x": 299.91482928026784,
+        "y": 528.2278043663316
+      },
+      "params": {
+        "datasetType": "SensorReadings",
+        "contractId": "SensorReadingsContract",
+        "presetId": "CH4",
+        "sources": {
+          "readings": {
+            "label": "Readings Source",
+            "path": "/data/CH4_timeseries_100steps.csv",
+            "adaptor": "CSVTableAdaptor",
+            "name": "CH4_timeseries_100steps.csv"
+          }
+        },
+        "roleMapping": {
+          "observedEntity": "sensorID",
+          "timestamp": "time",
+          "measuredValue": "value",
+          "variableName": "variable",
+          "unitName": "unit"
+        },
+        "variable": "CH4",
+        "unit": "%",
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "rowCount": 4100,
+            "seriesCount": 41,
+            "variable": "CH4",
+            "unit": "%",
+            "timeRange": {
+              "min": 1672531200000,
+              "max": 1672560900000
+            },
+            "valueRange": {
+              "min": 0.02,
+              "max": 3.49
+            },
+            "templates": [
+              {
+                "id": "state",
+                "type": "State",
+                "kind": "State",
+                "label": "Sensor reading state",
+                "role": "timeIndexedObservation",
+                "form": "Snapshot",
+                "schemaVersion": 1,
+                "rowCount": 4100,
+                "subjectRole": "observedEntity",
+                "timeRole": "timestamp",
+                "valueRole": "measuredValue",
+                "variable": "CH4",
+                "timeRange": {
+                  "min": 1672531200000,
+                  "max": 1672560900000
+                }
+              },
+              {
+                "id": "readingOfSensor",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Reading of sensor",
+                "role": "observationTargetRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "state.observedEntity",
+                "target": "SensorRegistry.registry.sensorIdentity",
+                "relation": "readings reference sensor registry identities",
+                "relationCount": 4100
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        },
+        "detectedRange": {
+          "min": 0.02,
+          "max": 3.49
+        }
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Sensor Readings",
+          "direction": "out",
+          "type": "SensorReadingsDataset"
+        }
+      ]
+    },
+    {
+      "id": "30ec169e-727f-4af5-b745-4f7ff37b8f0e",
+      "typeId": "SensorReadingsDataNode",
+      "kind": "data",
+      "label": "Temperature Sensor Readings",
+      "position": {
+        "x": 292.9988695730606,
+        "y": 187.38553712734296
+      },
+      "params": {
+        "datasetType": "SensorReadings",
+        "contractId": "SensorReadingsContract",
+        "presetId": "temperature",
+        "sources": {
+          "readings": {
+            "label": "Readings Source",
+            "path": "/data/Temperature_timeseries_100steps.csv",
+            "adaptor": "CSVTableAdaptor",
+            "name": "Temperature_timeseries_100steps.csv"
+          }
+        },
+        "roleMapping": {
+          "observedEntity": "sensorID",
+          "timestamp": "time",
+          "measuredValue": "value",
+          "variableName": "variable",
+          "unitName": "unit"
+        },
+        "variable": "temperature",
+        "unit": "degC",
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "rowCount": 4000,
+            "seriesCount": 40,
+            "variable": "temperature",
+            "unit": "degC",
+            "timeRange": {
+              "min": 1672531200000,
+              "max": 1672560900000
+            },
+            "valueRange": {
+              "min": 17.06,
+              "max": 44.44
+            },
+            "templates": [
+              {
+                "id": "state",
+                "type": "State",
+                "kind": "State",
+                "label": "Sensor reading state",
+                "role": "timeIndexedObservation",
+                "form": "Snapshot",
+                "schemaVersion": 1,
+                "rowCount": 4000,
+                "subjectRole": "observedEntity",
+                "timeRole": "timestamp",
+                "valueRole": "measuredValue",
+                "variable": "temperature",
+                "timeRange": {
+                  "min": 1672531200000,
+                  "max": 1672560900000
+                }
+              },
+              {
+                "id": "readingOfSensor",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Reading of sensor",
+                "role": "observationTargetRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "state.observedEntity",
+                "target": "SensorRegistry.registry.sensorIdentity",
+                "relation": "readings reference sensor registry identities",
+                "relationCount": 4000
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        },
+        "detectedRange": {
+          "min": 17.06,
+          "max": 44.44
+        }
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Sensor Readings",
+          "direction": "out",
+          "type": "SensorReadingsDataset"
+        }
+      ]
+    },
+    {
+      "id": "f592fb67-ab73-4167-9d7e-3e190175c712",
+      "typeId": "SensorRegistryDataNode",
+      "kind": "data",
+      "label": "Sensor Registry",
+      "position": {
+        "x": 151.4169127318528,
+        "y": 298.3172665719799
+      },
+      "params": {
+        "datasetType": "SensorRegistry",
+        "contractId": "SensorRegistryContract",
+        "sources": {
+          "registry": {
+            "label": "Registry CSV",
+            "path": "/data/Humidity_sensors_location.csv",
+            "adaptor": "CSVTableAdaptor",
+            "name": "Humidity_sensors_location.csv"
+          }
+        },
+        "roleMapping": {
+          "sensorIdentity": "sensorID",
+          "sensorType": "type",
+          "positionX": "x",
+          "positionY": "y",
+          "positionZ": "z",
+          "roadwayAnchor": "roadwayID",
+          "ratio": "ratio"
+        },
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "sensorCount": 37,
+            "anchoredSensorCount": 37,
+            "templates": [
+              {
+                "id": "registry",
+                "type": "Registry",
+                "kind": "Registry",
+                "label": "Sensor registry",
+                "role": "entityIdentity",
+                "form": "EntityRegistry",
+                "schemaVersion": 1,
+                "entityCount": 37,
+                "keyRole": "sensorIdentity"
+              },
+              {
+                "id": "pointGeometry",
+                "type": "Geometry",
+                "kind": "Geometry",
+                "label": "Sensor point geometry",
+                "role": "sensorPosition",
+                "form": "PointSet",
+                "schemaVersion": 1,
+                "pointCount": 37
+              },
+              {
+                "id": "mountedOnRoadway",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Mounted on roadway",
+                "role": "roadwayMountRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "registry.sensorIdentity",
+                "target": "Roadway.graph.edgeId / nodeId",
+                "relation": "sensors are mounted onto roadway graph entities",
+                "relationCount": 37
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        }
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Sensor Registry",
+          "direction": "out",
+          "type": "SensorRegistryDataset"
+        }
+      ]
+    },
+    {
+      "id": "d1d0e7c0-8949-46c2-9d55-b984eee604ad",
+      "typeId": "HumiditySensorReadingsDataNode",
+      "kind": "data",
+      "label": "Humidity Sensor Readings",
+      "position": {
+        "x": 290.3601736121093,
+        "y": 355.31777575171185
+      },
+      "params": {
+        "datasetType": "SensorReadings",
+        "contractId": "SensorReadingsContract",
+        "presetId": "humidity",
+        "sources": {
+          "readings": {
+            "label": "Readings Source",
+            "path": "/data/Humidity_timeseries_100steps.csv",
+            "adaptor": "CSVTableAdaptor",
+            "name": "Humidity_timeseries_100steps.csv"
+          }
+        },
+        "roleMapping": {
+          "observedEntity": "sensorID",
+          "timestamp": "time",
+          "measuredValue": "value",
+          "variableName": "variable",
+          "unitName": "unit"
+        },
+        "variable": "humidity",
+        "unit": "%",
+        "semanticStatus": {
+          "valid": true,
+          "errors": 0,
+          "warnings": 0,
+          "summary": {
+            "rowCount": 3700,
+            "seriesCount": 37,
+            "variable": "humidity",
+            "unit": "%",
+            "timeRange": {
+              "min": 1672531200000,
+              "max": 1672560900000
+            },
+            "valueRange": {
+              "min": 10.35,
+              "max": 100
+            },
+            "templates": [
+              {
+                "id": "state",
+                "type": "State",
+                "kind": "State",
+                "label": "Sensor reading state",
+                "role": "timeIndexedObservation",
+                "form": "Snapshot",
+                "schemaVersion": 1,
+                "rowCount": 3700,
+                "subjectRole": "observedEntity",
+                "timeRole": "timestamp",
+                "valueRole": "measuredValue",
+                "variable": "humidity",
+                "timeRange": {
+                  "min": 1672531200000,
+                  "max": 1672560900000
+                }
+              },
+              {
+                "id": "readingOfSensor",
+                "type": "Relation",
+                "kind": "Relation",
+                "label": "Reading of sensor",
+                "role": "observationTargetRelation",
+                "form": "BinaryRelation",
+                "schemaVersion": 1,
+                "source": "state.observedEntity",
+                "target": "SensorRegistry.registry.sensorIdentity",
+                "relation": "readings reference sensor registry identities",
+                "relationCount": 3700
+              }
+            ]
+          },
+          "stages": {
+            "descriptor": "skipped",
+            "sources": "ready",
+            "fieldCatalog": "ready",
+            "roleResolution": "ready",
+            "materialization": "ready",
+            "templates": "ready",
+            "contract": "ready"
+          }
+        },
+        "detectedRange": {
+          "min": 10.35,
+          "max": 100
+        }
+      },
+      "ports": [
+        {
+          "id": "dataset",
+          "name": "Sensor Readings",
+          "direction": "out",
+          "type": "SensorReadingsDataset"
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "env-edge-roadway",
+      "from": {
+        "nodeId": "env-roadway",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "env-temperature",
+        "portId": "roadway"
+      }
+    },
+    {
+      "id": "env-edge-registry",
+      "from": {
+        "nodeId": "env-registry",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "env-temperature",
+        "portId": "sensorRegistry"
+      }
+    },
+    {
+      "id": "env-edge-function",
+      "from": {
+        "nodeId": "env-temperature",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "env-workspace",
+        "portId": "function-1"
+      }
+    },
+    {
+      "id": "37385dd5-c118-47a1-a97a-06ed7421986a",
+      "from": {
+        "nodeId": "env-roadway",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "b3269b94-917c-4f79-a17b-b79259cf636c",
+        "portId": "roadway"
+      }
+    },
+    {
+      "id": "b32a034a-1143-4181-a42f-529f86411e1c",
+      "from": {
+        "nodeId": "env-roadway",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "53ba36cc-66f5-423b-adb3-e050aaab9df2",
+        "portId": "roadway"
+      }
+    },
+    {
+      "id": "54fcea53-61d9-4c46-bc92-b587b5d26df7",
+      "from": {
+        "nodeId": "30ec169e-727f-4af5-b745-4f7ff37b8f0e",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "env-temperature",
+        "portId": "sensorReadings"
+      }
+    },
+    {
+      "id": "52ed5067-5f3b-4127-9c8c-15b5512971b4",
+      "from": {
+        "nodeId": "565d3efb-35a2-4ce5-ba78-d66d0ac4ac1b",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "53ba36cc-66f5-423b-adb3-e050aaab9df2",
+        "portId": "sensorRegistry"
+      }
+    },
+    {
+      "id": "e08b93c5-f91a-4417-ac26-8ee86ca4df8e",
+      "from": {
+        "nodeId": "5fd73361-7586-4176-8712-d83bf3e75217",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "53ba36cc-66f5-423b-adb3-e050aaab9df2",
+        "portId": "sensorReadings"
+      }
+    },
+    {
+      "id": "04530e0f-907d-4249-a45f-0664f991ac09",
+      "from": {
+        "nodeId": "f592fb67-ab73-4167-9d7e-3e190175c712",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "b3269b94-917c-4f79-a17b-b79259cf636c",
+        "portId": "sensorRegistry"
+      }
+    },
+    {
+      "id": "83559eab-63c1-47ab-8a66-b66de9aaf9ae",
+      "from": {
+        "nodeId": "d1d0e7c0-8949-46c2-9d55-b984eee604ad",
+        "portId": "dataset"
+      },
+      "to": {
+        "nodeId": "b3269b94-917c-4f79-a17b-b79259cf636c",
+        "portId": "sensorReadings"
+      }
+    },
+    {
+      "id": "d01a7397-c15f-4e82-ba95-3e34af8d1d80",
+      "from": {
+        "nodeId": "b3269b94-917c-4f79-a17b-b79259cf636c",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "env-workspace",
+        "portId": "function-2"
+      }
+    },
+    {
+      "id": "d6dfb52c-d8d4-4b26-8465-be71ad28545e",
+      "from": {
+        "nodeId": "53ba36cc-66f5-423b-adb3-e050aaab9df2",
+        "portId": "operator"
+      },
+      "to": {
+        "nodeId": "env-workspace",
+        "portId": "function-3"
+      }
+    }
+  ],
+  "view": {
+    "panX": -169.9011221833946,
+    "panY": 131.5229140027045,
+    "zoom": 0.6506075260652731
+  }
+}

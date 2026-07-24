@@ -1,5 +1,9 @@
-﻿import { generateCssGradient } from '../utils/colors.js';
+import { generateCssGradient } from '../utils/colors.js';
 import { semanticizeDataNode } from '../core/nodes/DataNodes.js';
+
+const NODE_DRAG_THRESHOLD_PX = 4;
+const RENAME_AFTER_DRAG_SUPPRESSION_MS = 500;
+const TITLE_DOUBLE_CLICK_MS = 500;
 
 /**
  * SVG/DOM based node editor with pan/zoom and typed ports.
@@ -28,6 +32,12 @@ export class NodeEditor {
 
     this.nodeLayer = document.createElement('div');
     this.nodeLayer.className = 'node-layer';
+    this.activeEdgeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    this.activeEdgeSvg.classList.add('node-active-edge-svg');
+    this.activeEdgeSvg.setAttribute('aria-hidden', 'true');
+    this.activeEdgeLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    this.activeEdgeSvg.appendChild(this.activeEdgeLayer);
+    this.nodeLayer.appendChild(this.activeEdgeSvg);
     this.container.appendChild(this.nodeLayer);
 
     this.nodeElements = new Map();
@@ -38,11 +48,17 @@ export class NodeEditor {
     this.portOffsets = new Map();
     this.nodeBounds = new Map();
     this.edgeElements = new Map();
+    this.activeEdgeElements = new Map();
     this.edgeBounds = new Map();
     this.visibleNodeIds = new Set();
 
     this.draggingNode = null;
     this.draggingOffset = { x: 0, y: 0 };
+    this.nodeDragCandidate = null;
+    this.suppressRenameNodeId = null;
+    this.suppressRenameUntil = 0;
+    this.lastTitlePointerDown = null;
+    this.activeRenameNodeId = null;
     this.panOrigin = null;
     this.pendingLink = null;
     this.selectedNodeId = null;
@@ -165,6 +181,48 @@ export class NodeEditor {
     return node.params?.uiCollapsed === true;
   }
 
+  nodeExpansionPreference(node) {
+    if (!Object.prototype.hasOwnProperty.call(node.params || {}, 'uiCollapsed')) return 'auto';
+    return this.nodeCollapsed(node) ? 'collapsed' : 'expanded';
+  }
+
+  lodForZoom(zoom = this.graph.view.zoom || 1) {
+    return zoom >= 0.75 ? 'full' : zoom >= 0.55 ? 'compact' : 'overview';
+  }
+
+  nodeEffectivelyCollapsed(node, lod = this.currentLod || this.lodForZoom()) {
+    const preference = this.nodeExpansionPreference(node);
+    if (preference === 'collapsed') return true;
+    if (preference === 'expanded') return false;
+    return lod !== 'full';
+  }
+
+  applyNodeExpansionState(nodeId) {
+    const node = this.graph.getNode?.(nodeId) ||
+      this.graph.nodes.find((candidate) => candidate.id === nodeId);
+    const element = this.nodeElements.get(nodeId);
+    if (!node || !element) return;
+    const preference = this.nodeExpansionPreference(node);
+    const collapsed = this.nodeEffectivelyCollapsed(node);
+    element.dataset.nodeExpansion = preference;
+    element.classList.toggle('node-effectively-collapsed', collapsed);
+    const toggle = element.querySelector('.node-collapse-toggle');
+    if (!toggle) return;
+    const action = collapsed ? 'Expand node' : 'Collapse node';
+    toggle.title = action;
+    toggle.setAttribute('aria-label', action);
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+    toggle.textContent = collapsed ? '+' : '-';
+  }
+
+  toggleNodeExpansion(node) {
+    node.params = node.params || {};
+    node.params.uiCollapsed = !this.nodeEffectivelyCollapsed(node);
+    this.notifyNodeChange(node, { source: 'inline-collapse', refreshInspector: false });
+    this.updateNodeView(node.id);
+    this.requestFrame({ culling: true, allEdges: true });
+  }
+
   renameNode(node, value) {
     const nextLabel = value.trim() || this.nodeDefinition(node)?.label || 'Node';
     node.label = nextLabel;
@@ -178,20 +236,36 @@ export class NodeEditor {
   }
 
   startInlineRename(node, titleEl) {
-    if (!titleEl) return;
+    if (!titleEl || this.activeRenameNodeId) return;
+    this.activeRenameNodeId = node.id;
     const input = document.createElement('input');
     input.className = 'node-title-input';
     input.value = node.label || '';
     titleEl.replaceWith(input);
     input.focus();
     input.select();
-    const commit = () => this.renameNode(node, input.value);
-    input.addEventListener('pointerdown', (event) => event.stopPropagation());
-    input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') commit();
-      if (event.key === 'Escape') this.updateNodeView(node.id);
+    let finalized = false;
+    const finish = (commit) => {
+      if (finalized) return;
+      finalized = true;
+      this.activeRenameNodeId = null;
+      if (commit) this.renameNode(node, input.value);
+      else this.updateNodeView(node.id);
+    };
+    ['pointerdown', 'pointerup', 'click', 'dblclick'].forEach((eventName) => {
+      input.addEventListener(eventName, (event) => event.stopPropagation());
     });
-    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        finish(true);
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        finish(false);
+      }
+    });
+    input.addEventListener('blur', () => finish(true));
   }
 
   setAllCollapsed(collapsed) {
@@ -646,8 +720,10 @@ export class NodeEditor {
   setSelectedNode(nodeId, { notify = true } = {}) {
     const previous = this.selectedNodeId;
     this.selectedNodeId = nodeId || null;
+    if (this.selectedNodeId) this.raiseNode(this.selectedNodeId);
     if (previous) this.applyNodeVisualState(previous);
     if (this.selectedNodeId) this.applyNodeVisualState(this.selectedNodeId);
+    this.syncActiveEdgeLayer();
     if (notify) {
       const node = this.selectedNodeId
         ? this.graph.getNode?.(this.selectedNodeId) ||
@@ -665,6 +741,44 @@ export class NodeEditor {
     element.classList.toggle('selected', nodeId === this.selectedNodeId);
     element.classList.toggle('function-related', functionMode && this.highlight.nodes?.has(nodeId));
     element.classList.toggle('function-dimmed', functionMode && !this.highlight.nodes?.has(nodeId));
+  }
+
+  raiseNode(nodeId) {
+    const element = this.nodeElements.get(nodeId);
+    if (element?.parentNode === this.nodeLayer) this.nodeLayer.appendChild(element);
+  }
+
+  syncActiveEdgeClone(edgeId) {
+    const source = this.edgeElements.get(edgeId);
+    const clone = this.activeEdgeElements.get(edgeId);
+    if (!source || !clone) return;
+    clone.setAttribute('class', (source.getAttribute('class') || 'node-edge') + ' node-edge-active-overlay');
+    ['d', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'vector-effect'].forEach((attribute) => {
+      const value = source.getAttribute(attribute);
+      if (value == null) clone.removeAttribute(attribute);
+      else clone.setAttribute(attribute, value);
+    });
+    clone.style.display = source.style.display;
+    clone.style.pointerEvents = 'none';
+  }
+
+  syncActiveEdgeLayer() {
+    this.activeEdgeLayer.replaceChildren();
+    this.activeEdgeElements.clear();
+    if (!this.selectedNodeId) return;
+    const edges = this.graph.getIncidentEdges?.(this.selectedNodeId) ||
+      this.graph.edges.filter((edge) => edge.from.nodeId === this.selectedNodeId || edge.to.nodeId === this.selectedNodeId);
+    edges.forEach((edge) => {
+      const source = this.edgeElements.get(edge.id);
+      if (!source) return;
+      const clone = source.cloneNode(false);
+      clone.removeAttribute('data-edge-id');
+      clone.setAttribute('aria-hidden', 'true');
+      clone.style.pointerEvents = 'none';
+      this.activeEdgeLayer.appendChild(clone);
+      this.activeEdgeElements.set(edge.id, clone);
+      this.syncActiveEdgeClone(edge.id);
+    });
   }
 
   applyPortVisualState(portKey) {
@@ -688,6 +802,7 @@ export class NodeEditor {
     path.setAttribute('stroke-width', highlighted ? '3' : '2');
     path.classList.toggle('highlighted-edge', highlighted);
     path.classList.toggle('dimmed-edge', dimmed);
+    this.syncActiveEdgeClone(edgeId);
   }
 
   applyVisualState() {
@@ -861,6 +976,27 @@ export class NodeEditor {
     this.clearCompatible();
   }
 
+  promoteNodeDragCandidate(clientX, clientY) {
+    const candidate = this.nodeDragCandidate;
+    if (!candidate || this.draggingNode) return false;
+    const dx = clientX - candidate.startClientX;
+    const dy = clientY - candidate.startClientY;
+    if (Math.hypot(dx, dy) <= NODE_DRAG_THRESHOLD_PX) return false;
+    candidate.moved = true;
+    this.lastTitlePointerDown = null;
+    this.draggingPointerTarget = candidate.nodeElement;
+    this.draggingNode = candidate.node;
+    try {
+      candidate.nodeElement.setPointerCapture(candidate.pointerId);
+    } catch {
+      // Window-level pointer tracking keeps dragging functional when capture is unavailable.
+    }
+    this.suppressRenameNodeId = candidate.node.id;
+    this.suppressRenameUntil = performance.now() + RENAME_AFTER_DRAG_SUPPRESSION_MS;
+    this.setInteracting(true);
+    return true;
+  }
+
   handleNodePointerDown(event) {
     const portElement = event.target.closest?.('.port');
     if (portElement) {
@@ -874,34 +1010,46 @@ export class NodeEditor {
       this.graph.nodes.find((candidate) => candidate.id === nodeElement.dataset.id);
     if (!node) return;
 
-    if (event.target.closest('.node-rename-toggle')) {
-      event.preventDefault();
+    if (event.target.closest('.node-collapse-toggle')) {
       event.stopPropagation();
-      this.startInlineRename(node, nodeElement.querySelector('.node-title'));
       return;
     }
-    if (event.target.closest('.node-collapse-toggle')) {
-      event.preventDefault();
-      event.stopPropagation();
-      node.params = node.params || {};
-      node.params.uiCollapsed = !this.nodeCollapsed(node);
-      this.notifyNodeChange(node, { source: 'inline-collapse', refreshInspector: false });
-      this.updateNodeView(node.id);
-      return;
+
+    const titleElement = event.target.closest('.node-title');
+    if (event.button === 0 && titleElement) {
+      const now = performance.now();
+      const previous = this.lastTitlePointerDown;
+      const repeated = previous?.nodeId === node.id && now - previous.at <= TITLE_DOUBLE_CLICK_MS;
+      this.lastTitlePointerDown = repeated ? null : { nodeId: node.id, at: now };
+      const renameSuppressed = this.suppressRenameNodeId === node.id &&
+        now < this.suppressRenameUntil;
+      if (repeated && !renameSuppressed) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.nodeDragCandidate = null;
+        this.setSelectedNode(node.id);
+        this.startInlineRename(node, titleElement);
+        return;
+      }
+    } else {
+      this.lastTitlePointerDown = null;
     }
 
     event.stopPropagation();
     this.setSelectedNode(node.id);
-    if (event.target.closest('.node-header')) {
-      nodeElement.setPointerCapture(event.pointerId);
-      this.draggingPointerTarget = nodeElement;
-      this.invalidateContainerRect();
-      const screen = this.clientToScreen(event.clientX, event.clientY);
-      const world = this.screenToWorld(screen);
-      this.draggingNode = node;
-      this.draggingOffset = { x: world.x - node.position.x, y: world.y - node.position.y };
-      this.setInteracting(true);
-    }
+    if (event.button !== 0 || !event.target.closest('.node-header')) return;
+    this.invalidateContainerRect();
+    const screen = this.clientToScreen(event.clientX, event.clientY);
+    const world = this.screenToWorld(screen);
+    this.draggingOffset = { x: world.x - node.position.x, y: world.y - node.position.y };
+    this.nodeDragCandidate = {
+      node,
+      nodeElement,
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      moved: false
+    };
   }
 
   handleNodePointerUp(event) {
@@ -909,7 +1057,38 @@ export class NodeEditor {
     if (portElement) this.handlePortPointerUp(event, portElement);
   }
 
+  handleNodeClick(event) {
+    const toggle = event.target.closest?.('.node-collapse-toggle');
+    if (!toggle) return;
+    const nodeElement = toggle.closest('.node');
+    const nodeId = nodeElement?.dataset.id;
+    const node = this.graph.getNode?.(nodeId) ||
+      this.graph.nodes.find((candidate) => candidate.id === nodeId);
+    if (!node) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.toggleNodeExpansion(node);
+  }
+
   handleNodeDoubleClick(event) {
+    const titleElement = event.target.closest?.('.node-title');
+    if (titleElement) {
+      const nodeElement = titleElement.closest('.node');
+      const nodeId = nodeElement?.dataset.id;
+      const node = this.graph.getNode?.(nodeId) ||
+        this.graph.nodes.find((candidate) => candidate.id === nodeId);
+      if (!node) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const renameSuppressed = this.suppressRenameNodeId === node.id &&
+        performance.now() < this.suppressRenameUntil;
+      if (renameSuppressed) return;
+      this.suppressRenameNodeId = null;
+      this.suppressRenameUntil = 0;
+      this.startInlineRename(node, titleElement);
+      return;
+    }
+
     const portElement = event.target.closest?.('.port');
     if (!portElement) return;
     event.stopPropagation();
@@ -925,9 +1104,39 @@ export class NodeEditor {
     [...edges].forEach((edge) => this.graph.removeEdge(edge.id));
   }
 
+  finishPointerInteraction(event, { cancelled = false } = {}) {
+    const hasInteraction = this.panOrigin || this.draggingNode || this.nodeDragCandidate ||
+      this.draggingPointerTarget || this.pendingLink;
+    if (!hasInteraction) return;
+    if (!cancelled && (this.panOrigin || this.draggingNode || this.pendingLink)) {
+      this.latestPointer = { clientX: event.clientX, clientY: event.clientY };
+      this.requestFrame({ pointer: true });
+      this.flushScheduledFrameNow();
+    }
+    if (this.panOrigin && this.container.hasPointerCapture?.(event.pointerId)) {
+      this.container.releasePointerCapture(event.pointerId);
+    }
+    if (this.draggingPointerTarget?.hasPointerCapture?.(event.pointerId)) {
+      this.draggingPointerTarget.releasePointerCapture(event.pointerId);
+    }
+    if (!cancelled && this.pendingLink?.detachEdgeId && this.pendingLink.detachArmed) {
+      this.graph.removeEdge(this.pendingLink.detachEdgeId);
+    }
+    this.panOrigin = null;
+    this.draggingNode = null;
+    this.nodeDragCandidate = null;
+    this.draggingPointerTarget = null;
+    this.pendingLink = null;
+    this.latestPointer = null;
+    this.updateTempLink(null);
+    this.clearCompatible();
+    this.setInteracting(false);
+    this.requestFrame({ culling: true });
+  }
   registerEvents() {
     this.nodeLayer.addEventListener('pointerdown', (event) => this.handleNodePointerDown(event));
     this.nodeLayer.addEventListener('pointerup', (event) => this.handleNodePointerUp(event));
+    this.nodeLayer.addEventListener('click', (event) => this.handleNodeClick(event));
     this.nodeLayer.addEventListener('dblclick', (event) => this.handleNodeDoubleClick(event));
 
     this.svg.addEventListener('click', (event) => {
@@ -1003,7 +1212,8 @@ export class NodeEditor {
       });
     });
 
-    this.container.addEventListener('pointermove', (event) => {
+    window.addEventListener('pointermove', (event) => {
+      this.promoteNodeDragCandidate(event.clientX, event.clientY);
       if (!this.panOrigin && !this.draggingNode && !this.pendingLink) return;
       this.latestPointer = {
         clientX: event.clientX,
@@ -1012,40 +1222,24 @@ export class NodeEditor {
       this.requestFrame({ pointer: true });
     });
 
-    this.container.addEventListener('pointerup', (event) => {
-      if (this.panOrigin || this.draggingNode || this.pendingLink) {
-        this.latestPointer = { clientX: event.clientX, clientY: event.clientY };
-        this.requestFrame({ pointer: true });
-        this.flushScheduledFrameNow();
-      }
-      if (this.panOrigin && this.container.hasPointerCapture?.(event.pointerId)) {
-        this.container.releasePointerCapture(event.pointerId);
-      }
-      if (this.draggingPointerTarget?.hasPointerCapture?.(event.pointerId)) {
-        this.draggingPointerTarget.releasePointerCapture(event.pointerId);
-      }
-      if (this.pendingLink?.detachEdgeId && this.pendingLink.detachArmed) {
-        this.graph.removeEdge(this.pendingLink.detachEdgeId);
-      }
-      this.panOrigin = null;
-      this.draggingNode = null;
-      this.draggingPointerTarget = null;
-      this.pendingLink = null;
-      this.latestPointer = null;
-      this.updateTempLink(null);
-      this.clearCompatible();
-      this.setInteracting(false);
-      this.requestFrame({ culling: true });
+    window.addEventListener('pointerup', (event) => {
+      this.finishPointerInteraction(event);
+    });
+    window.addEventListener('pointercancel', (event) => {
+      this.finishPointerInteraction(event, { cancelled: true });
     });
   }
 
   render() {
+    this.activeRenameNodeId = null;
     if (this.frameHandle != null) {
       cancelAnimationFrame(this.frameHandle);
       this.frameHandle = null;
     }
     this.nodeResizeObserver.disconnect();
-    this.nodeLayer.replaceChildren();
+    this.nodeLayer.replaceChildren(this.activeEdgeSvg);
+    this.activeEdgeLayer.replaceChildren();
+    this.activeEdgeElements.clear();
     this.edgeLayer.replaceChildren();
     this.edgeLayer.appendChild(this.tempPath);
     this.tempPath.style.display = 'none';
@@ -1068,6 +1262,7 @@ export class NodeEditor {
     this.graph.nodes.forEach((node) => fragment.appendChild(this.createNodeElement(node)));
     this.nodeLayer.appendChild(fragment);
     this.graph.edges.forEach((edge) => this.createEdgeView(edge));
+    this.syncActiveEdgeLayer();
 
     this.applyCameraTransform();
     this.nodeElements.forEach((_element, nodeId) => this.dirtyGeometry.add(nodeId));
@@ -1086,20 +1281,12 @@ export class NodeEditor {
     const title = document.createElement('span');
     title.className = 'node-title';
     title.textContent = node.label;
+    title.title = 'Double-click to rename';
     header.appendChild(title);
-
-    const rename = document.createElement('button');
-    rename.type = 'button';
-    rename.className = 'node-rename-toggle';
-    rename.title = 'Rename node';
-    rename.textContent = 'Edit';
-    header.appendChild(rename);
 
     const collapse = document.createElement('button');
     collapse.type = 'button';
     collapse.className = 'node-collapse-toggle';
-    collapse.title = this.nodeCollapsed(node) ? 'Expand node' : 'Collapse node';
-    collapse.textContent = this.nodeCollapsed(node) ? '+' : '-';
     header.appendChild(collapse);
     element.appendChild(header);
 
@@ -1143,6 +1330,7 @@ export class NodeEditor {
     this.visibleNodeIds.add(node.id);
     this.nodeResizeObserver.observe(element);
     this.applyNodeVisualState(node.id);
+    this.applyNodeExpansionState(node.id);
     portKeys.forEach((key) => this.applyPortVisualState(key));
     return element;
   }
@@ -1163,6 +1351,7 @@ export class NodeEditor {
   }
 
   updateNodeView(nodeId) {
+    if (this.activeRenameNodeId === nodeId) return this.nodeElements.get(nodeId) || null;
     const node = this.graph.getNode?.(nodeId) || this.graph.nodes.find((candidate) => candidate.id === nodeId);
     if (!node) {
       this.removeNodeView(nodeId);
@@ -1183,6 +1372,7 @@ export class NodeEditor {
   }
 
   removeNodeView(nodeId) {
+    if (this.activeRenameNodeId === nodeId) this.activeRenameNodeId = null;
     const element = this.nodeElements.get(nodeId);
     this.cleanupNodeRegistration(nodeId);
     element?.remove();
@@ -1227,7 +1417,9 @@ export class NodeEditor {
 
   removeEdgeView(edgeId) {
     this.edgeElements.get(edgeId)?.remove();
+    this.activeEdgeElements.get(edgeId)?.remove();
     this.edgeElements.delete(edgeId);
+    this.activeEdgeElements.delete(edgeId);
     this.edgeBounds.delete(edgeId);
     this.dirtyEdges.delete(edgeId);
   }
@@ -1254,6 +1446,7 @@ export class NodeEditor {
       if (this.selectedNodeId === change.nodeId) {
         this.selectedNodeId = null;
         this.onSelect?.(null);
+        this.syncActiveEdgeLayer();
       }
       this.syncModuleViews();
       this.requestFrame({ culling: true });
@@ -1263,12 +1456,14 @@ export class NodeEditor {
       (change.removedEdgeIds || []).forEach((edgeId) => this.removeEdgeView(edgeId));
       this.syncModuleViews();
       this.createEdgeView(change.edge || this.graph.getEdge?.(change.edgeId));
+      this.syncActiveEdgeLayer();
       (change.affectedNodeIds || []).forEach((nodeId) => this.updateIncidentEdges(nodeId));
       this.requestFrame({ culling: true });
       return;
     }
     if (change.type === 'edge-removed') {
       this.removeEdgeView(change.edgeId);
+      this.syncActiveEdgeLayer();
       this.syncModuleViews();
       (change.affectedNodeIds || []).forEach((nodeId) => this.updateIncidentEdges(nodeId));
       this.requestFrame({ culling: true });
@@ -1370,10 +1565,11 @@ export class NodeEditor {
     this.svg.setAttribute('width', String(this.container.clientWidth));
     this.svg.setAttribute('height', String(this.container.clientHeight));
 
-    const lod = zoom >= 0.75 ? 'full' : zoom >= 0.55 ? 'compact' : 'overview';
+    const lod = this.lodForZoom(zoom);
     if (lod !== this.currentLod) {
       this.currentLod = lod;
       this.container.dataset.nodeLod = lod;
+      this.nodeElements.forEach((_element, nodeId) => this.applyNodeExpansionState(nodeId));
       this.visibleNodeIds.forEach((nodeId) => this.dirtyGeometry.add(nodeId));
     }
   }
@@ -1509,6 +1705,7 @@ export class NodeEditor {
       if (!this.edgeElements.has(edge.id)) this.createEdgeView(edge);
       this.dirtyEdges.add(edge.id);
     });
+    this.syncActiveEdgeLayer();
     if (tempLink && cursor) this.updateTempLink(this.screenToWorld(cursor), tempLink);
     else if (!this.pendingLink) this.updateTempLink(null);
     this.requestFrame({ culling: true });
@@ -1590,6 +1787,7 @@ export class NodeEditor {
       const bounds = this.edgeBounds.get(edgeId);
       const highlighted = this.highlight?.highlightedEdges?.has(edgeId);
       path.style.display = !bounds || highlighted || this.intersectsViewport(bounds, viewport) ? '' : 'none';
+      this.syncActiveEdgeClone(edgeId);
     };
     if (edgeIds) edgeIds.forEach(update);
     else this.edgeElements.forEach((_path, edgeId) => update(edgeId));
